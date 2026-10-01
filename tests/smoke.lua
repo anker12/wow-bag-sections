@@ -60,6 +60,7 @@ local ITEMS = {
 	["0:5"] = { itemID = 200, name = "Potion", stack = 5, maxStack = 20 },
 	["1:2"] = { itemID = 300, name = "Campfire Kit", stack = 1 },
 	["5:1"] = { itemID = 400, name = "Herb", stack = 10, maxStack = 200 },
+	["1:3"] = { itemID = 600, name = "Bloody Tooth", stack = 1, quest = true },
 }
 local NUM_SLOTS = { [0] = 16, [1] = 4, [2] = 0, [3] = 0, [4] = 0, [5] = 2, [-1] = 0 }
 local cursor -- { bag, slot }
@@ -79,6 +80,7 @@ end
 _G.Enum = {
 	BagIndex = { Keyring = -1, Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5 },
 	TooltipDataType = { Item = 0 },
+	ItemClass = { Questitem = 12 },
 }
 _G.Constants = { InventoryConstants = { NumBagSlots = 4 } }
 _G.C_Container = {
@@ -89,7 +91,7 @@ _G.C_Container = {
 		if not i then return nil end
 		return { iconFileID = 1, stackCount = i.stack, isLocked = false, quality = 1, isReadable = false, hyperlink = "link", isFiltered = false, hasNoValue = false, itemID = i.itemID, isBound = false }
 	end,
-	GetContainerItemQuestInfo = function() return { isQuestItem = false } end,
+	GetContainerItemQuestInfo = function(bag, slot) local i = ItemAt(bag, slot); return { isQuestItem = i and i.quest or false } end,
 	GetContainerNumFreeSlots = function(bag)
 		local free = 0
 		for slot = 1, NUM_SLOTS[bag] or 0 do if not ItemAt(bag, slot) then free = free + 1 end end
@@ -121,6 +123,7 @@ _G.C_Item = {
 	IsEquippableItem = function(itemID) for _, i in pairs(ITEMS) do if i.itemID == itemID then return i.equip or false end end return false end,
 	GetItemMaxStackSizeByID = function(itemID) for _, i in pairs(ITEMS) do if i.itemID == itemID then return i.maxStack or 1 end end end,
 	GetItemFamily = function() return 0 end,
+	GetItemInfoInstant = function(itemID) return itemID, "", "", "", 1, itemID == 600 and 12 or 0 end,
 	GetItemNameByID = function(itemID) for _, i in pairs(ITEMS) do if i.itemID == itemID then return i.name end end end,
 }
 _G.C_Timer = { After = function(_, fn) fn() end }
@@ -170,7 +173,7 @@ _G.TooltipDataProcessor = { AddTooltipPostCall = function(_, fn) _G._tooltipPost
 local function MockSetting() return { SetValueChangedCallback = function() end } end
 _G.Settings = {
 	VarType = { Boolean = "boolean", Number = "number" },
-	RegisterVerticalLayoutCategory = function() return { GetID = function() return 1 end } end,
+	RegisterVerticalLayoutCategory = function() return { GetID = function() return 1 end }, { AddInitializer = function(_, init) _G._settingsButtons = _G._settingsButtons or {}; table.insert(_G._settingsButtons, init) end } end,
 	RegisterAddOnSetting = MockSetting,
 	RegisterProxySetting = MockSetting,
 	CreateSliderOptions = function() return { SetLabelFormatter = function() end } end,
@@ -181,6 +184,8 @@ _G.Settings = {
 	RegisterAddOnCategory = function() end,
 	OpenToCategory = function() end,
 }
+_G.CreateSettingsListSectionHeaderInitializer = function() return {} end
+_G.CreateSettingsButtonInitializer = function(_, _, onClick) return { onClick = onClick } end
 local closeHooks = {}
 _G.hooksecurefunc = function(name, fn) closeHooks[name] = fn end
 for _, name in ipairs({ "ToggleBackpack", "ToggleAllBags", "OpenBackpack", "OpenAllBags", "ToggleBag", "OpenBag", "CloseAllBags", "CloseBackpack", "CloseBag" }) do
@@ -356,6 +361,38 @@ for _, frame in ipairs(frames) do
 	end
 end
 
+-- Quest Items section: off by default, then catches the quest item automatically.
+groups = ns.Layout.Build(db, ns.Inventory.Scan())
+local function GroupOf(bag, slot)
+	for _, group in ipairs(groups) do
+		for _, s in ipairs(group.slots) do
+			if s.bag == bag and s.slot == slot then return group end
+		end
+	end
+end
+check(GroupOf(1, 3).kind == "rest", "quest item in Rest while option is off")
+ns.Rules.SetAutoQuest(db, true, ns.L.QUEST_ITEMS)
+groups = ns.Layout.Build(db, ns.Inventory.Scan())
+check(GroupOf(1, 3).name == "Quest Items", "quest item goes to Quest Items section")
+
+-- Profiles: save, change sections, load back.
+for _, init in ipairs(_G._settingsButtons) do
+	if init.onClick then init.onClick(NewFrame("Button")) end
+end
+ns.Menu.PromptSaveProfile()
+_G._lastPopup.data.onAccept("Raiding")
+check(BagSectionsDB.profiles.Raiding and #BagSectionsDB.profiles.Raiding.sections == #db.sections, "profile saved")
+local savedCount = #db.sections
+SlashCmdList.BAGSECTIONS("new Temporary")
+ns.Menu.LoadProfile("Raiding")
+check(_G._lastPopup.which == "BAGSECTIONS_CONFIRM", "loading asks before removing a section")
+_G._lastPopup.data.onAccept()
+check(#db.sections == savedCount, "profile loaded")
+ns.Menu.OpenMainMenu(header)
+ns.Menu.DeleteProfile("Raiding")
+_G._lastPopup.data.onAccept()
+check(BagSectionsDB.profiles.Raiding == nil, "profile deleted")
+
 -- Sorting, and sorting queued in combat.
 SlashCmdList.BAGSECTIONS("sort")
 check(sortCalls == 1, "sort calls SortBags")
@@ -367,10 +404,11 @@ Fire("PLAYER_REGEN_ENABLED")
 check(sortCalls == 2, "queued sort runs after combat")
 
 -- Delete with items asks for confirmation; without items deletes directly.
+local before = #db.sections
 ns.Menu.DeleteSection(db.sections[1], 1)
 check(_G._lastPopup and _G._lastPopup.which == "BAGSECTIONS_DELETE_SECTION", "confirmation shown")
 StaticPopupDialogs.BAGSECTIONS_DELETE_SECTION.OnAccept(nil, _G._lastPopup.data)
-check(#db.sections == 0, "section deleted")
+check(#db.sections == before - 1, "section deleted")
 check(next(db.rules.byGUID) == nil, "rules removed with section")
 
 -- Every event handler runs without error.

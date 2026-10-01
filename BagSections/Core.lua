@@ -13,6 +13,8 @@ ns.DEFAULTS = {
 	stackableRule = Rules.KIND_ITEMID,
 	equippableRule = Rules.KIND_GUID,
 	takeOverBags = true,
+	-- Saved section lists: name -> { sections = { { name, color, below, collapsed, auto } } }
+	profiles = {},
 }
 
 function ns.Print(...)
