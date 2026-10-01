@@ -258,8 +258,15 @@ function Menu.OpenMainMenu(owner)
 			ns.db.showKeyring = not ns.db.showKeyring
 			Changed()
 		end)
-		local layout = root:CreateButton(L.LAYOUT)
 		local function IsLayout(name) return (ns.db.layout or "default") == name end
+		if IsLayout("semicompact") then
+			root:CreateCheckbox(L.REARRANGE, function()
+				return ns.Frame.IsRearranging()
+			end, function()
+				ns.Frame.SetRearranging(not ns.Frame.IsRearranging())
+			end)
+		end
+		local layout = root:CreateButton(L.LAYOUT)
 		layout:CreateRadio(L.LAYOUT_DEFAULT, function() return IsLayout("default") end, function() Menu.SetLayout("default") end)
 		layout:CreateRadio(L.LAYOUT_SEMICOMPACT, function() return IsLayout("semicompact") end, function() Menu.SetLayout("semicompact") end)
 		layout:CreateRadio(L.LAYOUT_COMPACT, function() return IsLayout("compact") end, function() Menu.SetLayout("compact") end)
@@ -276,13 +283,6 @@ function Menu.OpenMainMenu(owner)
 					Changed()
 				end)
 			end
-		end
-		if IsLayout("semicompact") then
-			root:CreateCheckbox(L.REARRANGE, function()
-				return ns.Frame.IsRearranging()
-			end, function()
-				ns.Frame.SetRearranging(not ns.Frame.IsRearranging())
-			end)
 		end
 		Menu.AddProfileEntries(root:CreateButton(L.PROFILES))
 		root:CreateDivider()
