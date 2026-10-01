@@ -18,10 +18,14 @@ local BUTTON_SIZE = ItemButtons.SIZE
 local CELL = BUTTON_SIZE + SPACING
 
 -- Compact layout: every group runs through one shared grid, outlined in its colour.
-local OUTLINE_PADDING = 5 -- space between a section's items and its outline, on every side
-local SECTION_GAP = 8 -- space between neighbouring outlines
+-- Slots keep a strict grid (same columns on every row); the gap between all slots is wider
+-- than in the default layout so outlines fit between neighbouring sections.
+local COMPACT_GAP = 10 -- space between slots, in every direction
+local COMPACT_CELL = BUTTON_SIZE + COMPACT_GAP
+local OUTLINE_PADDING = 3 -- space between a section's items and its outline, on every side
 local NAME_HEIGHT = 14 -- height of a section's name label on its outline
-local LINE = 2 -- outline thickness
+local LINE = 1 -- outline thickness
+local LINE_ALPHA = 0.7
 local REFLOW_AFTER_SORT = 3 -- seconds the compact layout keeps updating after a sort
 
 -- Outline colours for the built-in groups in the compact layout.
@@ -331,7 +335,7 @@ end
 local function LabelCells(group, columns)
 	measure:SetText(CompactTitle(group))
 	local width = measure:GetStringWidth() or 0
-	return math.max(2, math.min(columns, math.ceil((width + 16) / CELL)))
+	return math.max(2, math.min(columns, math.ceil((width + 16) / COMPACT_CELL)))
 end
 
 -- Compact layout: all groups run through one grid of `columns` columns, one after the
@@ -339,35 +343,19 @@ end
 local function RenderCompact(groups, columns, used)
 	local Layout = ns.Layout
 	local P = OUTLINE_PADDING
-	local width = columns * CELL - SPACING
-	-- Extra space before a section that starts partway along a row, on top of SPACING.
-	local groupGap = 2 * P + SECTION_GAP - SPACING
+	local width = columns * COMPACT_CELL - COMPACT_GAP
 
 	local sizes = {}
 	for i, group in ipairs(groups) do
 		group.placeholder = group.collapsed or #group.slots == 0
 		sizes[i] = group.placeholder and LabelCells(group, columns) or #group.slots
 	end
-	local cells, rows = Layout.FlowRows(sizes, width, BUTTON_SIZE, CELL, groupGap)
+	-- No extra gap between sections: every row holds the same slots in the same columns.
+	local cells, rows = Layout.FlowRows(sizes, width, BUTTON_SIZE, COMPACT_CELL, 0)
 
-	-- Which groups have cells on each row, and each group's per-row strips.
-	local rowGroups, strips = {}, {}
-	for r = 0, rows - 1 do
-		rowGroups[r] = {}
-	end
+	local strips = {}
 	for i in ipairs(groups) do
 		strips[i] = Layout.Strips(cells[i], BUTTON_SIZE)
-		for _, strip in ipairs(strips[i]) do
-			rowGroups[strip.row][i] = true
-		end
-	end
-	local function OnlyGroup(r)
-		local only
-		for i in pairs(rowGroups[r]) do
-			if only then return nil end
-			only = i
-		end
-		return only
 	end
 
 	-- Name rows are known once rows exist; work out each group's top edge using
@@ -398,18 +386,10 @@ local function RenderCompact(groups, columns, used)
 		end
 	end
 
-	-- Row positions. Rows inside a single section stay close; rows where sections meet get
-	-- room for two outlines plus SECTION_GAP; rows carrying names get room for the name.
+	-- Row positions: the same gap between all rows, a little more where a row carries names.
 	local rowTop, y = {}, 0
 	for r = 0, rows - 1 do
-		local gap
-		if r == 0 then
-			gap = P + LINE
-		elseif OnlyGroup(r) and OnlyGroup(r) == OnlyGroup(r - 1) then
-			gap = SPACING
-		else
-			gap = 2 * P + SECTION_GAP
-		end
+		local gap = r == 0 and (P + LINE) or COMPACT_GAP
 		if nameRow[r] then
 			-- The name is centred on the top outline; leave room above it, clear of the
 			-- outline of whatever sits in the row above.
@@ -463,7 +443,7 @@ local function RenderCompact(groups, columns, used)
 				texture:ClearAllPoints()
 				texture:SetPoint("TOPLEFT", content, "TOPLEFT", math.min(a.x, b.x) - LINE / 2, -(math.min(a.y, b.y) - LINE / 2))
 				texture:SetSize(math.abs(b.x - a.x) + LINE, math.abs(b.y - a.y) + LINE)
-				texture:SetColorTexture(c.r, c.g, c.b, 0.9)
+				texture:SetColorTexture(c.r, c.g, c.b, LINE_ALPHA)
 				texture:Show()
 			end
 		end
@@ -498,7 +478,7 @@ local function RenderCompact(groups, columns, used)
 			end
 		end
 	end
-	return height
+	return height, width
 end
 
 -- Compact layout: reuse the arrangement from when it was last built, as long as the same
@@ -731,7 +711,8 @@ function Frame.Render(mode)
 
 	local contentHeight
 	if compact then
-		contentHeight = RenderCompact(groups, columns, used)
+		contentHeight, gridWidth = RenderCompact(groups, columns, used)
+		content:SetWidth(gridWidth)
 	else
 		contentHeight = RenderDefault(groups, columns, gridWidth, used)
 	end

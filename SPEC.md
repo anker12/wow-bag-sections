@@ -436,6 +436,15 @@ Store sections **per character** because each character carries different things
 * A wrapped section whose parts don't touch gets a name on each part
   (`Layout.TopEdges`).
 
+### v0.6 changes
+
+* **Strict grid in compact:** every row has the same slots in the same columns, so slots
+  line up. Sections no longer shift right to make room. Instead, all slots in compact
+  are 10px apart (default layout: 4px), which leaves room for outlines between any two
+  neighbouring sections. The compact window is a little wider than the default layout
+  as a result.
+* **Thinner outlines:** 1px at 70% opacity, 3px from the items on every side.
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):
