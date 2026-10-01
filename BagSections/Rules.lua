@@ -11,11 +11,30 @@ Rules.REST = "rest"
 Rules.KIND_ITEMID = "itemID"
 Rules.KIND_GUID = "guid"
 
+-- Outline colours handed out to new sections in turn (used by the compact layout).
+Rules.PALETTE = {
+	{ r = 0.30, g = 0.65, b = 1.00 },
+	{ r = 1.00, g = 0.60, b = 0.20 },
+	{ r = 0.45, g = 0.85, b = 0.35 },
+	{ r = 0.85, g = 0.40, b = 0.90 },
+	{ r = 1.00, g = 0.85, b = 0.25 },
+	{ r = 0.95, g = 0.35, b = 0.40 },
+	{ r = 0.30, g = 0.85, b = 0.80 },
+	{ r = 0.95, g = 0.55, b = 0.75 },
+}
+
+local function PaletteColor(n)
+	local c = Rules.PALETTE[(n - 1) % #Rules.PALETTE + 1]
+	return { r = c.r, g = c.g, b = c.b }
+end
+
 function Rules.NewCharDB()
 	return {
 		version = 1,
 		sections = {},
 		rules = { byItemID = {}, byGUID = {} },
+		-- Collapsed state of the built-in groups: rest, reagent, keyring.
+		collapsedBuiltin = {},
 		nextId = 1,
 	}
 end
@@ -28,11 +47,15 @@ function Rules.Upgrade(db)
 	db.rules = type(db.rules) == "table" and db.rules or {}
 	db.rules.byItemID = type(db.rules.byItemID) == "table" and db.rules.byItemID or {}
 	db.rules.byGUID = type(db.rules.byGUID) == "table" and db.rules.byGUID or {}
+	db.collapsedBuiltin = type(db.collapsedBuiltin) == "table" and db.collapsedBuiltin or {}
 	db.nextId = tonumber(db.nextId) or 1
-	for _, section in ipairs(db.sections) do
+	for index, section in ipairs(db.sections) do
 		local n = tonumber(section.id and section.id:match("^s(%d+)$"))
 		if n and n >= db.nextId then
 			db.nextId = n + 1
+		end
+		if type(section.color) ~= "table" then
+			section.color = PaletteColor(n or index)
 		end
 	end
 	Rules.Prune(db)
@@ -52,6 +75,8 @@ function Rules.CreateSection(db, name)
 		id = "s" .. db.nextId,
 		name = name,
 		collapsed = false,
+		below = false,
+		color = PaletteColor(db.nextId),
 	}
 	db.nextId = db.nextId + 1
 	table.insert(db.sections, section)
@@ -91,18 +116,46 @@ function Rules.ClearSection(db, id)
 	end
 end
 
--- delta is -1 (up) or 1 (down).
+-- delta is -1 (up) or 1 (down). Swaps with the nearest section on the same side of Rest,
+-- so moving always has a visible effect.
 function Rules.MoveSection(db, id, delta)
-	local _, index = Rules.GetSection(db, id)
+	local section, index = Rules.GetSection(db, id)
 	if not index then
 		return false
 	end
 	local target = index + delta
-	if target < 1 or target > #db.sections then
+	while target >= 1 and target <= #db.sections do
+		if (db.sections[target].below or false) == (section.below or false) then
+			db.sections[index], db.sections[target] = db.sections[target], db.sections[index]
+			return true
+		end
+		target = target + delta
+	end
+	return false
+end
+
+-- Places the section above (below = false) or below (below = true) Rest.
+function Rules.SetSectionBelow(db, id, below)
+	local section = Rules.GetSection(db, id)
+	if not section then
 		return false
 	end
-	db.sections[index], db.sections[target] = db.sections[target], db.sections[index]
+	section.below = below and true or false
 	return true
+end
+
+function Rules.SetSectionColor(db, id, r, g, b)
+	local section = Rules.GetSection(db, id)
+	if not section then
+		return false
+	end
+	section.color = { r = r, g = g, b = b }
+	return true
+end
+
+-- key is "rest", "reagent" or "keyring".
+function Rules.ToggleBuiltinCollapsed(db, key)
+	db.collapsedBuiltin[key] = not db.collapsedBuiltin[key] or nil
 end
 
 -- Drops rules that point at sections which no longer exist.

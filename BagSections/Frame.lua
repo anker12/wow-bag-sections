@@ -15,23 +15,41 @@ local GROUP_GAP = 6
 local TITLE_HEIGHT = 30
 local FOOTER_HEIGHT = 22
 local BUTTON_SIZE = ItemButtons.SIZE
+local CELL = BUTTON_SIZE + SPACING
+
+-- Compact layout: each group is an outlined block, and blocks are packed side by side.
+local BLOCK_PADDING = 5
+local BLOCK_GAP = 6
+local LABEL_HEIGHT = 18
+
+-- Outline colours for the built-in groups in the compact layout.
+local BUILTIN_COLORS = {
+	rest = { r = 0.65, g = 0.65, b = 0.65 },
+	reagent = { r = 0.40, g = 0.80, b = 0.45 },
+	keyring = { r = 0.95, g = 0.80, b = 0.35 },
+}
 
 local main, content
-local headers, overlays = {}, {}
+local headers, overlays, outlines = {}, {}, {}
 local lastSlots = {}
 
 -- Information about the item on the cursor, or nil. Used to show drop targets.
 local cursorState
 
 local function GroupTitle(group)
+	local marker = group.collapsed and "+" or "-"
 	if group.kind == "section" then
-		return ("%s %s |cff999999(%d)|r"):format(group.collapsed and "+" or "-", group.name, group.count)
+		return ("%s %s |cff999999(%d)|r"):format(marker, group.name, group.count)
 	elseif group.kind == "rest" then
-		return ("%s |cff999999(%d)|r"):format(L.REST, #group.slots)
+		return ("%s %s |cff999999(%d)|r"):format(marker, L.REST, #group.slots)
 	elseif group.kind == "reagent" then
-		return L.REAGENTS
+		return ("%s %s"):format(marker, L.REAGENTS)
 	end
-	return L.KEYRING
+	return ("%s %s"):format(marker, L.KEYRING)
+end
+
+local function GroupColor(group)
+	return group.color or BUILTIN_COLORS[group.key] or BUILTIN_COLORS.rest
 end
 
 local function ReadCursor()
@@ -126,6 +144,10 @@ local function CreateHeader(index)
 			return
 		end
 		if group.kind ~= "section" then
+			if mouseButton == "LeftButton" then
+				Rules.ToggleBuiltinCollapsed(ns.charDB, group.key)
+				ns.RequestRefresh()
+			end
 			return
 		end
 		if mouseButton == "RightButton" then
@@ -139,6 +161,22 @@ local function CreateHeader(index)
 		end
 	end)
 	header:SetScript("OnReceiveDrag", function(self) HandleDrop(self.group) end)
+	header:SetScript("OnEnter", function(self)
+		if CursorHasItem() then
+			return
+		end
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip_AddNormalLine(GameTooltip, self.group.collapsed and L.HEADER_EXPAND or L.HEADER_COLLAPSE)
+		if self.group.kind == "section" then
+			GameTooltip_AddNormalLine(GameTooltip, L.HEADER_MENU)
+		end
+		GameTooltip:Show()
+	end)
+	header:SetScript("OnLeave", GameTooltip_Hide)
+	-- Coloured label strip, only shown in the compact layout.
+	header.Background = header:CreateTexture(nil, "BACKGROUND")
+	header.Background:SetAllPoints()
+	header.Background:Hide()
 	headers[index] = header
 	return header
 end
@@ -161,6 +199,145 @@ local function CreateOverlay(index)
 	overlay:SetScript("OnReceiveDrag", function(self) HandleDrop(self.group) end)
 	overlays[index] = overlay
 	return overlay
+end
+
+local function CreateOutline(index)
+	local outline = CreateFrame("Frame", nil, content, "BackdropTemplate")
+	outline:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+	outline:SetFrameLevel(content:GetFrameLevel() + 1)
+	outlines[index] = outline
+	return outline
+end
+
+local function ShowOverlay(index, group, x, y, width, height)
+	local overlay = overlays[index] or CreateOverlay(index)
+	overlay.group = group
+	overlay:ClearAllPoints()
+	overlay:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+	overlay:SetSize(width, height)
+	overlay:SetFrameLevel(content:GetFrameLevel() + 30)
+	overlay.Text:SetText(group.kind == "rest" and L.DROP_REST or L.DROP_HERE:format(group.name))
+	overlay:Show()
+end
+
+local function PlaceButton(group, slot, x, y, used)
+	local button = ItemButtons.Get(slot.bag, slot.slot)
+	button.bsSectionName = group.kind == "section" and group.name or nil
+	used[button] = true
+	button:ClearAllPoints()
+	button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+	button:Show()
+end
+
+local function SetupHeader(index, group, style)
+	local header = headers[index] or CreateHeader(index)
+	header.group = group
+	header:ClearAllPoints()
+	header.Text:SetText(GroupTitle(group))
+	header.Text:ClearAllPoints()
+	if style == "compact" then
+		local c = GroupColor(group)
+		header.Text:SetPoint("LEFT", 5, 0)
+		header.Text:SetTextColor(c.r, c.g, c.b)
+		header.Background:SetColorTexture(c.r, c.g, c.b, 0.18)
+		header.Background:Show()
+		header.Line:Hide()
+	else
+		header.Text:SetPoint("LEFT", 2, 0)
+		header.Text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+		header.Background:Hide()
+		header.Line:Show()
+	end
+	header:Show()
+	return header
+end
+
+-- Default layout: groups stacked top to bottom at full width.
+local function RenderDefault(groups, columns, gridWidth, used)
+	local y = 0
+	for index, group in ipairs(groups) do
+		local top = y
+		local header = SetupHeader(index, group, "default")
+		header:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+		header:SetSize(gridWidth, HEADER_HEIGHT)
+		y = y + HEADER_HEIGHT + 2
+
+		if not group.collapsed then
+			for i, slot in ipairs(group.slots) do
+				local column = (i - 1) % columns
+				local row = math.floor((i - 1) / columns)
+				PlaceButton(group, slot, column * CELL, y + row * CELL, used)
+			end
+			local rows = math.ceil(#group.slots / columns)
+			if rows == 0 and group.kind == "section" then
+				-- Empty section: leave a row so it can still receive drops.
+				rows = 1
+			end
+			y = y + rows * CELL
+		end
+
+		if IsDropTarget(group) then
+			ShowOverlay(index, group, -3, top - 2, gridWidth + 6, y - top + 1)
+		end
+
+		y = y + GROUP_GAP
+	end
+	return y - GROUP_GAP
+end
+
+-- Compact layout: each group is an outlined block sized to its items, packed side by side
+-- within the same window width as the default layout.
+local function RenderCompact(groups, gridWidth, used)
+	local maxColumns = math.max(1, math.floor((gridWidth - 2 * BLOCK_PADDING + SPACING) / CELL))
+	local blocks = {}
+	for index, group in ipairs(groups) do
+		local header = SetupHeader(index, group, "compact")
+		local labelWidth = (header.Text:GetStringWidth() or 0) + 12
+		local count = #group.slots
+		if count == 0 and group.kind == "section" then
+			count = 1 -- empty section keeps one slot of space as a drop target
+		end
+		local itemColumns = group.collapsed and 0 or math.min(maxColumns, count)
+		local width = math.max(itemColumns * CELL - SPACING + 2 * BLOCK_PADDING, labelWidth)
+		width = math.min(width, gridWidth)
+		local columns = math.max(1, math.min(maxColumns, math.floor((width - 2 * BLOCK_PADDING + SPACING) / CELL)))
+		local rows = group.collapsed and 0 or math.ceil(count / columns)
+		local height = LABEL_HEIGHT + (rows > 0 and (BLOCK_PADDING + rows * CELL - SPACING) or 0) + BLOCK_PADDING
+		blocks[index] = { width = width, height = height, columns = columns }
+	end
+
+	local positions, totalHeight = ns.Layout.Pack(blocks, gridWidth, BLOCK_GAP)
+
+	for index, group in ipairs(groups) do
+		local block, pos = blocks[index], positions[index]
+		local c = GroupColor(group)
+
+		local outline = outlines[index] or CreateOutline(index)
+		outline:ClearAllPoints()
+		outline:SetPoint("TOPLEFT", content, "TOPLEFT", pos.x, -pos.y)
+		outline:SetSize(block.width, block.height)
+		outline:SetBackdropBorderColor(c.r, c.g, c.b, 0.9)
+		outline:Show()
+
+		local header = headers[index]
+		header:SetPoint("TOPLEFT", content, "TOPLEFT", pos.x + 1, -(pos.y + 1))
+		header:SetSize(block.width - 2, LABEL_HEIGHT)
+		header:SetFrameLevel(outline:GetFrameLevel() + 1)
+
+		if not group.collapsed then
+			local top = pos.y + LABEL_HEIGHT + BLOCK_PADDING
+			for i, slot in ipairs(group.slots) do
+				local column = (i - 1) % block.columns
+				local row = math.floor((i - 1) / block.columns)
+				PlaceButton(group, slot, pos.x + BLOCK_PADDING + column * CELL, top + row * CELL, used)
+			end
+		end
+
+		if IsDropTarget(group) then
+			ShowOverlay(index, group, pos.x, pos.y, block.width, block.height)
+		end
+	end
+	return totalHeight
 end
 
 local function SavePosition()
@@ -319,62 +496,22 @@ function Frame.Render()
 	local used = {}
 	for _, header in ipairs(headers) do header:Hide() end
 	for _, overlay in ipairs(overlays) do overlay:Hide() end
+	for _, outline in ipairs(outlines) do outline:Hide() end
 
-	local y = 0
-	for index, group in ipairs(groups) do
-		local top = y
-		local header = headers[index] or CreateHeader(index)
-		header.group = group
-		header:ClearAllPoints()
-		header:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-		header:SetWidth(gridWidth)
-		header.Text:SetText(GroupTitle(group))
-		header:Show()
-		y = y + HEADER_HEIGHT + 2
-
-		local shown = group.kind ~= "section" or not group.collapsed
-		if shown then
-			local sectionName = group.kind == "section" and group.name or nil
-			for i, slot in ipairs(group.slots) do
-				local column = (i - 1) % columns
-				local row = math.floor((i - 1) / columns)
-				local button = ItemButtons.Get(slot.bag, slot.slot)
-				button.bsSectionName = sectionName
-				used[button] = true
-				button:ClearAllPoints()
-				button:SetPoint("TOPLEFT", content, "TOPLEFT", column * (BUTTON_SIZE + SPACING), -(y + row * (BUTTON_SIZE + SPACING)))
-				button:Show()
-			end
-			local rows = math.ceil(#group.slots / columns)
-			if rows == 0 and group.kind == "section" then
-				-- Empty section: leave a row so it can still receive drops.
-				rows = 1
-			end
-			y = y + rows * (BUTTON_SIZE + SPACING)
-		end
-
-		if IsDropTarget(group) then
-			local overlay = overlays[index] or CreateOverlay(index)
-			overlay.group = group
-			overlay:ClearAllPoints()
-			overlay:SetPoint("TOPLEFT", content, "TOPLEFT", -3, -top + 2)
-			overlay:SetSize(gridWidth + 6, y - top + 1)
-			overlay:SetFrameLevel(content:GetFrameLevel() + 30)
-			overlay.Text:SetText(group.kind == "rest" and L.DROP_REST or L.DROP_HERE:format(group.name))
-			overlay:Show()
-		end
-
-		y = y + GROUP_GAP
+	local contentHeight
+	if ns.db.layout == "compact" then
+		contentHeight = RenderCompact(groups, gridWidth, used)
+	else
+		contentHeight = RenderDefault(groups, columns, gridWidth, used)
 	end
 
 	ItemButtons.HideExcept(used)
 
-	if #ns.charDB.sections == 0 and not cursorState then
-		-- Hint row above Rest when no sections exist yet.
+	if #ns.charDB.sections == 0 and not cursorState and ns.db.layout ~= "compact" then
+		-- Hint next to Rest when no sections exist yet.
 		headers[1].Text:SetText(GroupTitle(groups[1]) .. "   |cff777777" .. L.NO_SECTIONS .. " - " .. L.NEW_SECTION .. "|r")
 	end
 
-	local contentHeight = y - GROUP_GAP
 	content:SetHeight(math.max(contentHeight, 1))
 	main:SetSize(gridWidth + PADDING * 2, TITLE_HEIGHT + contentHeight + FOOTER_HEIGHT + 6)
 

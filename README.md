@@ -35,14 +35,38 @@ Copy the `BagSections` folder into
 * **Remove an item from a section:** drag it onto Rest.
 * **Alt+Right-click** an item for a menu: add to a section, remove from a section, or choose
   whether the section matches *this exact item* or *every item of this kind*.
-* **Section header:** left-click to collapse it. Right-click to rename, move up/down, empty
-  or delete it.
+* **Collapse:** left-click any header to collapse it to just the header: your sections,
+  Rest and Reagents. Click again to expand.
+* **Section header right-click:** rename, move up/down, move below/above Rest, pick its
+  colour, empty or delete it.
 * **Sort:** the sort button, or `/bs sort`. Right-click the sort button to flip the sort
   direction. A sort clicked during combat runs once combat ends.
 * Gear you add is matched by exact item, so only that sword goes to the section. Everything
   else is matched by item type: every Hearthstone, every stack of that potion. You can change
   this for gear in the settings, or per item with Alt+Right-click.
 * Sections are saved per character.
+
+### Layouts
+
+Switch layouts from the gear menu (Layout) or in Settings.
+
+* **Default:** the layout above. Each section is stacked at full width.
+* **Compact:** the window keeps the same width, but each section is drawn as a box outlined
+  in its own colour, with its name in a coloured strip at the top. Small sections sit next
+  to each other. Change a section's colour from its right-click menu (Colour...). Rest is
+  grey and Reagents green. Because of the outlines, a box holds one column fewer than the
+  default layout's full width.
+
+```
+Bags  [search........]  [sort] [⚙] [x]
+┌Essentials (3)─┐ ┌Weapon swap (2)┐
+│[HS][Pick][CF] │ │[Sword][Shield]│
+└───────────────┘ └───────────────┘
+┌Rest (15)──────────────────────────┐
+│[..][..][..][..][..][..][..][..][..]│
+│[..][..][..][..][ ][ ]              │
+└───────────────────────────────────┘
+```
 
 Slash commands: `/bs` (open/close), `/bs sort`, `/bs new <name>`,
 `/bs add <section>` (adds the item under the mouse), `/bs config`.

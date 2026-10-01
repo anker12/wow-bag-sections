@@ -23,3 +23,9 @@ mention BagSections.
 | T15 | Drag an item from the reagent bag onto a section | An error explains that reagent bag items can't be added. |
 | T16 | Settings: Options, AddOns, BagSections; change columns and scale | The window resizes immediately. |
 | T17 | Click sort during combat | A message says sorting is queued, and the sort runs when combat ends. |
+| T18 | Right-click a section header, then "Move below Rest" | The section is drawn after Rest. "Move above Rest" puts it back. |
+| T19 | Left-click the Rest header, then the Reagents header | Each collapses to just its header. Click again to expand. |
+| T20 | Gear menu, Layout, Compact | Sections become coloured outlined boxes with their names showing, small ones sit side by side, and the window width doesn't change. |
+| T21 | In compact, right-click a section header, then Colour... and pick a colour | The outline and name change colour as you pick. Cancel restores the old colour. |
+| T22 | In compact, drag an item onto another section's box | It's added to that section. |
+| T23 | Switch back to Layout, Default | The window looks and works exactly as before. |

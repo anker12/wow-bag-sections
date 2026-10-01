@@ -379,6 +379,19 @@ Store sections **per character** because each character carries different things
   bar.
 * **Money:** shown as text, not with Blizzard's money frame template.
 
+### v0.2 additions
+
+* **Sections below Rest:** each section has a `below` flag, toggled from its right-click
+  menu. Order is: sections above Rest, Rest, sections below Rest, Reagents, Keyring.
+  Move up/down only swaps with sections on the same side of Rest.
+* **Collapse for built-in groups:** Rest, Reagents and Keyring can collapse like sections.
+  This is stored per character in `collapsedBuiltin`.
+* **Layouts:** `BagSectionsDB.layout` is `"default"` (unchanged) or `"compact"`.
+  Compact draws each group as a block outlined in the group's colour, sized to its items
+  and label, and packs blocks into the window width with bottom-left packing
+  (`Layout.Pack`). Each section stores a `color`. New sections take the next colour from
+  a palette. Colours can be changed with Blizzard's colour picker.
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):

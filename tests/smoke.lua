@@ -152,11 +152,16 @@ _G.strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
 _G.tinsert = table.insert
 _G.bit = { band = function() return 0 end }
 _G.ACCEPT, _G.CANCEL, _G.YES, _G.NO = "Accept", "Cancel", "Yes", "No"
+_G.NORMAL_FONT_COLOR = { GetRGB = function() return 1, 0.82, 0 end }
+_G.ColorPickerFrame = {
+	SetupColorPickerAndShow = function(self, info) self.info = info end,
+	GetColorRGB = function() return 0.1, 0.2, 0.3 end,
+}
 _G.MinimalSliderWithSteppersMixin = { Label = { Right = 2 } }
 _G.MenuUtil = { CreateContextMenu = function(owner, fn)
 	local function Description()
 		local d = {}
-		setmetatable(d, { __index = function() return function(_, _, isSelected) if type(isSelected) == "function" then isSelected() end return Description() end end })
+		setmetatable(d, { __index = function() return function() return Description() end end })
 		return d
 	end
 	fn(owner, Description())
@@ -171,6 +176,8 @@ _G.Settings = {
 	CreateSliderOptions = function() return { SetLabelFormatter = function() end } end,
 	CreateSlider = function() end,
 	CreateCheckbox = function() end,
+	CreateDropdown = function(_, _, optionsFn) optionsFn() end,
+	CreateControlTextContainer = function() return { Add = function() end, GetData = function() return {} end } end,
 	RegisterAddOnCategory = function() end,
 	OpenToCategory = function() end,
 }
@@ -234,7 +241,7 @@ check(#db.sections == 1 and db.sections[1].name == "Essentials", "section create
 
 local function FindGroupFrame(kind, key)
 	for _, frame in ipairs(frames) do
-		if frame.group and frame.group.kind == kind and (not key or frame.group.key == key) and frame._shown and rawget(frame, "Background") and frame._scripts.OnReceiveDrag then
+		if frame.group and frame.group.kind == kind and (not key or frame.group.key == key) and frame._shown and rawget(frame, "Border") and frame._scripts.OnReceiveDrag then
 			return frame
 		end
 	end
@@ -280,7 +287,7 @@ Fire("CURSOR_CHANGED")
 -- Menus build without errors.
 local header
 for _, frame in ipairs(frames) do
-	if frame.group and frame.group.kind == "section" and frame._shown and frame._scripts.OnClick and rawget(frame, "Text") then header = frame end
+	if frame.group and frame.group.kind == "section" and frame._shown and frame._scripts.OnClick and rawget(frame, "Line") then header = frame end
 end
 check(header, "section header shown")
 header._scripts.OnClick(header, "RightButton")
@@ -301,6 +308,53 @@ local added
 _G.GameTooltip.AddLine = function(_, text) added = text end
 _G._tooltipPostCall(GameTooltip)
 check(added and added:find("Essentials"), "tooltip shows section")
+
+-- Built-in groups collapse on left click.
+local restHeader
+for _, frame in ipairs(frames) do
+	if frame.group and frame.group.kind == "rest" and frame._shown and rawget(frame, "Line") then restHeader = frame end
+end
+restHeader._scripts.OnClick(restHeader, "LeftButton")
+check(db.collapsedBuiltin.rest == true, "Rest collapses")
+restHeader._scripts.OnClick(restHeader, "LeftButton")
+check(db.collapsedBuiltin.rest == nil, "Rest expands")
+
+-- Move a section below Rest.
+local section = db.sections[1]
+ns.Rules.SetSectionBelow(db, section.id, true)
+ns.RequestRefresh()
+groups = ns.Layout.Build(db, ns.Inventory.Scan())
+check(groups[1].kind == "rest" and groups[2].key == section.id, "section drawn below Rest")
+
+-- Colour picker sets the section colour.
+ns.Menu.PickColour(section)
+ColorPickerFrame.info.swatchFunc()
+check(section.color.r == 0.1 and section.color.b == 0.3, "colour picked")
+ColorPickerFrame.info.cancelFunc({ r = 0.5, g = 0.5, b = 0.5 })
+check(section.color.r == 0.5, "colour restored on cancel")
+
+-- Compact layout renders and places outlines; switching back keeps default working.
+ns.Menu.SetLayout("compact")
+check(BagSectionsDB.layout == "compact", "layout saved")
+local outlinesShown = 0
+for _, frame in ipairs(frames) do
+	if frame._shown and frame._template == "BackdropTemplate" and frame._parent and not rawget(frame, "Text") and frame._parent ~= UIParent and not rawget(frame._parent, "Background") then
+		outlinesShown = outlinesShown + 1
+	end
+end
+check(outlinesShown >= 3, "compact layout draws outlines (got " .. outlinesShown .. ")")
+C_Container.PickupContainerItem(0, 2)
+Fire("CURSOR_CHANGED")
+target = FindGroupFrame("section", section.id)
+check(target, "compact layout shows drop targets")
+target._scripts.OnReceiveDrag(target)
+check(db.rules.byItemID[2901] == section.id, "drop works in compact layout")
+ns.Menu.SetLayout("default")
+for _, frame in ipairs(frames) do
+	if frame._template == "BackdropTemplate" and frame._parent and frame._parent ~= UIParent and not rawget(frame._parent, "Background") then
+		check(not frame._shown, "outlines hidden in default layout")
+	end
+end
 
 -- Sorting, and sorting queued in combat.
 SlashCmdList.BAGSECTIONS("sort")
