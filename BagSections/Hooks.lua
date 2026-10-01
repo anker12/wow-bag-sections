@@ -3,7 +3,8 @@
 -- Blizzard's bag frames keep working exactly as normal (B, the backpack button, merchants,
 -- the bank and Escape all open and close them, and Blizzard keeps track of what opened them),
 -- but they're moved into a hidden parent so they're never seen. This window simply shows
--- whenever Blizzard considers the bags open.
+-- whenever Blizzard considers the bags open (IsAnyBagOpen, which checks IsShown, not
+-- visibility).
 --
 -- Replacing Blizzard's global bag functions (as older bag addons do) "taints" whatever
 -- Blizzard code calls them. The bank calls OpenAllBags when it opens, so a replaced
@@ -100,14 +101,29 @@ function Hooks.Install()
 	hiddenParent = CreateFrame("Frame")
 	hiddenParent:Hide()
 
+	-- OnShow/OnHide scripts never fire for frames inside a hidden parent (they only fire
+	-- when a frame becomes visible), so hook the Show/Hide calls themselves. hooksecurefunc
+	-- runs after Blizzard's own code and doesn't taint it.
 	for _, frame in ipairs(BlizzardBagFrames()) do
-		frame:HookScript("OnShow", function(self)
+		hooksecurefunc(frame, "Show", function(self)
 			Tuck(self)
 			QueueSync()
 		end)
-		frame:HookScript("OnHide", QueueSync)
+		hooksecurefunc(frame, "Hide", QueueSync)
+		hooksecurefunc(frame, "SetShown", function(self)
+			Tuck(self)
+			QueueSync()
+		end)
 	end
 	TuckAll()
+
+	-- Belt and braces: whatever opens or closes the bags, re-check afterwards.
+	for _, name in ipairs({ "ToggleAllBags", "ToggleBackpack", "OpenBackpack", "OpenAllBags",
+			"CloseAllBags", "CloseBackpack", "ToggleBag", "OpenBag", "CloseBag" }) do
+		if _G[name] then
+			hooksecurefunc(name, QueueSync)
+		end
+	end
 
 	-- Blizzard re-parents its bag frames when a full-screen panel opens or closes.
 	if ContainerFrame_SetFullScreenFrame then
