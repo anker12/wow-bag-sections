@@ -512,6 +512,12 @@ Store sections **per character** because each character carries different things
 * In semi-compact, a section's menu offers *Rearrange sections...* instead of Move
   up/down and above/below Rest.
 
+### v0.11
+
+* Removed the "Sections per row" option: once rows can be arranged by hand it only
+  affected the automatic arrangement, and that was confusing. The automatic arrangement
+  (and *Reset rows*) uses 3 per row, capped by what fits.
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):

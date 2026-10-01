@@ -490,7 +490,6 @@ for _, s in ipairs(db.sections) do s.below, s.collapsed = false, false end
 ns.Rules.Assign(db, { itemID = 6948 }, SectionByName("SemiA").id, "itemID")
 ns.Rules.Assign(db, { itemID = 2901 }, SectionByName("SemiB").id, "itemID")
 ns.Rules.Assign(db, { itemID = 200 }, SectionByName("SemiC").id, "itemID")
-BagSectionsDB.sectionsPerRow = 3
 ns.Menu.SetLayout("semicompact")
 local function HeaderFor(name)
 	for _, frame in ipairs(frames) do
@@ -512,11 +511,7 @@ local semiRest = HeaderForKind("rest")
 check(semiRest._point[4] == 0 and semiRest._w == 406, "Rest stays full width")
 local hsButton = ns.ItemButtons.Get(0, 1)
 check(hsButton._point[4] >= a._point[4] and hsButton._point[4] < b._point[4], "items sit inside their section's column")
-BagSectionsDB.sectionsPerRow = 50
-ns.RequestRefresh()
-check(HeaderFor("SemiA")._w >= 37, "sections per row is capped so each is at least a slot wide")
-BagSectionsDB.sectionsPerRow = 3
-ns.RequestRefresh()
+
 
 -- Rearranging: locked by default, so dragging a name does nothing.
 local function Drag(hdr, x, y)
