@@ -477,6 +477,18 @@ Store sections **per character** because each character carries different things
   Layout; Profiles; divider; Settings.
 * **Footer:** empty/total slots shown as `x / y`.
 
+### v0.9: Semi-compact layout
+
+* `BagSectionsDB.layout = "semicompact"`, with `sectionsPerRow` (default 3).
+* Built on the default layout's drawing (`DrawGroup`: header plus a slot grid in a box),
+  so Default draws exactly as before. User sections are placed `sectionsPerRow` to a row,
+  each in an equal-width box (12px apart) with as many slot columns as fit. Each row is as
+  tall as its tallest section. Rest, Reagents and Keyring stay full width and end the
+  current row of sections.
+* Sections per row is capped at `floor((gridWidth + 12) / (37 + 12))`, so each section is
+  at least one slot wide. Header names are shortened to their box width, with the full
+  name in the hover tooltip.
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):

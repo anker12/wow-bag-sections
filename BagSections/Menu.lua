@@ -254,8 +254,20 @@ function Menu.OpenMainMenu(owner)
 			Changed()
 		end)
 		local layout = root:CreateButton(L.LAYOUT)
-		layout:CreateRadio(L.LAYOUT_DEFAULT, function() return ns.db.layout ~= "compact" end, function() Menu.SetLayout("default") end)
-		layout:CreateRadio(L.LAYOUT_COMPACT, function() return ns.db.layout == "compact" end, function() Menu.SetLayout("compact") end)
+		local function IsLayout(name) return (ns.db.layout or "default") == name end
+		layout:CreateRadio(L.LAYOUT_DEFAULT, function() return IsLayout("default") end, function() Menu.SetLayout("default") end)
+		layout:CreateRadio(L.LAYOUT_SEMICOMPACT, function() return IsLayout("semicompact") end, function() Menu.SetLayout("semicompact") end)
+		layout:CreateRadio(L.LAYOUT_COMPACT, function() return IsLayout("compact") end, function() Menu.SetLayout("compact") end)
+		if IsLayout("semicompact") then
+			layout:CreateDivider()
+			local perRow = layout:CreateButton(L.SECTIONS_PER_ROW)
+			for n = 1, ns.Frame.MaxSectionsPerRow(ns.db.columns or 10) do
+				perRow:CreateRadio(tostring(n), function() return ns.db.sectionsPerRow == n end, function()
+					ns.db.sectionsPerRow = n
+					Changed()
+				end)
+			end
+		end
 		Menu.AddProfileEntries(root:CreateButton(L.PROFILES))
 		root:CreateDivider()
 		root:CreateButton(L.SETTINGS, function() ns.Options.Open() end)

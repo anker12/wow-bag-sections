@@ -6,7 +6,8 @@ local Rules = ns.Rules
 
 ns.DEFAULTS = {
 	frame = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -60, y = 100 },
-	layout = "default", -- "default" | "compact"
+	layout = "default", -- "default" | "semicompact" | "compact"
+	sectionsPerRow = 3, -- semi-compact layout: sections side by side on each row
 	-- Where Rest sits relative to newly created sections: "bottom" puts new sections above
 	-- Rest, "top" puts them below it. Existing sections keep their place.
 	restPosition = "bottom",
