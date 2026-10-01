@@ -245,6 +245,9 @@ local function CreateHeader(index)
 	return header
 end
 
+-- Note: drop targets are stored at their group's position, so this pool can have gaps;
+-- always loop over it with pairs, not ipairs (ipairs stops at the first gap).
+
 -- Drop targets while an item is on the cursor: a blue highlight like the one Blizzard
 -- shows on slots an item can go into. They carry no text; hovering shows a tooltip.
 local function CreateOverlay(index)
@@ -912,7 +915,7 @@ function Frame.Init()
 		if GetCursorInfo() ~= "item" then
 			self:Hide()
 			cursorState = nil
-			for _, overlay in ipairs(overlays) do overlay:Hide() end
+			for _, overlay in pairs(overlays) do overlay:Hide() end
 			ns.RequestRefresh("items")
 		end
 	end)
@@ -1034,11 +1037,11 @@ function Frame.Render(mode)
 	content:SetWidth(gridWidth)
 
 	local used = {}
-	for _, header in ipairs(headers) do header:Hide() end
-	for _, overlay in ipairs(overlays) do overlay:Hide() end
-	for _, label in ipairs(labels) do label:Hide() end
-	for _, placeholder in ipairs(placeholders) do placeholder:Hide() end
-	for _, texture in ipairs(lineTextures) do texture:Hide() end
+	for _, header in pairs(headers) do header:Hide() end
+	for _, overlay in pairs(overlays) do overlay:Hide() end
+	for _, label in pairs(labels) do label:Hide() end
+	for _, placeholder in pairs(placeholders) do placeholder:Hide() end
+	for _, texture in pairs(lineTextures) do texture:Hide() end
 	dividerLine:Hide()
 
 	local contentHeight

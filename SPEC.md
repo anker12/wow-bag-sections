@@ -534,6 +534,10 @@ Store sections **per character** because each character carries different things
   post-hooks the frames' `Show`/`Hide`/`SetShown` methods, and Blizzard's open/close
   functions, with `hooksecurefunc`. The test stand-in now models visibility the way WoW
   does, so it catches this.
+* **v0.12.2:** drop highlights stuck after picking up a Rest item and putting it back.
+  Highlights are stored at their group's position, so the pool has gaps (e.g. Rest at
+  position 1 is never a target for its own items), and hiding them with `ipairs` stopped
+  at the first gap. All pools are now hidden with `pairs`.
 * **Bag number from a parent frame:** item buttons no longer get `SetBagID` (an addon
   write, so tainted). Each sits in an invisible per-bag frame whose ID is the bag, which
   Blizzard's `GetBagID` falls back to. This is the long-standing Bagnon pattern.
