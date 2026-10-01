@@ -489,6 +489,29 @@ Store sections **per character** because each character carries different things
   at least one slot wide. Header names are shortened to their box width, with the full
   name in the hover tooltip.
 
+### v0.10: Custom rows in semi-compact
+
+* `charDB.rows`: list of rows, each a list of keys (section ids or `"rest"`). While it's
+  nil the arrangement is automatic (`Rows.Auto`: sections above Rest in rows of
+  `sectionsPerRow`, Rest alone, then sections below Rest). The first drag saves it.
+  `Rows.Sync` keeps it in step with the section list: deleted sections are dropped, and
+  new sections get their own row, above Rest's row or at the end for sections set to sit
+  below Rest.
+* `Rows.Move(db, key, target)` with `{ row, before }` (join a row before a key) or
+  `{ newRow }` (start a row there). Rows are capped at `MaxSectionsPerRow`. After a move,
+  `Rows.ApplyOrder` reorders the section list and `below` flags to match, so Default and
+  Compact follow the arrangement.
+* **Locking:** rearranging is off by default and resets to off on `/reload`. It's turned
+  on from the gear menu (*Rearrange sections*, or *Rearrange sections...* in a section's
+  right-click menu). While on, a blue bar under the title says so; clicking it locks.
+  Headers are only registered for dragging while unlocked.
+* **Dragging:** dragging a header shows its name following the cursor. A blue line marks
+  the landing spot: vertical between sections in a row, or horizontal between rows for a
+  new row. Spots that can't take it (a full row) show nothing.
+* Profiles store the rows by section name (`profile.rows`) and restore them on load.
+* In semi-compact, a section's menu offers *Rearrange sections...* instead of Move
+  up/down and above/below Rest.
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):

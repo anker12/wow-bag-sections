@@ -60,3 +60,13 @@ mention BagSections.
 | T52 | Semi-compact with a long section name | The name is cut short with "…"; hovering the header shows it in full. |
 | T53 | Semi-compact: drag an item onto a section, collapse a section, use right-click menus | Everything works as in Default. |
 | T54 | Switch back to Default | It looks exactly as before. |
+| T55 | Semi-compact: try to drag a section name without unlocking | Nothing moves; clicking the name still collapses it. |
+| T56 | Gear menu → Rearrange sections | A blue bar under the title says sections can be dragged. |
+| T57 | Drag a section name onto another row, between two sections | A blue vertical line shows the spot; on release the section joins that row there. |
+| T58 | Drag a section name between two rows / below the last row | A blue horizontal line shows the spot; on release it starts a new row there. |
+| T59 | Build: Rest alone on top, then a row of 2, a row of 3, a row of 1 | Works by dragging Rest to the top and sections into rows. |
+| T60 | Try to drag a 9th section into a full row (10 columns) | No blue line appears there, and dropping does nothing. |
+| T61 | Click the blue bar | Locked again; dragging names does nothing. `/reload` also locks. |
+| T62 | Save a profile, load it on another character | Same rows. |
+| T63 | Gear menu → Layout → Reset rows | Back to the automatic N-per-row arrangement. |
+| T64 | Switch to Default after rearranging | Sections are in the same order as the rows (reading order), with sections after Rest shown below it. |
