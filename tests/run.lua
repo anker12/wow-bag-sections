@@ -291,6 +291,18 @@ test("flow rows: sections follow each other with a gap, wrapping when full", fun
 	eq(rows, 2)
 end)
 
+test("flow rows: with no section gap, every row uses the same columns", function()
+	local cells = Layout.FlowRows({ 3, 1, 7, 12, 2 }, 460, 37, 47, 0)
+	local n = 0
+	for _, group in ipairs(cells) do
+		for _, cell in ipairs(group) do
+			eq(cell.row, math.floor(n / 10), "row")
+			eq(cell.x, (n % 10) * 47, "column")
+			n = n + 1
+		end
+	end
+end)
+
 test("flow rows: cells never overflow the width or overlap", function()
 	for _, sizes in ipairs({ { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 7, 2, 11, 3, 1, 20 }, { 0, 40 } }) do
 		local cells = Layout.FlowRows(sizes, W, BTN, STEP, GAP)
