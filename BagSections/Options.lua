@@ -29,6 +29,15 @@ function Options.Init()
 
 	local function Refresh() ns.RequestRefresh() end
 
+	local layoutSetting = Settings.RegisterAddOnSetting(category, "BagSections_layout", "layout", ns.db, Settings.VarType.String, L.LAYOUT, ns.DEFAULTS.layout)
+	layoutSetting:SetValueChangedCallback(Refresh)
+	Settings.CreateDropdown(category, layoutSetting, function()
+		local container = Settings.CreateControlTextContainer()
+		container:Add("default", L.LAYOUT_DEFAULT)
+		container:Add("compact", L.LAYOUT_COMPACT)
+		return container:GetData()
+	end, L.OPT_LAYOUT_DESC)
+
 	AddSlider("columns", L.OPT_COLUMNS, L.OPT_COLUMNS_DESC, ns.DEFAULTS.columns, 6, 24, 1, nil, Refresh)
 	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, function(value)
 		return ("%d%%"):format(math.floor(value * 100 + 0.5))

@@ -106,6 +106,11 @@ function Menu.OpenSectionMenu(owner, group)
 			Rules.MoveSection(ns.charDB, section.id, 1)
 			Changed()
 		end)
+		root:CreateButton(section.below and L.MOVE_ABOVE_REST or L.MOVE_BELOW_REST, function()
+			Rules.SetSectionBelow(ns.charDB, section.id, not section.below)
+			Changed()
+		end)
+		root:CreateButton(L.COLOUR, function() Menu.PickColour(section) end)
 		root:CreateDivider()
 		root:CreateButton(L.CLEAR_SECTION, function()
 			Rules.ClearSection(ns.charDB, section.id)
@@ -113,6 +118,30 @@ function Menu.OpenSectionMenu(owner, group)
 		end)
 		root:CreateButton(L.DELETE_SECTION, function() Menu.DeleteSection(section, group.count) end)
 	end)
+end
+
+-- Opens Blizzard's colour picker for a section's outline colour (compact layout).
+function Menu.PickColour(section)
+	local c = section.color or Rules.PALETTE[1]
+	local id = section.id
+	ColorPickerFrame:SetupColorPickerAndShow({
+		r = c.r, g = c.g, b = c.b,
+		hasOpacity = false,
+		swatchFunc = function()
+			local r, g, b = ColorPickerFrame:GetColorRGB()
+			Rules.SetSectionColor(ns.charDB, id, r, g, b)
+			Changed()
+		end,
+		cancelFunc = function(previous)
+			Rules.SetSectionColor(ns.charDB, id, previous.r, previous.g, previous.b)
+			Changed()
+		end,
+	})
+end
+
+function Menu.SetLayout(layout)
+	ns.db.layout = layout
+	Changed()
 end
 
 -- Options button in the title bar.
@@ -126,6 +155,9 @@ function Menu.OpenMainMenu(owner)
 			ns.db.showEmptySections = not ns.db.showEmptySections
 			Changed()
 		end)
+		local layout = root:CreateButton(L.LAYOUT)
+		layout:CreateRadio(L.LAYOUT_DEFAULT, function() return ns.db.layout ~= "compact" end, function() Menu.SetLayout("default") end)
+		layout:CreateRadio(L.LAYOUT_COMPACT, function() return ns.db.layout == "compact" end, function() Menu.SetLayout("compact") end)
 		root:CreateDivider()
 		root:CreateButton(L.SETTINGS, function() ns.Options.Open() end)
 	end)

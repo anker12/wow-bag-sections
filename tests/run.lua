@@ -205,5 +205,91 @@ test("free slot count", function()
 	eq(total, 3)
 end)
 
+test("new sections get a colour and start above Rest", function()
+	local db = Rules.NewCharDB()
+	local a = Rules.CreateSection(db, "A")
+	local b = Rules.CreateSection(db, "B")
+	eq(a.below, false)
+	eq(type(a.color), "table")
+	eq(a.color.r, Rules.PALETTE[1].r)
+	eq(b.color.r, Rules.PALETTE[2].r)
+	Rules.SetSectionColor(db, a.id, 0.1, 0.2, 0.3)
+	eq(a.color.g, 0.2)
+end)
+
+test("upgrade gives old sections a colour and collapsedBuiltin table", function()
+	local db = Rules.Upgrade({ sections = { { id = "s2", name = "Old" } } })
+	eq(type(db.sections[1].color), "table")
+	eq(type(db.collapsedBuiltin), "table")
+end)
+
+test("layout: sections below Rest come after Rest, before Reagents", function()
+	local db = Rules.NewCharDB()
+	local above = Rules.CreateSection(db, "Above")
+	local below = Rules.CreateSection(db, "Below")
+	Rules.Assign(db, HEARTHSTONE, above.id, Rules.KIND_ITEMID)
+	Rules.Assign(db, POTION, below.id, Rules.KIND_ITEMID)
+	Rules.SetSectionBelow(db, below.id, true)
+	local groups = Layout.Build(db, Slots({ { item = POTION }, { item = HEARTHSTONE }, {}, { bag = 5, area = "reagent" } }))
+	eq(groups[1].key, above.id)
+	eq(groups[2].kind, "rest")
+	eq(groups[3].key, below.id)
+	eq(groups[3].below, true)
+	eq(groups[4].kind, "reagent")
+end)
+
+test("move up/down skips sections on the other side of Rest", function()
+	local db = Rules.NewCharDB()
+	local a = Rules.CreateSection(db, "A")
+	local b = Rules.CreateSection(db, "B")
+	local c = Rules.CreateSection(db, "C")
+	Rules.SetSectionBelow(db, b.id, true)
+	eq(Rules.MoveSection(db, c.id, -1), true)
+	eq(db.sections[1].id, c.id, "C jumped over B to swap with A")
+	eq(db.sections[3].id, a.id)
+	eq(Rules.MoveSection(db, b.id, 1), false, "B is the only section below Rest")
+end)
+
+test("built-in groups can be collapsed", function()
+	local db = Rules.NewCharDB()
+	Rules.ToggleBuiltinCollapsed(db, "rest")
+	local groups = Layout.Build(db, Slots({ { item = POTION }, { bag = 5, area = "reagent" } }))
+	eq(groups[1].collapsed, true)
+	eq(groups[2].collapsed, false)
+	Rules.ToggleBuiltinCollapsed(db, "rest")
+	eq(db.collapsedBuiltin.rest, nil)
+end)
+
+test("pack: small blocks sit side by side, wide blocks go below", function()
+	local positions, height = Layout.Pack({
+		{ width = 100, height = 50 },
+		{ width = 80, height = 30 },
+		{ width = 300, height = 100 },
+		{ width = 90, height = 20 },
+	}, 300, 6)
+	eq(positions[1].x, 0); eq(positions[1].y, 0)
+	eq(positions[2].x, 106); eq(positions[2].y, 0)
+	eq(positions[3].x, 0); eq(positions[3].y, 56)
+	eq(positions[4].x, 0); eq(positions[4].y, 162)
+	eq(height, 182)
+end)
+
+test("pack: blocks never overlap and stay within the width", function()
+	local blocks = {}
+	for i = 1, 12 do
+		blocks[i] = { width = 40 + (i * 37) % 200, height = 20 + (i * 13) % 60 }
+	end
+	local positions = Layout.Pack(blocks, 400, 6)
+	for i, a in ipairs(positions) do
+		assert(a.x >= 0 and a.x + a.width <= 400, "block " .. i .. " outside width")
+		for j = i + 1, #positions do
+			local b = positions[j]
+			local overlapX = a.x < b.x + b.width and b.x < a.x + a.width
+			local overlapY = a.y < b.y + blocks[j].height and b.y < a.y + blocks[i].height
+			assert(not (overlapX and overlapY), ("blocks %d and %d overlap"):format(i, j))
+		end
+	end
+end)
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

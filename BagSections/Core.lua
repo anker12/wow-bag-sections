@@ -6,6 +6,7 @@ local Rules = ns.Rules
 
 ns.DEFAULTS = {
 	frame = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -60, y = 100 },
+	layout = "default", -- "default" | "compact"
 	columns = 10,
 	scale = 1,
 	showEmptySections = false,
