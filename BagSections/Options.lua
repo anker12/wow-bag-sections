@@ -48,7 +48,6 @@ function Options.Init()
 		return container:GetData()
 	end, L.OPT_REST_POSITION_DESC)
 
-	AddSlider("sectionsPerRow", L.SECTIONS_PER_ROW, L.OPT_SECTIONS_PER_ROW_DESC, ns.DEFAULTS.sectionsPerRow, 1, 12, 1, nil, Refresh)
 	AddSlider("columns", L.OPT_COLUMNS, L.OPT_COLUMNS_DESC, ns.DEFAULTS.columns, 6, 24, 1, nil, Refresh)
 	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, function(value)
 		return ("%d%%"):format(math.floor(value * 100 + 0.5))

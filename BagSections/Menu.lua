@@ -276,13 +276,6 @@ function Menu.OpenMainMenu(owner)
 				ns.Rows.Reset(ns.charDB)
 				Changed()
 			end)
-			local perRow = layout:CreateButton(L.SECTIONS_PER_ROW)
-			for n = 1, ns.Frame.MaxSectionsPerRow(ns.db.columns or 10) do
-				perRow:CreateRadio(tostring(n), function() return ns.db.sectionsPerRow == n end, function()
-					ns.db.sectionsPerRow = n
-					Changed()
-				end)
-			end
 		end
 		Menu.AddProfileEntries(root:CreateButton(L.PROFILES))
 		root:CreateDivider()

@@ -56,7 +56,7 @@ mention BagSections.
 | T48 | Untick Show keyring | The keyring disappears from the bags. |
 | T49 | Footer | It shows empty/total slots as `x / y`. |
 | T50 | Gear menu → Layout → Semi-compact | Your sections sit 3 per row, side by side, each growing downwards. Rest, Reagents and Keyring are full width. The window width is unchanged. |
-| T51 | Gear menu → Layout → Sections per row → 2, then 5 | Rows hold 2, then 5 sections. The list stops at the most that fit (8 at 10 columns). |
+| T51 | Gear menu → Layout and Settings | There's no "Sections per row" option any more; Semi-compact starts at 3 per row. |
 | T52 | Semi-compact with a long section name | The name is cut short with "…"; hovering the header shows it in full. |
 | T53 | Semi-compact: drag an item onto a section, collapse a section, use right-click menus | Everything works as in Default. |
 | T54 | Switch back to Default | It looks exactly as before. |
@@ -68,5 +68,5 @@ mention BagSections.
 | T60 | Try to drag a 9th section into a full row (10 columns) | No blue line appears there, and dropping does nothing. |
 | T61 | Click the blue bar | Locked again; dragging names does nothing. `/reload` also locks. |
 | T62 | Save a profile, load it on another character | Same rows. |
-| T63 | Gear menu → Layout → Reset rows | Back to the automatic N-per-row arrangement. |
+| T63 | Gear menu → Layout → Reset rows | Back to the automatic 3-per-row arrangement. |
 | T64 | Switch to Default after rearranging | Sections are in the same order as the rows (reading order), with sections after Rest shown below it. |

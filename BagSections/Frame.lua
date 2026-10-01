@@ -346,9 +346,12 @@ local function RenderDefault(groups, columns, gridWidth, used)
 end
 
 -- Semi-compact layout: like the default, but your sections sit side by side, a number per
--- row (sectionsPerRow, at most one per slot column), each growing downwards. Rest,
+-- row (AUTO_PER_ROW until the player arranges rows), each growing downwards. Rest,
 -- Reagents and Keyring stay full width.
 local SEMI_GAP = 12 -- space between sections on the same row
+-- Sections per row in the automatic arrangement (before the player drags anything, or
+-- after Reset rows).
+local AUTO_PER_ROW = 3
 
 -- The most sections that fit side by side with each at least one slot wide.
 function Frame.MaxSectionsPerRow(columns)
@@ -362,7 +365,7 @@ local rowGeometry = {}
 
 local function RenderSemiCompact(groups, columns, gridWidth, used)
 	local maxPerRow = Frame.MaxSectionsPerRow(columns)
-	local perRow = math.max(1, math.min(ns.db.sectionsPerRow or 3, maxPerRow))
+	local perRow = math.min(AUTO_PER_ROW, maxPerRow)
 	local rows = ns.Rows.Get(ns.charDB, perRow)
 
 	local byKey, indexOf = {}, {}
@@ -431,7 +434,7 @@ local function FindSectionDropTarget(key)
 	end
 	local columns = ns.db.columns or 10
 	local maxPerRow = Frame.MaxSectionsPerRow(columns)
-	local rows = ns.Rows.Get(ns.charDB, math.min(ns.db.sectionsPerRow or 3, maxPerRow))
+	local rows = ns.Rows.Get(ns.charDB, math.min(AUTO_PER_ROW, maxPerRow))
 	local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
 	local cx, cy = CursorInContent()
 
@@ -511,7 +514,7 @@ function Frame.EndSectionDrag()
 	if target then
 		local columns = ns.db.columns or 10
 		local maxPerRow = Frame.MaxSectionsPerRow(columns)
-		if ns.Rows.Move(ns.charDB, key, target, math.min(ns.db.sectionsPerRow or 3, maxPerRow), maxPerRow) then
+		if ns.Rows.Move(ns.charDB, key, target, math.min(AUTO_PER_ROW, maxPerRow), maxPerRow) then
 			ns.RequestRefresh()
 		end
 	end
