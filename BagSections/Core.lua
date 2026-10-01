@@ -12,7 +12,9 @@ ns.DEFAULTS = {
 	restPosition = "bottom",
 	columns = 10,
 	scale = 1,
-	showEmptySections = false,
+	-- On by default so a newly created (still empty) section shows up straight away.
+	showEmptySections = true,
+	showKeyring = true,
 	stackableRule = Rules.KIND_ITEMID,
 	equippableRule = Rules.KIND_GUID,
 	takeOverBags = true,

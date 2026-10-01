@@ -24,7 +24,13 @@ end
 local function OnClickHook(button, mouseButton)
 	if mouseButton == "RightButton" and IsAltKeyDown() and button:HasItem() then
 		ns.Menu.OpenItemMenu(button)
+	elseif mouseButton == "LeftButton" then
+		ns.Frame.OnItemButtonDrop(button)
 	end
+end
+
+local function OnReceiveDragHook(button)
+	ns.Frame.OnItemButtonDrop(button)
 end
 
 local function Create(bag, slot)
@@ -40,6 +46,7 @@ local function Create(bag, slot)
 	button.ItemSlotBackground:SetAllPoints(button)
 
 	button:HookScript("OnClick", OnClickHook)
+	button:HookScript("OnReceiveDrag", OnReceiveDragHook)
 	return button
 end
 

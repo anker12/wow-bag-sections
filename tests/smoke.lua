@@ -282,13 +282,33 @@ check(groups[1].count == 2 and #groups[1].slots == 2, "Essentials has 2 items an
 check(groups[2].kind == "rest" and #groups[2].slots == 18, "Rest has the other 18 slots")
 check(groups[3].kind == "reagent", "reagent bag shown separately")
 
--- Drag back to Rest unassigns.
+-- Dropping a sectioned item on any empty Rest slot puts it there and takes it out of
+-- its section (Blizzard's button moves it; the addon's hook unassigns it).
 C_Container.PickupContainerItem(0, 1)
 Fire("CURSOR_CHANGED")
 target = FindGroupFrame("rest")
-check(target, "Rest is a drop target for a sectioned item")
-target._scripts.OnReceiveDrag(target)
+check(target, "Rest is highlighted for a sectioned item")
+local restSlot = ns.ItemButtons.Get(0, 9)
+check(restSlot.bsGroupKind == "rest", "slot 0:9 is an empty Rest slot")
+C_Container.PickupContainerItem(0, 9) -- what Blizzard's button does on drop
+restSlot._scripts.OnReceiveDrag(restSlot)
 check(db.rules.byItemID[6948] == nil, "hearthstone unassigned")
+check(ITEMS["0:9"] and ITEMS["0:9"].itemID == 6948, "hearthstone placed in the slot it was dropped on")
+ITEMS["0:1"], ITEMS["0:9"] = ITEMS["0:9"], nil
+Fire("BAG_UPDATE_DELAYED")
+
+-- A drag that ends without any cursor event still clears the drop targets.
+C_Container.PickupContainerItem(0, 5)
+Fire("CURSOR_CHANGED")
+check(FindGroupFrame("section"), "drop targets shown while dragging")
+cursor = nil -- the drag ends somewhere the addon doesn't hear about
+local watcher
+for _, frame in ipairs(frames) do
+	if frame._scripts.OnUpdate and frame._shown then watcher = frame end
+end
+check(watcher, "drop-target watcher runs while dragging")
+watcher._scripts.OnUpdate(watcher)
+check(FindGroupFrame("section") == nil, "drop targets cleared once the cursor is empty")
 
 -- Reagent bag items can't be assigned.
 C_Container.PickupContainerItem(5, 1)
@@ -347,6 +367,7 @@ ColorPickerFrame.info.cancelFunc({ r = 0.5, g = 0.5, b = 0.5 })
 check(section.color.r == 0.5, "colour restored on cancel")
 
 -- Compact layout: one grid, outlines and names drawn; switching back keeps default working.
+section.collapsed = false
 ns.Menu.SetLayout("compact")
 check(BagSectionsDB.layout == "compact", "layout saved")
 local function CountShown(predicate)
@@ -364,12 +385,13 @@ local function ButtonPos(bag, slot)
 end
 
 -- Nothing moves while the window is open: use up an item, layout stays.
-local potionPos = ButtonPos(0, 5)
-local potion = ITEMS["0:5"]
-ITEMS["0:5"] = nil
+-- (the sword is in a section; without freezing, its emptied slot would jump to Rest)
+local swordPos = ButtonPos(0, 3)
+local sword = ITEMS["0:3"]
+ITEMS["0:3"] = nil
 Fire("BAG_UPDATE_DELAYED")
-check(ButtonPos(0, 5) == potionPos, "slot keeps its place when its item is used up")
-ITEMS["0:5"] = potion
+check(ButtonPos(0, 3) == swordPos, "slot keeps its place when its item is used up")
+ITEMS["0:3"] = sword
 Fire("BAG_UPDATE_DELAYED")
 
 -- Drag into a section in compact: it reflows.
@@ -381,13 +403,14 @@ target._scripts.OnReceiveDrag(target)
 check(db.rules.byItemID[2901] == section.id, "drop works in compact layout")
 
 -- Sorting lets the layout follow items for a few seconds.
-local emptyPos = ButtonPos(0, 7)
+-- (the sort moves the sectioned Mining Pick into an empty Rest slot)
+local emptyPos = ButtonPos(0, 8)
 SlashCmdList.BAGSECTIONS("sort")
-ITEMS["0:5"], ITEMS["0:7"] = nil, potion
+ITEMS["0:8"], ITEMS["0:2"] = ITEMS["0:2"], nil
 Fire("BAG_UPDATE_DELAYED")
-check(ButtonPos(0, 7) ~= emptyPos, "layout follows the sort")
+check(ButtonPos(0, 8) ~= emptyPos, "layout follows the sort")
 sortCalls = 0
-ITEMS["0:7"], ITEMS["0:5"] = nil, potion
+ITEMS["0:2"], ITEMS["0:8"] = ITEMS["0:8"], nil
 _G._now = _G._now + 10
 
 -- Collapsed section in compact keeps a placeholder with its name.

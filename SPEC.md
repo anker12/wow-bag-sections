@@ -246,7 +246,7 @@ BagSectionsCharDB = {
 BagSectionsDB = {
   version = 1,
   frame = { point = "BOTTOMRIGHT", x = -60, y = 100, columns = 10, scale = 1 },
-  showEmptySections = false,
+  showEmptySections = true,
   sortMode = "virtual",            -- "virtual" (A) | "physical" (B)
   reverseSort = false,
   stackableRule = "itemID", equippableRule = "guid",
@@ -459,6 +459,23 @@ Store sections **per character** because each character carries different things
   they don't overlap the item icons.
 * **One name per section:** a wrapped section whose parts don't touch shows its name
   once, on its longest stretch of top edge. The outline colour ties the parts together.
+
+### v0.8 changes
+
+* **Drop targets:** while a bag item is on the cursor, valid targets get Blizzard's blue
+  "can go here" highlight. In Default it's a blue border; in Compact the section's own
+  outline turns blue. They show no text; hovering one shows "Drop to add to X" as a
+  tooltip. A watcher clears them as soon as the cursor is empty, however the drag ended,
+  which fixes drop targets sometimes staying stuck until `/reload`.
+* **Rest in bag order:** Rest shows its slots in physical bag order, empty slots included,
+  like Blizzard's bag. Dropping an item on any Rest slot places it there. Rest's highlight
+  doesn't take the mouse: Blizzard's button moves the item, and a hook on the button
+  (`Frame.OnItemButtonDrop`) takes it out of its section.
+* **Defaults:** "Show empty sections" is on for new installs, so a new section shows up
+  straight away. New "Show keyring" option (default on).
+* **Gear menu order:** New section; Show empty sections; Quest Items section; Show keyring;
+  Layout; Profiles; divider; Settings.
+* **Footer:** empty/total slots shown as `x / y`.
 
 ## Sources
 
