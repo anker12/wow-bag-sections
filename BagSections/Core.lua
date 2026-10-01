@@ -7,6 +7,9 @@ local Rules = ns.Rules
 ns.DEFAULTS = {
 	frame = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -60, y = 100 },
 	layout = "default", -- "default" | "compact"
+	-- Where Rest sits relative to newly created sections: "bottom" puts new sections above
+	-- Rest, "top" puts them below it. Existing sections keep their place.
+	restPosition = "bottom",
 	columns = 10,
 	scale = 1,
 	showEmptySections = false,
@@ -16,6 +19,10 @@ ns.DEFAULTS = {
 	-- Saved section lists: name -> { sections = { { name, color, below, collapsed, auto } } }
 	profiles = {},
 }
+
+function ns.NewSectionsBelowRest()
+	return ns.db.restPosition == "top"
+end
 
 function ns.Print(...)
 	print("|cff33ff99" .. L.ADDON_NAME .. "|r:", ...)
@@ -36,22 +43,33 @@ local function ApplyDefaults(target, defaults)
 end
 
 -- Redraws are batched: any number of events in one frame cause a single redraw.
-local refreshQueued, fullRefresh = false, false
+-- Modes, strongest first:
+--   "layout"  - something the player did (assign, sort, section change): rebuild everything
+--   "items"   - bag contents changed: rescan; the compact layout keeps its arrangement
+--   "buttons" - only button state changed (locks, search, quest marks)
+local MODE_RANK = { buttons = 1, items = 2, layout = 3 }
+local refreshQueued, pendingMode = false, nil
 
 local function RunRefresh()
 	refreshQueued = false
-	if fullRefresh then
-		fullRefresh = false
-		ns.Frame.Render()
-	else
+	local mode = pendingMode
+	pendingMode = nil
+	if mode == "buttons" then
 		ns.Frame.UpdateButtons()
+	elseif mode then
+		ns.Frame.Render(mode)
 	end
 end
 
--- full = true rescans the bags and rebuilds the layout; false only updates button state.
-function ns.RequestRefresh(full)
-	if full == nil or full then
-		fullRefresh = true
+-- mode: "layout" (default; also true or nil), "items", or "buttons" (also false).
+function ns.RequestRefresh(mode)
+	if mode == nil or mode == true then
+		mode = "layout"
+	elseif mode == false then
+		mode = "buttons"
+	end
+	if not pendingMode or MODE_RANK[mode] > MODE_RANK[pendingMode] then
+		pendingMode = mode
 	end
 	if not ns.Frame.IsShown() then
 		return
@@ -63,10 +81,10 @@ function ns.RequestRefresh(full)
 end
 
 local FULL_REFRESH_EVENTS = {
-	BAG_UPDATE_DELAYED = true,
-	BAG_CONTAINER_UPDATE = true,
-	GET_ITEM_INFO_RECEIVED = true,
-	CURSOR_CHANGED = true,
+	BAG_UPDATE_DELAYED = "items",
+	BAG_CONTAINER_UPDATE = "layout",
+	GET_ITEM_INFO_RECEIVED = "items",
+	CURSOR_CHANGED = "items",
 }
 
 local BUTTON_REFRESH_EVENTS = {
@@ -124,9 +142,9 @@ events:SetScript("OnEvent", function(_, event, arg1)
 	elseif event == "PLAYER_LOGIN" then
 		ns.ItemButtons.Precreate(ns.Inventory.Scan())
 	elseif FULL_REFRESH_EVENTS[event] then
-		ns.RequestRefresh(true)
+		ns.RequestRefresh(FULL_REFRESH_EVENTS[event])
 	elseif BUTTON_REFRESH_EVENTS[event] then
-		ns.RequestRefresh(false)
+		ns.RequestRefresh("buttons")
 	elseif event == "BAG_UPDATE_COOLDOWN" then
 		if ns.Frame.IsShown() then
 			ns.ItemButtons.UpdateCooldowns()
@@ -171,7 +189,7 @@ SlashCmdList.BAGSECTIONS = function(input)
 	elseif command == "sort" then
 		ns.Sorter.Sort()
 	elseif command == "new" and rest ~= "" then
-		Rules.CreateSection(ns.charDB, rest)
+		Rules.CreateSection(ns.charDB, rest, ns.NewSectionsBelowRest())
 		ns.RequestRefresh()
 	elseif command == "add" and rest ~= "" then
 		local section = FindSectionByName(rest)

@@ -260,35 +260,77 @@ test("built-in groups can be collapsed", function()
 	eq(db.collapsedBuiltin.rest, nil)
 end)
 
-test("pack: small blocks sit side by side, wide blocks go below", function()
-	local positions, height = Layout.Pack({
-		{ width = 100, height = 50 },
-		{ width = 80, height = 30 },
-		{ width = 300, height = 100 },
-		{ width = 90, height = 20 },
-	}, 300, 6)
-	eq(positions[1].x, 0); eq(positions[1].y, 0)
-	eq(positions[2].x, 106); eq(positions[2].y, 0)
-	eq(positions[3].x, 0); eq(positions[3].y, 56)
-	eq(positions[4].x, 0); eq(positions[4].y, 162)
-	eq(height, 182)
+test("flow: runs follow each other with no gaps", function()
+	local runs, total = Layout.Flow({ 3, 5, 0, 2 })
+	eq(runs[1].start, 0); eq(runs[2].start, 3); eq(runs[3].start, 8); eq(runs[4].start, 8)
+	eq(runs[3].length, 0)
+	eq(total, 10)
 end)
 
-test("pack: blocks never overlap and stay within the width", function()
-	local blocks = {}
-	for i = 1, 12 do
-		blocks[i] = { width = 40 + (i * 37) % 200, height = 20 + (i * 13) % 60 }
+local function PolygonArea(points)
+	local area = 0
+	for i, a in ipairs(points) do
+		local b = points[i % #points + 1]
+		area = area + (a.x * b.y - b.x * a.y)
 	end
-	local positions = Layout.Pack(blocks, 400, 6)
-	for i, a in ipairs(positions) do
-		assert(a.x >= 0 and a.x + a.width <= 400, "block " .. i .. " outside width")
-		for j = i + 1, #positions do
-			local b = positions[j]
-			local overlapX = a.x < b.x + b.width and b.x < a.x + a.width
-			local overlapY = a.y < b.y + blocks[j].height and b.y < a.y + blocks[i].height
-			assert(not (overlapX and overlapY), ("blocks %d and %d overlap"):format(i, j))
+	return area / 2
+end
+
+test("flow: run outlines cover exactly the run's cells, clockwise", function()
+	local columns = 10
+	for start = 0, 25 do
+		for length = 1, 32 do
+			local area = 0
+			for _, polygon in ipairs(Layout.RunPolygons({ start = start, length = length }, columns)) do
+				local a = PolygonArea(polygon)
+				assert(a > 0, ("run %d+%d: polygon not clockwise (y down)"):format(start, length))
+				area = area + a
+				for i, p in ipairs(polygon) do
+					local q = polygon[i % #polygon + 1]
+					assert(p.x == q.x or p.y == q.y, "edges are horizontal or vertical")
+					assert(not (p.x == q.x and p.y == q.y), "no repeated corners")
+				end
+			end
+			eq(area, length, ("run %d+%d area"):format(start, length))
+			local cells = 0
+			for _, rect in ipairs(Layout.RunRects({ start = start, length = length }, columns)) do
+				cells = cells + rect.cols * rect.rows
+			end
+			eq(cells, length, ("run %d+%d rects"):format(start, length))
 		end
 	end
+end)
+
+test("flow: wrapping run that doesn't overlap itself gives two shapes", function()
+	-- starts at column 8 of row 0, ends at column 1 of row 1
+	eq(#Layout.RunPolygons({ start = 8, length = 4 }, 10), 2)
+	-- starts at column 8, ends at column 9 of row 1: one connected shape
+	eq(#Layout.RunPolygons({ start = 8, length = 12 }, 10), 1)
+end)
+
+test("flow: name goes on the longest stretch of top edge", function()
+	-- one slot at the end of row 2, then 7 on row 3: the name goes on row 3
+	local seg = Layout.LabelSegment({ start = 29, length = 8 }, 10)
+	eq(seg.row, 3); eq(seg.col, 0); eq(seg.cols, 7)
+	-- starts at column 2 with lots of room on row 0
+	seg = Layout.LabelSegment({ start = 2, length = 15 }, 10)
+	eq(seg.row, 0); eq(seg.col, 2); eq(seg.cols, 8)
+	-- fits in one row
+	seg = Layout.LabelSegment({ start = 13, length = 3 }, 10)
+	eq(seg.row, 1); eq(seg.col, 3); eq(seg.cols, 3)
+end)
+
+test("flow: inset moves outlines inwards", function()
+	local square = { { x = 0, y = 0 }, { x = 10, y = 0 }, { x = 10, y = 10 }, { x = 0, y = 10 } }
+	local inset = Layout.InsetPolygon(square, 1)
+	eq(inset[1].x, 1); eq(inset[1].y, 1)
+	eq(inset[3].x, 9); eq(inset[3].y, 9)
+	-- concave corner of an L shape moves outward from the corner
+	local l = Layout.RunPolygons({ start = 8, length = 12 }, 10)[1]
+	local scaled = {}
+	for i, p in ipairs(l) do scaled[i] = { x = p.x * 10, y = p.y * 10 } end
+	local area = PolygonArea(Layout.InsetPolygon(scaled, 1))
+	assert(area < PolygonArea(scaled), "inset shape is smaller")
 end)
 
 local QUEST = { itemID = 500, guid = "Item-1-0-Q", maxStack = 1, isQuest = true }

@@ -81,37 +81,111 @@ function Layout.Build(db, slots, opts)
 	return result
 end
 
--- Packs blocks into a fixed width, left to right and top to bottom (bottom-left packing),
--- so small blocks sit next to each other. Used by the compact layout.
--- blocks: array of { width, height } in pixels. Returns positions { x, y } and total height.
-function Layout.Pack(blocks, totalWidth, gap)
-	local placed, positions = {}, {}
-	local totalHeight = 0
-	for i, block in ipairs(blocks) do
-		local width = math.min(block.width, totalWidth)
-		local candidates = { 0 }
-		for _, p in ipairs(placed) do
-			table.insert(candidates, p.x + p.width + gap)
-		end
-		local bestX, bestY
-		for _, x in ipairs(candidates) do
-			if x + width <= totalWidth then
-				local y = 0
-				for _, p in ipairs(placed) do
-					if x < p.x + p.width + gap and p.x < x + width + gap then
-						y = math.max(y, p.y + p.height + gap)
-					end
-				end
-				if not bestY or y < bestY or (y == bestY and x < bestX) then
-					bestX, bestY = x, y
-				end
-			end
-		end
-		table.insert(placed, { x = bestX, y = bestY, width = width, height = block.height })
-		positions[i] = { x = bestX, y = bestY, width = width }
-		totalHeight = math.max(totalHeight, bestY + block.height)
+-- Compact ("flow") layout geometry. All groups share one grid of `columns` columns, like
+-- Blizzard's combined bag: each group is a run of cells that starts right after the
+-- previous one and wraps onto the next row. Cells are numbered from 0 in reading order.
+
+-- sizes[i] = number of cells group i takes. Returns runs[i] = { start, length } and the
+-- total number of cells.
+function Layout.Flow(sizes)
+	local runs, start = {}, 0
+	for i, size in ipairs(sizes) do
+		runs[i] = { start = start, length = size }
+		start = start + size
 	end
-	return positions, totalHeight
+	return runs, start
+end
+
+local function RunEnds(run, columns)
+	local last = run.start + run.length - 1
+	return math.floor(run.start / columns), run.start % columns, math.floor(last / columns), last % columns
+end
+
+-- Rectangles covering a run, in grid units: { col, row, cols, rows }.
+function Layout.RunRects(run, columns)
+	if run.length <= 0 then
+		return {}
+	end
+	local r0, c0, r1, c1 = RunEnds(run, columns)
+	if r0 == r1 then
+		return { { col = c0, row = r0, cols = c1 - c0 + 1, rows = 1 } }
+	end
+	local rects = { { col = c0, row = r0, cols = columns - c0, rows = 1 } }
+	if r1 - r0 > 1 then
+		table.insert(rects, { col = 0, row = r0 + 1, cols = columns, rows = r1 - r0 - 1 })
+	end
+	table.insert(rects, { col = 0, row = r1, cols = c1 + 1, rows = 1 })
+	return rects
+end
+
+local function RectPolygon(c0, r0, c1, r1)
+	return { { x = c0, y = r0 }, { x = c1, y = r0 }, { x = c1, y = r1 }, { x = c0, y = r1 } }
+end
+
+-- Outline of a run as clockwise polygons of grid corners { x = column line, y = row line }.
+-- Usually one polygon; two when a run wraps without its rows overlapping.
+function Layout.RunPolygons(run, columns)
+	if run.length <= 0 then
+		return {}
+	end
+	local r0, c0, r1, c1 = RunEnds(run, columns)
+	if r0 == r1 then
+		return { RectPolygon(c0, r0, c1 + 1, r0 + 1) }
+	end
+	if r1 == r0 + 1 and c1 < c0 then
+		return { RectPolygon(c0, r0, columns, r0 + 1), RectPolygon(0, r1, c1 + 1, r1 + 1) }
+	end
+	local points = {}
+	local function Add(x, y) table.insert(points, { x = x, y = y }) end
+	Add(c0, r0)
+	Add(columns, r0)
+	if c1 == columns - 1 then
+		Add(columns, r1 + 1)
+	else
+		Add(columns, r1)
+		Add(c1 + 1, r1)
+		Add(c1 + 1, r1 + 1)
+	end
+	Add(0, r1 + 1)
+	if c0 > 0 then
+		Add(0, r0 + 1)
+		Add(c0, r0 + 1)
+	end
+	return { points }
+end
+
+-- Where a run's name label goes: the longest stretch of the run's top edge.
+-- Returns { row, col, cols } in grid units.
+function Layout.LabelSegment(run, columns)
+	local r0, c0, r1, c1 = RunEnds(run, columns)
+	local first = { row = r0, col = c0, cols = (r0 == r1 and c1 or columns - 1) - c0 + 1 }
+	if r1 > r0 and c0 > 0 then
+		local secondEnd = math.min(c0 - 1, r1 == r0 + 1 and c1 or columns - 1)
+		local second = { row = r0 + 1, col = 0, cols = secondEnd + 1 }
+		if second.cols > first.cols then
+			return second
+		end
+	end
+	return first
+end
+
+-- Moves every edge of a clockwise orthogonal polygon (screen coordinates, y down) inwards
+-- by d, so neighbouring outlines sit side by side instead of on top of each other.
+function Layout.InsetPolygon(points, d)
+	local n = #points
+	local result = {}
+	local function Normal(a, b)
+		local dx, dy = b.x - a.x, b.y - a.y
+		local len = math.abs(dx) + math.abs(dy)
+		return -dy / len, dx / len
+	end
+	for i = 1, n do
+		local prev, cur, nxt = points[(i - 2) % n + 1], points[i], points[i % n + 1]
+		local nx1, ny1 = Normal(prev, cur)
+		local nx2, ny2 = Normal(cur, nxt)
+		result[i] = { x = cur.x + d * (nx1 + nx2), y = cur.y + d * (ny1 + ny2) }
+	end
+	return result
 end
 
 -- Counts free and total slots for the footer.

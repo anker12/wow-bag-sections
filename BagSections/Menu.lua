@@ -69,7 +69,7 @@ StaticPopupDialogs["BAGSECTIONS_DELETE_SECTION"] = {
 function Menu.PromptNewSection(onCreated)
 	StaticPopup_Show("BAGSECTIONS_SECTION_NAME", L.NEW_SECTION_PROMPT, nil, {
 		onAccept = function(name)
-			local section = Rules.CreateSection(ns.charDB, name)
+			local section = Rules.CreateSection(ns.charDB, name, ns.NewSectionsBelowRest())
 			Changed()
 			if onCreated then
 				onCreated(section)
@@ -247,7 +247,7 @@ function Menu.OpenMainMenu(owner)
 		root:CreateCheckbox(L.QUEST_SECTION, function()
 			return ns.charDB.autoQuest
 		end, function()
-			Rules.SetAutoQuest(ns.charDB, not ns.charDB.autoQuest, L.QUEST_ITEMS)
+			Rules.SetAutoQuest(ns.charDB, not ns.charDB.autoQuest, L.QUEST_ITEMS, ns.NewSectionsBelowRest())
 			Changed()
 		end)
 		Menu.AddProfileEntries(root:CreateButton(L.PROFILES))

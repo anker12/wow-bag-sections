@@ -17,10 +17,12 @@ local FOOTER_HEIGHT = 22
 local BUTTON_SIZE = ItemButtons.SIZE
 local CELL = BUTTON_SIZE + SPACING
 
--- Compact layout: each group is an outlined block, and blocks are packed side by side.
-local BLOCK_PADDING = 5
-local BLOCK_GAP = 6
-local LABEL_HEIGHT = 18
+-- Compact layout: every group runs through one shared grid, outlined in its colour.
+local LANE_HEIGHT = 16 -- space above a row that carries section names
+local EDGE = 6 -- space above/below the grid where no name sits
+local LINE = 2 -- outline thickness
+local INSET = 1 -- each outline sits this far inside its cells' boundary
+local REFLOW_AFTER_SORT = 3 -- seconds the compact layout keeps updating after a sort
 
 -- Outline colours for the built-in groups in the compact layout.
 local BUILTIN_COLORS = {
@@ -30,7 +32,15 @@ local BUILTIN_COLORS = {
 }
 
 local main, content
-local headers, overlays, outlines = {}, {}, {}
+local headers, overlays = {}, {}
+local labels, placeholders, lineTextures = {}, {}, {}
+local lineFrame, measure
+
+-- Compact layout keeps its arrangement while the window is open, so items don't jump
+-- around when things are looted or used up. It's rebuilt on open, on any change the
+-- player makes (assigning, sorting, section changes) and when the bags themselves change.
+local frozen
+local reflowUntil = 0
 local lastSlots = {}
 
 -- Information about the item on the cursor, or nil. Used to show drop targets.
@@ -46,6 +56,16 @@ local function GroupTitle(group)
 		return ("%s %s"):format(marker, L.REAGENTS)
 	end
 	return ("%s %s"):format(marker, L.KEYRING)
+end
+
+-- Shorter title for the compact layout's name labels: no collapse marker.
+local function CompactTitle(group)
+	if group.kind == "section" then
+		return ("%s |cff999999(%d)|r"):format(group.name, group.count)
+	elseif group.kind == "rest" then
+		return ("%s |cff999999(%d)|r"):format(L.REST, #group.slots)
+	end
+	return group.kind == "reagent" and L.REAGENTS or L.KEYRING
 end
 
 local function GroupColor(group)
@@ -122,22 +142,10 @@ local function HandleDrop(group)
 	ns.RequestRefresh()
 end
 
-local function CreateHeader(index)
-	local header = CreateFrame("Button", nil, content)
-	header:SetHeight(HEADER_HEIGHT)
-	header:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	header.Text = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	header.Text:SetPoint("LEFT", 2, 0)
-	header.Text:SetJustifyH("LEFT")
-	header.Line = header:CreateTexture(nil, "ARTWORK")
-	header.Line:SetColorTexture(1, 1, 1, 0.15)
-	header.Line:SetHeight(1)
-	header.Line:SetPoint("LEFT", header.Text, "RIGHT", 6, 0)
-	header.Line:SetPoint("RIGHT")
-	header:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
-	header:GetHighlightTexture():SetAlpha(0.25)
-
-	header:SetScript("OnClick", function(self, mouseButton)
+-- Click, drop and tooltip behaviour shared by default-layout headers and compact labels.
+local function SetGroupScripts(button)
+	button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	button:SetScript("OnClick", function(self, mouseButton)
 		local group = self.group
 		if CursorHasItem() then
 			HandleDrop(group)
@@ -160,23 +168,39 @@ local function CreateHeader(index)
 			end
 		end
 	end)
-	header:SetScript("OnReceiveDrag", function(self) HandleDrop(self.group) end)
-	header:SetScript("OnEnter", function(self)
+	button:SetScript("OnReceiveDrag", function(self) HandleDrop(self.group) end)
+	button:SetScript("OnEnter", function(self)
 		if CursorHasItem() then
 			return
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		if self.showTitleInTooltip then
+			GameTooltip_SetTitle(GameTooltip, GroupTitle(self.group))
+		end
 		GameTooltip_AddNormalLine(GameTooltip, self.group.collapsed and L.HEADER_EXPAND or L.HEADER_COLLAPSE)
 		if self.group.kind == "section" then
 			GameTooltip_AddNormalLine(GameTooltip, L.HEADER_MENU)
 		end
 		GameTooltip:Show()
 	end)
-	header:SetScript("OnLeave", GameTooltip_Hide)
-	-- Coloured label strip, only shown in the compact layout.
-	header.Background = header:CreateTexture(nil, "BACKGROUND")
-	header.Background:SetAllPoints()
-	header.Background:Hide()
+	button:SetScript("OnLeave", GameTooltip_Hide)
+end
+
+local function CreateHeader(index)
+	local header = CreateFrame("Button", nil, content)
+	header:SetHeight(HEADER_HEIGHT)
+	header.Text = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	header.Text:SetPoint("LEFT", 2, 0)
+	header.Text:SetJustifyH("LEFT")
+	header.Line = header:CreateTexture(nil, "ARTWORK")
+	header.Line:SetColorTexture(1, 1, 1, 0.15)
+	header.Line:SetHeight(1)
+	header.Line:SetPoint("LEFT", header.Text, "RIGHT", 6, 0)
+	header.Line:SetPoint("RIGHT")
+	header:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
+	header:GetHighlightTexture():SetAlpha(0.25)
+
+	SetGroupScripts(header)
 	headers[index] = header
 	return header
 end
@@ -201,22 +225,17 @@ local function CreateOverlay(index)
 	return overlay
 end
 
-local function CreateOutline(index)
-	local outline = CreateFrame("Frame", nil, content, "BackdropTemplate")
-	outline:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-	outline:SetFrameLevel(content:GetFrameLevel() + 1)
-	outlines[index] = outline
-	return outline
-end
-
-local function ShowOverlay(index, group, x, y, width, height)
+local function ShowOverlay(index, group, x, y, width, height, text)
 	local overlay = overlays[index] or CreateOverlay(index)
 	overlay.group = group
 	overlay:ClearAllPoints()
 	overlay:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
 	overlay:SetSize(width, height)
 	overlay:SetFrameLevel(content:GetFrameLevel() + 30)
-	overlay.Text:SetText(group.kind == "rest" and L.DROP_REST or L.DROP_HERE:format(group.name))
+	if text == nil then
+		text = group.kind == "rest" and L.DROP_REST or L.DROP_HERE:format(group.name)
+	end
+	overlay.Text:SetText(text)
 	overlay:Show()
 end
 
@@ -229,25 +248,11 @@ local function PlaceButton(group, slot, x, y, used)
 	button:Show()
 end
 
-local function SetupHeader(index, group, style)
+local function SetupHeader(index, group)
 	local header = headers[index] or CreateHeader(index)
 	header.group = group
 	header:ClearAllPoints()
 	header.Text:SetText(GroupTitle(group))
-	header.Text:ClearAllPoints()
-	if style == "compact" then
-		local c = GroupColor(group)
-		header.Text:SetPoint("LEFT", 5, 0)
-		header.Text:SetTextColor(c.r, c.g, c.b)
-		header.Background:SetColorTexture(c.r, c.g, c.b, 0.18)
-		header.Background:Show()
-		header.Line:Hide()
-	else
-		header.Text:SetPoint("LEFT", 2, 0)
-		header.Text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
-		header.Background:Hide()
-		header.Line:Show()
-	end
 	header:Show()
 	return header
 end
@@ -257,7 +262,7 @@ local function RenderDefault(groups, columns, gridWidth, used)
 	local y = 0
 	for index, group in ipairs(groups) do
 		local top = y
-		local header = SetupHeader(index, group, "default")
+		local header = SetupHeader(index, group)
 		header:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 		header:SetSize(gridWidth, HEADER_HEIGHT)
 		y = y + HEADER_HEIGHT + 2
@@ -285,59 +290,222 @@ local function RenderDefault(groups, columns, gridWidth, used)
 	return y - GROUP_GAP
 end
 
--- Compact layout: each group is an outlined block sized to its items, packed side by side
--- within the same window width as the default layout.
-local function RenderCompact(groups, gridWidth, used)
-	local maxColumns = math.max(1, math.floor((gridWidth - 2 * BLOCK_PADDING + SPACING) / CELL))
-	local blocks = {}
-	for index, group in ipairs(groups) do
-		local header = SetupHeader(index, group, "compact")
-		local labelWidth = (header.Text:GetStringWidth() or 0) + 12
-		local count = #group.slots
-		if count == 0 and group.kind == "section" then
-			count = 1 -- empty section keeps one slot of space as a drop target
-		end
-		local itemColumns = group.collapsed and 0 or math.min(maxColumns, count)
-		local width = math.max(itemColumns * CELL - SPACING + 2 * BLOCK_PADDING, labelWidth)
-		width = math.min(width, gridWidth)
-		local columns = math.max(1, math.min(maxColumns, math.floor((width - 2 * BLOCK_PADDING + SPACING) / CELL)))
-		local rows = group.collapsed and 0 or math.ceil(count / columns)
-		local height = LABEL_HEIGHT + (rows > 0 and (BLOCK_PADDING + rows * CELL - SPACING) or 0) + BLOCK_PADDING
-		blocks[index] = { width = width, height = height, columns = columns }
+local function CreateLabel(index)
+	local label = CreateFrame("Button", nil, content)
+	label:SetHeight(14)
+	label.Background = label:CreateTexture(nil, "BACKGROUND")
+	label.Background:SetAllPoints()
+	label.Background:SetColorTexture(0.05, 0.05, 0.07, 1)
+	label.Text = label:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	label.Text:SetPoint("LEFT", 4, 0)
+	label.Text:SetJustifyH("LEFT")
+	label.Text:SetWordWrap(false)
+	label:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
+	label:GetHighlightTexture():SetAlpha(0.3)
+	label.showTitleInTooltip = true
+	SetGroupScripts(label)
+	labels[index] = label
+	return label
+end
+
+local function CreatePlaceholder(index)
+	local placeholder = CreateFrame("Frame", nil, content)
+	placeholder.Fill = placeholder:CreateTexture(nil, "BACKGROUND")
+	placeholder.Fill:SetAllPoints()
+	placeholder.Text = placeholder:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	placeholder.Text:SetPoint("CENTER")
+	placeholders[index] = placeholder
+	return placeholder
+end
+
+local function GetLineTexture(index)
+	local texture = lineTextures[index]
+	if not texture then
+		texture = lineFrame:CreateTexture(nil, "ARTWORK")
+		lineTextures[index] = texture
+	end
+	return texture
+end
+
+-- Cells a collapsed or empty group takes up, so its name has room.
+local function LabelCells(group, columns)
+	measure:SetText(CompactTitle(group))
+	local width = measure:GetStringWidth() or 0
+	return math.max(2, math.min(columns, math.ceil((width + 16) / CELL)))
+end
+
+-- Compact layout: all groups run through one grid of `columns` columns, one after the
+-- other with no gaps, each outlined in its colour with its name on its top edge.
+local function RenderCompact(groups, columns, used)
+	local Layout = ns.Layout
+	local sizes = {}
+	for i, group in ipairs(groups) do
+		group.placeholder = group.collapsed or #group.slots == 0
+		sizes[i] = group.placeholder and LabelCells(group, columns) or #group.slots
+	end
+	local runs, total = Layout.Flow(sizes)
+	local rows = math.max(1, math.ceil(total / columns))
+
+	local segments, labelRows = {}, {}
+	for i, run in ipairs(runs) do
+		segments[i] = Layout.LabelSegment(run, columns)
+		labelRows[segments[i].row] = true
 	end
 
-	local positions, totalHeight = ns.Layout.Pack(blocks, gridWidth, BLOCK_GAP)
+	-- Row positions: rows carrying a name get a taller gap above them.
+	local rowTop, gapAbove, y = {}, {}, 0
+	for r = 0, rows - 1 do
+		gapAbove[r] = labelRows[r] and LANE_HEIGHT or (r == 0 and EDGE or SPACING)
+		rowTop[r] = y + gapAbove[r]
+		y = rowTop[r] + BUTTON_SIZE
+	end
+	local height = y + EDGE
 
+	-- Pixel positions of grid lines: the middle of the gap between cells.
+	local function X(col) return col * CELL - SPACING / 2 end
+	local function Y(row)
+		if row >= rows then
+			return rowTop[rows - 1] + BUTTON_SIZE + EDGE / 2
+		end
+		return rowTop[row] - gapAbove[row] / 2
+	end
+	local function RectPixels(rect)
+		local lastRow = rect.row + rect.rows - 1
+		return rect.col * CELL, rowTop[rect.row], rect.cols * CELL - SPACING, rowTop[lastRow] + BUTTON_SIZE - rowTop[rect.row]
+	end
+
+	-- A name may run past its own top edge, up to where the next name on that row starts.
+	local labelLeft = {}
+	for i, segment in ipairs(segments) do
+		labelLeft[i] = X(segment.col) + INSET + 6
+	end
+	local function LabelRoom(i)
+		local right = columns * CELL - SPACING
+		for j, segment in ipairs(segments) do
+			if j ~= i and segment.row == segments[i].row and labelLeft[j] > labelLeft[i] then
+				right = math.min(right, labelLeft[j] - 6)
+			end
+		end
+		return math.max(right - labelLeft[i] - 8, 20)
+	end
+
+	local lineIndex, placeholderIndex, overlayIndex = 0, 0, 0
 	for index, group in ipairs(groups) do
-		local block, pos = blocks[index], positions[index]
-		local c = GroupColor(group)
+		local run, c = runs[index], GroupColor(group)
 
-		local outline = outlines[index] or CreateOutline(index)
-		outline:ClearAllPoints()
-		outline:SetPoint("TOPLEFT", content, "TOPLEFT", pos.x, -pos.y)
-		outline:SetSize(block.width, block.height)
-		outline:SetBackdropBorderColor(c.r, c.g, c.b, 0.9)
-		outline:Show()
-
-		local header = headers[index]
-		header:SetPoint("TOPLEFT", content, "TOPLEFT", pos.x + 1, -(pos.y + 1))
-		header:SetSize(block.width - 2, LABEL_HEIGHT)
-		header:SetFrameLevel(outline:GetFrameLevel() + 1)
-
-		if not group.collapsed then
-			local top = pos.y + LABEL_HEIGHT + BLOCK_PADDING
+		if group.placeholder then
+			for _, rect in ipairs(Layout.RunRects(run, columns)) do
+				placeholderIndex = placeholderIndex + 1
+				local placeholder = placeholders[placeholderIndex] or CreatePlaceholder(placeholderIndex)
+				local x, top, width, h = RectPixels(rect)
+				placeholder:ClearAllPoints()
+				placeholder:SetPoint("TOPLEFT", content, "TOPLEFT", x, -top)
+				placeholder:SetSize(width, h)
+				placeholder.Fill:SetColorTexture(c.r, c.g, c.b, 0.12)
+				placeholder.Text:SetText(group.collapsed and group.count > 0 and ("+" .. group.count) or "")
+				placeholder:Show()
+			end
+		else
 			for i, slot in ipairs(group.slots) do
-				local column = (i - 1) % block.columns
-				local row = math.floor((i - 1) / block.columns)
-				PlaceButton(group, slot, pos.x + BLOCK_PADDING + column * CELL, top + row * CELL, used)
+				local cell = run.start + i - 1
+				local row = math.floor(cell / columns)
+				PlaceButton(group, slot, (cell % columns) * CELL, rowTop[row], used)
 			end
 		end
 
+		for _, polygon in ipairs(Layout.RunPolygons(run, columns)) do
+			local points = {}
+			for i, p in ipairs(polygon) do
+				points[i] = { x = X(p.x), y = Y(p.y) }
+			end
+			points = Layout.InsetPolygon(points, INSET)
+			for i, a in ipairs(points) do
+				local b = points[i % #points + 1]
+				lineIndex = lineIndex + 1
+				local texture = GetLineTexture(lineIndex)
+				texture:ClearAllPoints()
+				texture:SetPoint("TOPLEFT", content, "TOPLEFT", math.min(a.x, b.x) - LINE / 2, -(math.min(a.y, b.y) - LINE / 2))
+				texture:SetSize(math.abs(b.x - a.x) + LINE, math.abs(b.y - a.y) + LINE)
+				texture:SetColorTexture(c.r, c.g, c.b, 0.9)
+				texture:Show()
+			end
+		end
+
+		local segment = segments[index]
+		local label = labels[index] or CreateLabel(index)
+		label.group = group
+		label.Text:SetText(CompactTitle(group))
+		label.Text:SetTextColor(c.r, c.g, c.b)
+		label.Text:SetWidth(0)
+		local textWidth = math.min(label.Text:GetStringWidth() or 0, LabelRoom(index))
+		label.Text:SetWidth(textWidth)
+		label:SetWidth(textWidth + 8)
+		label:ClearAllPoints()
+		label:SetPoint("LEFT", content, "TOPLEFT", labelLeft[index], -(Y(segment.row) + INSET))
+		label:SetFrameLevel(lineFrame:GetFrameLevel() + 2)
+		label:Show()
+
 		if IsDropTarget(group) then
-			ShowOverlay(index, group, pos.x, pos.y, block.width, block.height)
+			local rects = Layout.RunRects(run, columns)
+			local biggest = 1
+			for i, rect in ipairs(rects) do
+				if rect.cols * rect.rows > rects[biggest].cols * rects[biggest].rows then
+					biggest = i
+				end
+			end
+			for i, rect in ipairs(rects) do
+				overlayIndex = overlayIndex + 1
+				local x, top, width, h = RectPixels(rect)
+				ShowOverlay(overlayIndex, group, x - 2, top - 2, width + 4, h + 4, i ~= biggest and "" or nil)
+			end
 		end
 	end
-	return totalHeight
+	return height
+end
+
+-- Compact layout: reuse the arrangement from when it was last built, as long as the same
+-- bag slots exist. Item counts are refreshed so section titles stay correct.
+local function SlotKey(slot)
+	return slot.bag * 1000 + slot.slot
+end
+
+local function ReuseFrozen(slots)
+	if not frozen or #slots ~= frozen.slotCount or (ns.db.columns or 10) ~= frozen.columns then
+		return nil
+	end
+	local fresh = {}
+	for _, slot in ipairs(slots) do
+		local key = SlotKey(slot)
+		if not frozen.keys[key] then
+			return nil
+		end
+		fresh[key] = slot
+	end
+	for _, group in ipairs(frozen.groups) do
+		local count = 0
+		for i, slot in ipairs(group.slots) do
+			local current = fresh[SlotKey(slot)]
+			group.slots[i] = current
+			if current.item then
+				count = count + 1
+			end
+		end
+		group.count = count
+	end
+	return frozen.groups
+end
+
+local function Freeze(groups, slots)
+	local keys = {}
+	for _, slot in ipairs(slots) do
+		keys[SlotKey(slot)] = true
+	end
+	frozen = { groups = groups, keys = keys, slotCount = #slots, columns = ns.db.columns or 10 }
+end
+
+-- Lets the compact layout follow the bags for a few seconds, e.g. while a sort runs.
+function Frame.AllowReflow(seconds)
+	reflowUntil = GetTime() + (seconds or REFLOW_AFTER_SORT)
 end
 
 local function SavePosition()
@@ -402,7 +570,7 @@ local function CreateTitleBar()
 end
 
 local function CreateFooter()
-	main.Money = main:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	main.Money = main:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	main.Money:SetPoint("BOTTOMRIGHT", -PADDING, 8)
 	main.FreeSlots = main:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	main.FreeSlots:SetPoint("BOTTOMLEFT", PADDING, 8)
@@ -432,10 +600,11 @@ function Frame.Init()
 	main:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 	main:SetScript("OnShow", function()
 		PlaySound(SOUNDKIT.IG_BACKPACK_OPEN)
-		Frame.Render()
+		Frame.Render("layout")
 	end)
 	main:SetScript("OnHide", function()
 		PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE)
+		frozen = nil
 		ns.Hooks.OnWindowHidden()
 	end)
 	tinsert(UISpecialFrames, main:GetName())
@@ -443,6 +612,13 @@ function Frame.Init()
 	content = CreateFrame("Frame", nil, main)
 	content:SetPoint("TOPLEFT", PADDING, -TITLE_HEIGHT)
 	ItemButtons.SetParent(content)
+
+	-- Compact-layout outlines draw below the item buttons; names draw above them.
+	lineFrame = CreateFrame("Frame", nil, content)
+	lineFrame:SetAllPoints()
+	lineFrame:SetFrameLevel(content:GetFrameLevel() + 1)
+	measure = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	measure:Hide()
 
 	CreateTitleBar()
 	CreateFooter()
@@ -476,18 +652,33 @@ function Frame.UpdateMoney()
 	end
 end
 
--- Full redraw: rescan bags, rebuild groups, reposition everything.
-function Frame.Render()
+-- Redraw: rescan bags, then place everything.
+-- mode "layout" always rebuilds the arrangement. Mode "items" (bag contents changed) does
+-- too in the default layout, but the compact layout keeps its frozen arrangement.
+function Frame.Render(mode)
 	if not (main and main:IsShown()) then
 		return
 	end
 
+	local compact = ns.db.layout == "compact"
 	cursorState = ReadCursor()
 	local slots = ns.Inventory.Scan()
 	lastSlots = slots
-	local groups = ns.Layout.Build(ns.charDB, slots, {
-		showEmpty = ns.db.showEmptySections or (cursorState ~= nil and cursorState.source ~= "locked"),
-	})
+
+	local groups
+	if compact and mode == "items" and GetTime() >= reflowUntil then
+		groups = ReuseFrozen(slots)
+	end
+	if not groups then
+		groups = ns.Layout.Build(ns.charDB, slots, {
+			-- Compact always shows empty sections, so dragging an item never moves anything.
+			showEmpty = compact or ns.db.showEmptySections or (cursorState ~= nil and cursorState.source ~= "locked"),
+		})
+		frozen = nil
+		if compact then
+			Freeze(groups, slots)
+		end
+	end
 
 	local columns = ns.db.columns or 10
 	local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
@@ -496,18 +687,20 @@ function Frame.Render()
 	local used = {}
 	for _, header in ipairs(headers) do header:Hide() end
 	for _, overlay in ipairs(overlays) do overlay:Hide() end
-	for _, outline in ipairs(outlines) do outline:Hide() end
+	for _, label in ipairs(labels) do label:Hide() end
+	for _, placeholder in ipairs(placeholders) do placeholder:Hide() end
+	for _, texture in ipairs(lineTextures) do texture:Hide() end
 
 	local contentHeight
-	if ns.db.layout == "compact" then
-		contentHeight = RenderCompact(groups, gridWidth, used)
+	if compact then
+		contentHeight = RenderCompact(groups, columns, used)
 	else
 		contentHeight = RenderDefault(groups, columns, gridWidth, used)
 	end
 
 	ItemButtons.HideExcept(used)
 
-	if #ns.charDB.sections == 0 and not cursorState and ns.db.layout ~= "compact" then
+	if #ns.charDB.sections == 0 and not cursorState and not compact then
 		-- Hint next to Rest when no sections exist yet.
 		headers[1].Text:SetText(GroupTitle(groups[1]) .. "   |cff777777" .. L.NO_SECTIONS .. " - " .. L.NEW_SECTION .. "|r")
 	end

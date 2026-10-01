@@ -69,22 +69,37 @@ after asking, and their items go back to Rest.
 Switch layouts from the gear menu (Layout) or in Settings.
 
 * **Default:** the layout above. Each section is stacked at full width.
-* **Compact:** the window keeps the same width, but each section is drawn as a box outlined
-  in its own colour, with its name in a coloured strip at the top. Small sections sit next
-  to each other. Change a section's colour from its right-click menu (Colour...). Rest is
-  grey and Reagents green. Because of the outlines, a box holds one column fewer than the
-  default layout's full width.
+* **Compact:** works like Blizzard's combined bag. All sections run through one grid with
+  no gaps: each section starts in the slot right after the previous one ends and wraps onto
+  the next line. Each section is outlined in its own colour, even across line breaks, with
+  its name on its top edge. Hover a name to see it in full. Change a section's colour
+  from its right-click menu (Colour...). Rest is grey and Reagents green. Empty and
+  collapsed sections keep a small space so their name stays visible.
+
+  While the window is open, the compact layout **doesn't move things around**. Looting or
+  using up an item leaves everything where it is, and a used-up slot stays as a gap until
+  you next open the bags. The layout updates when you do something yourself (drag an item
+  into a section, sort, change sections) and when you reopen the bags.
 
 ```
 Bags  [search........]  [sort] [⚙] [x]
-┌Essentials (3)─┐ ┌Weapon swap (2)┐
-│[HS][Pick][CF] │ │[Sword][Shield]│
-└───────────────┘ └───────────────┘
-┌Rest (15)──────────────────────────┐
-│[..][..][..][..][..][..][..][..][..]│
-│[..][..][..][..][ ][ ]              │
-└───────────────────────────────────┘
+┌Rest (17)───────────────────────────┐
+│ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢                │
+│ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ┌Consumes (9)────────┤
+├───────────────┘ ▢ ▢ ▢              │
+│ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ┌Gear (1)──────┤
+├─────────────────────┘ ▢            │
 ```
+
+### Rest position
+
+Settings → **Rest position** sets where *new* sections go, including the Quest Items
+section:
+* **Rest at bottom** (default): new sections are added above Rest.
+* **Rest at top**: new sections are added below Rest, so loot comes in at the top.
+
+Existing sections stay where they are. Move any section with *Move above/below Rest* in its
+right-click menu.
 
 Slash commands: `/bs` (open/close), `/bs sort`, `/bs new <name>`,
 `/bs add <section>` (adds the item under the mouse), `/bs config`.

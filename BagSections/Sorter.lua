@@ -26,6 +26,8 @@ function Sorter.Sort(onDone)
 	pending = false
 
 	PlaySound(SOUNDKIT.UI_BAG_SORTING_01)
+	-- Items move over the next moments; let the compact layout follow them.
+	ns.Frame.AllowReflow()
 	C_Container.SortBags()
 
 	local callbacks = pendingCallbacks
