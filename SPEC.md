@@ -444,6 +444,11 @@ Store sections **per character** because each character carries different things
   neighbouring sections. The compact window is a little wider than the default layout
   as a result.
 * **Thinner outlines:** 1px at 70% opacity, 3px from the items on every side.
+* **Outlines above slots:** item buttons' slot art is larger than the slot (a 64px frame
+  texture on a 37px button) and was covering parts of the outlines. Outlines now draw
+  above the buttons. They only sit in the gaps between slots, so they never cover icons.
+* **Reagents and Keyring separated:** in compact they sit in their own grid below a thin
+  divider, as in the default layout, with a smaller gap.
 * **One name per section:** a wrapped section whose parts don't touch shows its name
   once, on its longest stretch of top edge. The outline colour ties the parts together.
 
