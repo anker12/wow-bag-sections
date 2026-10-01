@@ -72,7 +72,8 @@ Switch layouts from the gear menu (Layout) or in Settings.
 * **Compact:** works like Blizzard's combined bag. All sections run through one grid with
   no gaps: each section starts in the slot right after the previous one ends and wraps onto
   the next line. Each section is outlined in its own colour, even across line breaks, with
-  its name on its top edge. Hover a name to see it in full. Change a section's colour
+  its name on its top edge. Outlines have even padding on all sides, with clear space
+  between sections. Hover a name to see it in full. Change a section's colour
   from its right-click menu (Colour...). Rest is grey and Reagents green. Empty and
   collapsed sections keep a small space so their name stays visible.
 
