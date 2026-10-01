@@ -1,0 +1,20 @@
+## Interface: 16001
+## Title: BagSections
+## Notes: One combined bag window with your own named sections, each sorted separately.
+## Author: anker12
+## Version: 0.1.0
+## SavedVariables: BagSectionsDB
+## SavedVariablesPerCharacter: BagSectionsCharDB
+## IconTexture: Interface\Icons\INV_Misc_Bag_08
+
+Locales\enUS.lua
+Rules.lua
+Layout.lua
+Inventory.lua
+Sorter.lua
+ItemButtons.lua
+Menu.lua
+Frame.lua
+Hooks.lua
+Options.lua
+Core.lua
