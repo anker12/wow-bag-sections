@@ -102,6 +102,12 @@ local function GroupColor(group)
 end
 
 local function ReadCursor()
+	-- C_Cursor.GetCursorItem can keep answering with the last item after the cursor is empty
+	-- (e.g. after cancelling a bind-on-equip prompt, or dropping gear back on the character
+	-- pane), so first check there really is an item on the cursor.
+	if GetCursorInfo() ~= "item" then
+		return nil
+	end
 	local location = C_Cursor.GetCursorItem()
 	if not (location and location:IsValid()) then
 		return nil
@@ -891,14 +897,19 @@ function Frame.Init()
 		Frame.EndSectionDrag()
 		ns.Hooks.OnWindowHidden()
 	end)
-	tinsert(UISpecialFrames, main:GetName())
+	-- When it replaces the default bags, Escape closes Blizzard's (hidden) bags, which closes
+	-- this window too. Only add it to Escape's list when it doesn't, since addon frames in
+	-- that list can taint the Escape/game-menu path.
+	if not ns.db.takeOverBags then
+		tinsert(UISpecialFrames, main:GetName())
+	end
 
 	-- Safety net for drop targets: as soon as nothing is on the cursor any more, however the
 	-- drag ended, clear them. Only runs while drop targets are showing.
 	dropWatcher = CreateFrame("Frame", nil, main)
 	dropWatcher:Hide()
 	dropWatcher:SetScript("OnUpdate", function(self)
-		if not CursorHasItem() then
+		if GetCursorInfo() ~= "item" then
 			self:Hide()
 			cursorState = nil
 			for _, overlay in ipairs(overlays) do overlay:Hide() end

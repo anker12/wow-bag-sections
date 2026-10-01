@@ -8,8 +8,6 @@ globals = {
 	"BagSectionsDB", "BagSectionsCharDB",
 	"SLASH_BAGSECTIONS1", "SLASH_BAGSECTIONS2",
 	"SlashCmdList", "StaticPopupDialogs", "UISpecialFrames",
-	-- Replaced so the bags open this addon's window (see Hooks.lua).
-	"ToggleBackpack", "ToggleAllBags", "OpenBackpack", "OpenAllBags", "ToggleBag", "OpenBag",
 }
 
 -- WoW API used by the addon.
@@ -19,7 +17,9 @@ read_globals = {
 	"CreateFrame", "UIParent", "GameTooltip", "UIErrorsFrame", "RED_FONT_COLOR",
 	"GameTooltip_Hide", "GameTooltip_SetTitle", "GameTooltip_AddNormalLine", "GameTooltip_AddInstructionLine",
 	"ClearItemButtonOverlay", "SetItemButtonQuality", "SetItemButtonCount", "SetItemButtonDesaturated",
-	"ContainerFrame_AllowedToOpenBags", "MinimalSliderWithSteppersMixin",
+	"MinimalSliderWithSteppersMixin", "GetCursorInfo", "IsAnyBagOpen",
+	"ContainerFrameCombinedBags", "NUM_CONTAINER_FRAMES",
+	"ContainerFrame_SetFullScreenFrame", "ContainerFrame_ClearFullScreenFrame",
 	"StaticPopup_Show", "StaticPopup_StandardEditBoxOnEscapePressed",
 	"ClearCursor", "CursorHasItem", "GetMouseFoci", "GetMoney", "GetMoneyString", "GetKeyRingSize",
 	"InCombatLockdown", "GetTime", "PixelUtil", "GetCursorPosition", "CreateSettingsButtonInitializer", "CreateSettingsListSectionHeaderInitializer", "ColorPickerFrame", "NORMAL_FONT_COLOR", "IsAltKeyDown", "PlaySound", "hooksecurefunc", "strtrim", "tinsert", "bit",

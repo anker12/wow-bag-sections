@@ -518,6 +518,24 @@ Store sections **per character** because each character carries different things
   affected the automatic arrangement, and that was confusing. The automatic arrangement
   (and *Reset rows*) uses 3 per row, capped by what fits.
 
+### v0.12: Taint and cursor fixes
+
+* **No Blizzard function is replaced any more.** Replacing `OpenAllBags` etc. tainted any
+  Blizzard code that called them. The bank calls `OpenAllBags` in its OnShow, which tainted
+  the bank's state (active bank type), so moving items between bank and bags by
+  right-click was blocked ("BagSections has been blocked from an action…"). Now
+  Blizzard's bag frames work normally but are re-parented to a hidden frame. The window
+  shows whenever `IsAnyBagOpen()` is true, synced from OnShow/OnHide hooks on those frames.
+  Closing the window hides Blizzard's frames directly. It's only added to
+  `UISpecialFrames` when it isn't replacing the bags.
+* **Bag number from a parent frame:** item buttons no longer get `SetBagID` (an addon
+  write, so tainted). Each sits in an invisible per-bag frame whose ID is the bag, which
+  Blizzard's `GetBagID` falls back to. This is the long-standing Bagnon pattern.
+* **Cursor:** `C_Cursor.GetCursorItem` can keep returning the last item after the cursor
+  is empty: after cancelling a bind-on-equip prompt, or dropping gear back on the character
+  pane. That left drop targets stuck. Cursor reads now require `GetCursorInfo() == "item"`
+  first, and so does the drop-target watcher.
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):
