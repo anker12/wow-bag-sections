@@ -52,6 +52,7 @@ function Options.Init()
 		return ("%d%%"):format(math.floor(value * 100 + 0.5))
 	end, function() ns.Frame.ApplyScale() end)
 	AddCheckbox("showEmptySections", L.SHOW_EMPTY, L.OPT_SHOW_EMPTY_DESC, ns.DEFAULTS.showEmptySections, Refresh)
+	AddCheckbox("showKeyring", L.SHOW_KEYRING, L.OPT_SHOW_KEYRING_DESC, ns.DEFAULTS.showKeyring, Refresh)
 
 	-- Stored as a rule kind, shown as a checkbox.
 	local Rules = ns.Rules

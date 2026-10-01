@@ -36,7 +36,10 @@ local BUILTIN_COLORS = {
 	keyring = { r = 0.95, g = 0.80, b = 0.35 },
 }
 
-local main, content
+-- Blizzard's blue for "this item can go here".
+local DROP_COLOR = { r = 0.3, g = 0.7, b = 1 }
+
+local main, content, dropWatcher
 local headers, overlays = {}, {}
 local labels, placeholders, lineTextures = {}, {}, {}
 local lineFrame, measure, dividerLine
@@ -210,43 +213,48 @@ local function CreateHeader(index)
 	return header
 end
 
+-- Drop targets while an item is on the cursor: a blue highlight like the one Blizzard
+-- shows on slots an item can go into. They carry no text; hovering shows a tooltip.
 local function CreateOverlay(index)
 	local overlay = CreateFrame("Button", nil, content)
 	overlay:RegisterForClicks("LeftButtonUp")
-	overlay.Background = overlay:CreateTexture(nil, "BACKGROUND")
-	overlay.Background:SetAllPoints()
-	overlay.Background:SetColorTexture(0.2, 0.6, 1, 0.18)
 	overlay.Border = CreateFrame("Frame", nil, overlay, "BackdropTemplate")
 	overlay.Border:SetAllPoints()
-	overlay.Border:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-	overlay.Border:SetBackdropBorderColor(0.3, 0.7, 1, 0.8)
-	overlay.Text = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	overlay.Text:SetPoint("CENTER")
+	overlay.Border:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
+	overlay.Border:SetBackdropBorderColor(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 1)
 	overlay:SetHighlightTexture("Interface\\Buttons\\WHITE8x8", "ADD")
-	overlay:GetHighlightTexture():SetVertexColor(0.3, 0.7, 1, 0.2)
+	overlay:GetHighlightTexture():SetVertexColor(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 0.15)
 	overlay:SetScript("OnClick", function(self) HandleDrop(self.group) end)
 	overlay:SetScript("OnReceiveDrag", function(self) HandleDrop(self.group) end)
+	overlay:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+		GameTooltip_SetTitle(GameTooltip, L.DROP_HERE:format(self.group.name))
+		GameTooltip:Show()
+	end)
+	overlay:SetScript("OnLeave", GameTooltip_Hide)
 	overlays[index] = overlay
 	return overlay
 end
 
-local function ShowOverlay(index, group, x, y, width, height, text)
+-- border: draw the blue border (default layout; compact turns the outline blue instead).
+-- Rest's highlight never takes the mouse: dropping on any Rest slot places the item there
+-- (see Frame.OnItemButtonDrop).
+local function ShowOverlay(index, group, x, y, width, height, border)
 	local overlay = overlays[index] or CreateOverlay(index)
 	overlay.group = group
 	overlay:ClearAllPoints()
 	overlay:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
 	overlay:SetSize(width, height)
 	overlay:SetFrameLevel(content:GetFrameLevel() + 30)
-	if text == nil then
-		text = group.kind == "rest" and L.DROP_REST or L.DROP_HERE:format(group.name)
-	end
-	overlay.Text:SetText(text)
+	overlay.Border:SetShown(border)
+	overlay:EnableMouse(group.kind == "section")
 	overlay:Show()
 end
 
 local function PlaceButton(group, slot, x, y, used)
 	local button = ItemButtons.Get(slot.bag, slot.slot)
 	button.bsSectionName = group.kind == "section" and group.name or nil
+	button.bsGroupKind = group.kind
 	used[button] = true
 	button:ClearAllPoints()
 	button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
@@ -287,7 +295,7 @@ local function RenderDefault(groups, columns, gridWidth, used)
 		end
 
 		if IsDropTarget(group) then
-			ShowOverlay(index, group, -3, top - 2, gridWidth + 6, y - top + 1)
+			ShowOverlay(index, group, -3, top - 2, gridWidth + 6, y - top + 1, true)
 		end
 
 		y = y + GROUP_GAP
@@ -445,6 +453,11 @@ local function RenderFlow(groups, columns, used, top, counters)
 			end
 		end
 
+		-- While this group can take the item on the cursor, its outline turns blue.
+		local dropTarget = IsDropTarget(group)
+		local lineColor = dropTarget and DROP_COLOR or c
+		local lineAlpha = dropTarget and 1 or LINE_ALPHA
+
 		-- Lines are placed on whole pixels and are at least one screen pixel thick, so none
 		-- get rounded away at any UI scale.
 		for _, edge in ipairs(Layout.StripEdges(boxes)) do
@@ -456,7 +469,7 @@ local function RenderFlow(groups, columns, used, top, counters)
 			texture:ClearAllPoints()
 			PixelUtil.SetPoint(texture, "TOPLEFT", content, "TOPLEFT", ex, -ey)
 			PixelUtil.SetSize(texture, w + LINE, h + LINE, 1, 1)
-			texture:SetColorTexture(c.r, c.g, c.b, LINE_ALPHA)
+			texture:SetColorTexture(lineColor.r, lineColor.g, lineColor.b, lineAlpha)
 			texture:Show()
 		end
 
@@ -479,16 +492,10 @@ local function RenderFlow(groups, columns, used, top, counters)
 			end
 		end
 
-		if IsDropTarget(group) then
-			local biggest = 1
-			for i, box in ipairs(boxes) do
-				if box.r - box.l > boxes[biggest].r - boxes[biggest].l then
-					biggest = i
-				end
-			end
-			for i, box in ipairs(boxes) do
+		if dropTarget and group.kind == "section" then
+			for _, box in ipairs(boxes) do
 				overlayIndex = overlayIndex + 1
-				ShowOverlay(overlayIndex, group, box.l, box.t, box.r - box.l, box.b - box.t, i ~= biggest and "" or nil)
+				ShowOverlay(overlayIndex, group, box.l, box.t, box.r - box.l, box.b - box.t, false)
 			end
 		end
 	end
@@ -668,6 +675,19 @@ function Frame.Init()
 	end)
 	tinsert(UISpecialFrames, main:GetName())
 
+	-- Safety net for drop targets: as soon as nothing is on the cursor any more, however the
+	-- drag ended, clear them. Only runs while drop targets are showing.
+	dropWatcher = CreateFrame("Frame", nil, main)
+	dropWatcher:Hide()
+	dropWatcher:SetScript("OnUpdate", function(self)
+		if not CursorHasItem() then
+			self:Hide()
+			cursorState = nil
+			for _, overlay in ipairs(overlays) do overlay:Hide() end
+			ns.RequestRefresh("items")
+		end
+	end)
+
 	content = CreateFrame("Frame", nil, main)
 	content:SetPoint("TOPLEFT", PADDING, -TITLE_HEIGHT)
 	ItemButtons.SetParent(content)
@@ -737,6 +757,7 @@ function Frame.Render(mode)
 		groups = ns.Layout.Build(ns.charDB, slots, {
 			-- Compact always shows empty sections, so dragging an item never moves anything.
 			showEmpty = compact or ns.db.showEmptySections or (cursorState ~= nil and cursorState.source ~= "locked"),
+			hideKeyring = not ns.db.showKeyring,
 		})
 		frozen = nil
 		if compact then
@@ -765,6 +786,7 @@ function Frame.Render(mode)
 	end
 
 	ItemButtons.HideExcept(used)
+	dropWatcher:SetShown(cursorState ~= nil)
 
 	if #ns.charDB.sections == 0 and not cursorState and not compact then
 		-- Hint next to Rest when no sections exist yet.
@@ -790,6 +812,23 @@ function Frame.UpdateButtons()
 	if main and main:IsShown() then
 		ItemButtons.UpdateShown()
 	end
+end
+
+-- Called after Blizzard's own click/drop handling on an item button. Dropping an item
+-- from a section onto any Rest slot places it there (Blizzard moves it) and takes it out
+-- of its section.
+function Frame.OnItemButtonDrop(button)
+	local state = cursorState -- what was on the cursor before this click
+	if not state or button.bsGroupKind ~= "rest" or state.source ~= "bags" or state.section == Rules.REST then
+		return
+	end
+	local now = C_Cursor.GetCursorItem()
+	local nowItem = now and ns.Inventory.GetItemFromLocation(now)
+	if nowItem and nowItem.guid == state.item.guid then
+		return -- still holding the same item: nothing was dropped
+	end
+	Rules.Unassign(ns.charDB, state.item)
+	ns.RequestRefresh()
 end
 
 function Frame.GetLastSlots()

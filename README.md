@@ -29,10 +29,12 @@ Copy the `BagSections` folder into
 * **Open the bags** the normal way (B, the backpack button, a merchant or mailbox). The
   addon window replaces Blizzard's bags. You can turn that off in the settings.
 * **New section:** click the gear icon, then "New section...", or type `/bs new Essentials`.
-* **Add an item to a section:** drag it from Rest onto the section. Empty sections appear as
-  drop targets while you're dragging.
+* **Add an item to a section:** drag it from Rest onto the section. Places you can drop
+  it light up blue, the same way Blizzard highlights where an item can go.
 * **Move an item between sections:** drag it onto the other section.
-* **Remove an item from a section:** drag it onto Rest.
+* **Remove an item from a section:** drag it onto any Rest slot. It lands in that slot.
+* **Rest** shows its slots in bag order, empty slots included, like Blizzard's bag, so you
+  can drop items into any empty slot.
 * **Alt+Right-click** an item for a menu: add to a section, remove from a section, or choose
   whether the section matches *this exact item* or *every item of this kind*.
 * **Collapse:** left-click any header to collapse it to just the header: your sections,

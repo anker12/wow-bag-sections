@@ -8,11 +8,12 @@ ns.Layout = Layout
 
 -- slots: array in physical order of
 --   { bag = n, slot = n, area = "bags" | "reagent" | "keyring", item = { itemID, guid, ... } | nil }
--- opts: { showEmpty = bool }
+-- opts: { showEmpty = bool, hideKeyring = bool }
 -- Returns an array of groups:
 --   { key, kind = "section" | "rest" | "reagent" | "keyring", name, collapsed, color, below, slots = {...}, count }
 -- Order: sections above Rest, Rest, sections below Rest, Reagents, Keyring.
--- Only "bags" area items are classified into sections; empty slots always go to Rest.
+-- Only "bags" area items are classified into sections; empty slots always go to Rest, in
+-- physical bag order among Rest's items.
 function Layout.Build(db, slots, opts)
 	opts = opts or {}
 	local Rules = ns.Rules
@@ -36,7 +37,6 @@ function Layout.Build(db, slots, opts)
 
 	local collapsed = db.collapsedBuiltin or {}
 	local rest = { key = Rules.REST, kind = "rest", slots = {}, count = 0, collapsed = collapsed.rest or false }
-	local restEmpty = {}
 	local reagent = { key = "reagent", kind = "reagent", slots = {}, count = 0, collapsed = collapsed.reagent or false }
 	local keyring = { key = "keyring", kind = "keyring", slots = {}, count = 0, collapsed = collapsed.keyring or false }
 
@@ -48,17 +48,15 @@ function Layout.Build(db, slots, opts)
 			table.insert(keyring.slots, slot)
 			if slot.item then keyring.count = keyring.count + 1 end
 		elseif not slot.item then
-			table.insert(restEmpty, slot)
+			-- Empty slots stay where they physically are, so items can be dropped into any
+			-- of them and appear right there.
+			table.insert(rest.slots, slot)
 		else
 			local sectionId = Rules.Classify(db, slot.item)
 			local group = sectionGroups[sectionId] or rest
 			table.insert(group.slots, slot)
 			group.count = group.count + 1
 		end
-	end
-
-	for _, slot in ipairs(restEmpty) do
-		table.insert(rest.slots, slot)
 	end
 
 	local result = {}
@@ -75,7 +73,7 @@ function Layout.Build(db, slots, opts)
 	if #reagent.slots > 0 then
 		table.insert(result, reagent)
 	end
-	if #keyring.slots > 0 then
+	if #keyring.slots > 0 and not opts.hideKeyring then
 		table.insert(result, keyring)
 	end
 	return result

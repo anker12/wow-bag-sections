@@ -167,7 +167,7 @@ test("layout: 20 slots, 3 essentials -> Essentials(3) and Rest(17)", function()
 	eq(groups[2].kind, "rest")
 	eq(#groups[2].slots, 17)
 	eq(groups[2].count, 2)
-	eq(SlotItems(groups[2]):sub(1, 27), "Item-1-0-POT,Item-1-0-SWA,e", "items before empty slots")
+	eq(SlotItems(groups[2]):sub(1, 37), "Item-1-0-POT,empty,Item-1-0-SWA,empty", "Rest keeps physical bag order")
 end)
 
 test("layout: empty sections hidden unless asked", function()
@@ -197,6 +197,13 @@ test("layout: reagent bag and keyring stay separate and are never classified", f
 	eq(#groups[3].slots, 2)
 	eq(groups[3].count, 1)
 	eq(groups[4].kind, "keyring")
+end)
+
+test("layout: keyring can be hidden", function()
+	local db = Rules.NewCharDB()
+	local slots = Slots({ { item = POTION }, { bag = -1, area = "keyring" } })
+	eq(Layout.Build(db, slots)[2].kind, "keyring")
+	eq(#Layout.Build(db, slots, { hideKeyring = true }), 1)
 end)
 
 test("free slot count", function()

@@ -47,3 +47,11 @@ mention BagSections.
 | T39 | In compact, make a section wrap so its two parts don't touch | The name shows once, on the larger part; both parts have the same outline colour. |
 | T40 | In compact, look at sections that start partway along a row (e.g. after another section) | Their left-hand outline is fully drawn, the same as the other sides. |
 | T41 | In compact, with a reagent bag (and keyring) | Reagents and Keyring sit below a thin divider, separate from your sections and Rest. |
+| T42 | Drag an item while sections are on screen, in both layouts | Valid sections light up blue (a blue border in Default; the outline turns blue in Compact). There's no text in the sections; hovering one shows "Drop to add to …". |
+| T43 | Start dragging an item, then cancel it several ways (right-click, Escape, drop on the action bar, drop in the world and cancel the destroy prompt) | The blue highlights go away every time, and sections stay usable without `/reload`. |
+| T44 | Drag an item from a section onto an empty Rest slot | It lands in that exact slot and leaves the section. |
+| T45 | In Rest, drag an item onto another empty Rest slot | It moves there and stays there. |
+| T46 | Fresh install: create a section | It shows up straight away, empty, ready for drops. |
+| T47 | Gear menu | The order is: New section, Show empty sections, Quest Items section, Show keyring, Layout, Profiles, then Settings. |
+| T48 | Untick Show keyring | The keyring disappears from the bags. |
+| T49 | Footer | It shows empty/total slots as `x / y`. |
