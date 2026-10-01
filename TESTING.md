@@ -52,7 +52,7 @@ mention BagSections.
 | T44 | Drag an item from a section onto an empty Rest slot | It lands in that exact slot and leaves the section. |
 | T45 | In Rest, drag an item onto another empty Rest slot | It moves there and stays there. |
 | T46 | Fresh install: create a section | It shows up straight away, empty, ready for drops. |
-| T47 | Gear menu | The order is: New section, Show empty sections, Quest Items section, Show keyring, Layout, Profiles, then Settings. |
+| T47 | Gear menu | The order is: New section, Show empty sections, Quest Items section, Show keyring, Rearrange sections (Semi-compact only), Layout, Profiles, then Settings. |
 | T48 | Untick Show keyring | The keyring disappears from the bags. |
 | T49 | Footer | It shows empty/total slots as `x / y`. |
 | T50 | Gear menu → Layout → Semi-compact | Your sections sit 3 per row, side by side, each growing downwards. Rest, Reagents and Keyring are full width. The window width is unchanged. |
