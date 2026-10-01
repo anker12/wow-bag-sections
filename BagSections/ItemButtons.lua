@@ -33,11 +33,26 @@ local function OnReceiveDragHook(button)
 	ns.Frame.OnItemButtonDrop(button)
 end
 
+-- One invisible frame per bag, whose ID is the bag number. Blizzard's item button reads its
+-- bag from its parent's ID when none is set on the button itself. A bag number written
+-- onto the button by addon code would be "tainted", and Blizzard's click code reading it
+-- would then be blocked from protected actions such as moving items to and from the bank.
+local bagFrames = {}
+
+local function BagFrame(bag)
+	local frame = bagFrames[bag]
+	if not frame then
+		frame = CreateFrame("Frame", nil, parentFrame)
+		frame:SetID(bag)
+		frame:SetAllPoints(parentFrame)
+		bagFrames[bag] = frame
+	end
+	return frame
+end
+
 local function Create(bag, slot)
 	count = count + 1
-	local button = CreateFrame("ItemButton", "BagSectionsItemButton" .. count, parentFrame, "ContainerFrameItemButtonTemplate")
-	-- SetBagID stores the bag in an attribute, which Blizzard does to keep item interaction untainted.
-	button:SetBagID(bag)
+	local button = CreateFrame("ItemButton", "BagSectionsItemButton" .. count, BagFrame(bag), "ContainerFrameItemButtonTemplate")
 	button:SetID(slot)
 	-- The template pins a fixed frame level; keep buttons above the window background.
 	button:SetFrameLevel(parentFrame:GetFrameLevel() + 2)

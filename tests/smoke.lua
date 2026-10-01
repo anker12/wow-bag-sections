@@ -38,6 +38,7 @@ local function NewFrame(frameType, name, parent, template)
 		SetID = function(self, id) self._id = id end,
 		GetID = function(self) return self._id or 0 end,
 		GetParent = function(self) return self._parent end,
+		SetParent = function(self, newParent) self._parent = newParent end,
 		RegisterEvent = function(self, event) self._events = self._events or {}; self._events[event] = true end,
 	}
 	setmetatable(frame, { __index = function(_, key)
@@ -49,7 +50,8 @@ local function NewFrame(frameType, name, parent, template)
 		-- The bits of ContainerFrameItemButtonMixin the addon calls.
 		frame.OnAttributeChanged = function(self, key, value) if key == "bagid" then self.bagID = value end end
 		frame.SetBagID = function(self, bag) self:SetAttribute("bagid", bag) end
-		frame.GetBagID = function(self) return self.bagID end
+		-- Like Blizzard's mixin: the button's own bag if set, otherwise its parent's ID.
+		frame.GetBagID = function(self) return self.bagID or self._parent:GetID() end
 		frame.SetHasItem = function(self, has) self.hasItem = has and 1 or nil end
 		frame.HasItem = function(self) return self.hasItem end
 		frame._shown = false
@@ -121,7 +123,11 @@ _G.C_Container = {
 	GetSortBagsRightToLeft = function() return false end,
 	SetSortBagsRightToLeft = function() end,
 }
-_G.C_Cursor = { GetCursorItem = function() return cursor and MakeLocation(cursor.bag, cursor.slot) or nil end }
+-- _G._staleCursor mimics GetCursorItem still answering after the cursor was emptied.
+_G.C_Cursor = { GetCursorItem = function()
+	local c = cursor or _G._staleCursor
+	return c and MakeLocation(c.bag, c.slot) or nil
+end }
 _G.C_Item = {
 	DoesItemExist = function(loc) return ItemAt(loc.bag, loc.slot) ~= nil end,
 	GetItemGUID = function(loc) return "Item-" .. loc.bag .. "-" .. loc.slot .. "-" .. ItemAt(loc.bag, loc.slot).itemID end,
@@ -152,6 +158,7 @@ end
 _G.StaticPopup_Show = function(which, _, _, data) _G._lastPopup = { which = which, data = data } end
 _G.ClearCursor = function() cursor = nil end
 _G.CursorHasItem = function() return cursor ~= nil end
+_G.GetCursorInfo = function() if cursor then return "item" end end
 _G.InCombatLockdown = function() return _G._inCombat end
 _G.IsAltKeyDown = function() return false end
 _G.GetMoney = function() return 12345 end
@@ -200,10 +207,23 @@ _G.Settings = {
 }
 _G.CreateSettingsListSectionHeaderInitializer = function() return {} end
 _G.CreateSettingsButtonInitializer = function(_, _, onClick) return { onClick = onClick } end
-local closeHooks = {}
-_G.hooksecurefunc = function(name, fn) closeHooks[name] = fn end
-for _, name in ipairs({ "ToggleBackpack", "ToggleAllBags", "OpenBackpack", "OpenAllBags", "ToggleBag", "OpenBag", "CloseAllBags", "CloseBackpack", "CloseBag" }) do
-	_G[name] = function() _G._blizzardCalled = name end
+_G.hooksecurefunc = function() end
+-- A stand-in for Blizzard's combined bag frame and the functions that open/close it.
+_G.NUM_CONTAINER_FRAMES = 0
+_G.ContainerFrameCombinedBags = NewFrame("Frame", "ContainerFrameCombinedBags", _G.UIParent)
+_G.ContainerFrameCombinedBags._shown = false
+local blizzardOpener
+_G.IsAnyBagOpen = function() return ContainerFrameCombinedBags:IsShown() end
+_G.ToggleAllBags = function() ContainerFrameCombinedBags:SetShown(not ContainerFrameCombinedBags:IsShown()) end
+_G.OpenAllBags = function(frame)
+	if ContainerFrameCombinedBags:IsShown() then return end
+	blizzardOpener = frame and frame:GetName()
+	ContainerFrameCombinedBags:Show()
+end
+_G.CloseAllBags = function(frame)
+	if frame and frame:GetName() ~= blizzardOpener then return end
+	blizzardOpener = nil
+	ContainerFrameCombinedBags:Hide()
 end
 local printed = {}
 _G.print = function(...) table.insert(printed, table.concat({ ... }, " ")) end
@@ -232,28 +252,37 @@ Fire("PLAYER_LOGIN")
 check(type(BagSectionsDB) == "table" and type(BagSectionsCharDB) == "table", "saved variables initialized")
 check(not ns.Frame.IsShown(), "window starts hidden")
 
--- Opening bags goes to the addon window, not Blizzard's.
-_G._blizzardCalled = nil
-ToggleAllBags()
-check(ns.Frame.IsShown(), "ToggleAllBags opens the window")
-check(_G._blizzardCalled == nil, "Blizzard bags not opened")
-ToggleBackpack()
-check(not ns.Frame.IsShown(), "ToggleBackpack closes it again")
-ToggleBag(8)
-check(_G._blizzardCalled == "ToggleBag", "bank bags still go to Blizzard")
+-- No Blizzard bag function is replaced: the window follows Blizzard's own bag state.
+check(ContainerFrameCombinedBags:GetParent() ~= UIParent, "Blizzard's bag frame is tucked out of sight")
+_G.ToggleAllBags()
+check(ns.Frame.IsShown(), "Blizzard opening the bags shows the window")
+_G.ToggleAllBags()
+check(not ns.Frame.IsShown(), "Blizzard closing the bags hides the window")
 
--- Merchant opens bags, closing the merchant closes them; another frame does not.
+-- Merchant opens bags, closing the merchant closes them; another frame does not
+-- (Blizzard's own bookkeeping).
 local merchant = NewFrame("Frame", "MerchantFrame")
 local mail = NewFrame("Frame", "MailFrame")
-OpenAllBags(merchant)
+_G.OpenAllBags(merchant)
 check(ns.Frame.IsShown(), "OpenAllBags opens")
-closeHooks.CloseAllBags(mail)
+_G.CloseAllBags(mail)
 check(ns.Frame.IsShown(), "other frame doesn't close bags")
-closeHooks.CloseAllBags(merchant)
+_G.CloseAllBags(merchant)
 check(not ns.Frame.IsShown(), "opener closes bags")
 
+-- Closing the window itself also closes Blizzard's hidden bags, so B opens them next time.
+_G.ToggleAllBags()
+ns.Frame.Hide()
+check(not ContainerFrameCombinedBags:IsShown(), "closing the window closes Blizzard's bags")
+_G.ToggleAllBags()
+check(ns.Frame.IsShown(), "next B press opens again")
+
+-- Item buttons get their bag from a parent frame, not from a value written on the button.
+local probe = ns.ItemButtons.Get(1, 2)
+check(rawget(probe, "bagID") == nil, "no bag number written onto the button")
+check(probe:GetBagID() == 1 and probe:GetID() == 2, "button still knows its bag and slot")
+
 -- Sections: create, drag the hearthstone in.
-OpenBackpack()
 SlashCmdList.BAGSECTIONS("new Essentials")
 local db = BagSectionsCharDB
 check(#db.sections == 1 and db.sections[1].name == "Essentials", "section created by slash command")
@@ -302,6 +331,12 @@ check(db.rules.byItemID[6948] == nil, "hearthstone unassigned")
 check(ITEMS["0:9"] and ITEMS["0:9"].itemID == 6948, "hearthstone placed in the slot it was dropped on")
 ITEMS["0:1"], ITEMS["0:9"] = ITEMS["0:9"], nil
 Fire("BAG_UPDATE_DELAYED")
+
+-- A stale cursor answer (e.g. after cancelling a bind-on-equip prompt) shows no targets.
+_G._staleCursor = { bag = 0, slot = 5 }
+Fire("CURSOR_CHANGED")
+check(FindGroupFrame("section") == nil, "no drop targets when nothing is really on the cursor")
+_G._staleCursor = nil
 
 -- A drag that ends without any cursor event still clears the drop targets.
 C_Container.PickupContainerItem(0, 5)

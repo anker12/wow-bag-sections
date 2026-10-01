@@ -70,3 +70,7 @@ mention BagSections.
 | T62 | Save a profile, load it on another character | Same rows. |
 | T63 | Gear menu → Layout → Reset rows | Back to the automatic 3-per-row arrangement. |
 | T64 | Switch to Default after rearranging | Sections are in the same order as the rows (reading order), with sections after Rest shown below it. |
+| T65 | At the bank, right-click items bank → bags and bags → bank, repeatedly | They move every time; no "BagSections has been blocked" message. |
+| T66 | Right-click a bind-on-equip item, then Cancel on the bind prompt | No blue drop highlights left behind; everything stays clickable. |
+| T67 | Drag gear from the character pane and drop it back on the character pane | No blue drop highlights left behind. |
+| T68 | B, merchant, bank, Escape, close button | The bags open and close as with Blizzard's bags; Escape closes them. |
