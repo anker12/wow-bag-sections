@@ -9,6 +9,9 @@ local Frame = {}
 ns.Frame = Frame
 
 local PADDING = 10
+-- The Blizzard border is thicker than the plain one; keep content (and compact outlines,
+-- which sit just outside the slots) clear of it.
+local BLIZZARD_BORDER_EXTRA = 6
 local SPACING = 4
 local HEADER_HEIGHT = 20
 local GROUP_GAP = 6
@@ -848,9 +851,9 @@ local function CreateTitleBar()
 
 	-- The title (and the search box next to it) are centred on the same line as the close,
 	-- options and sort buttons, inside the border's top band.
-	local buttonRowY = 1 - (main.CloseButton:GetHeight() or 24) / 2
+	main.buttonRowY = 1 - (main.CloseButton:GetHeight() or 24) / 2
 	main.Title = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", PADDING, buttonRowY)
+	main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", PADDING, main.buttonRowY)
 	main.Title:SetText(L.BAGS)
 
 	main.MenuButton = CreateFrame("Button", nil, main.Chrome)
@@ -1025,11 +1028,23 @@ function Frame.Init()
 	Frame.ApplyAppearance()
 end
 
+-- Space between the window edge and its contents on the left and right.
+function Frame.SidePadding()
+	return ns.db.blizzardBorder ~= false and PADDING + BLIZZARD_BORDER_EXTRA or PADDING
+end
+
 -- Background style and opacity, and which border to use, from Settings.
 function Frame.ApplyAppearance()
 	if not main then
 		return
 	end
+	local pad = Frame.SidePadding()
+	main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", pad, main.buttonRowY)
+	main.Money:SetPoint("BOTTOMRIGHT", -pad, 8)
+	main.FreeSlots:SetPoint("BOTTOMLEFT", pad, 8)
+	main.RearrangeBar:SetPoint("TOPLEFT", pad, -TITLE_HEIGHT + 2)
+	main.RearrangeBar:SetPoint("TOPRIGHT", -pad, -TITLE_HEIGHT + 2)
+	ns.RequestRefresh()
 	local alpha = ns.db.backgroundAlpha or 0.94
 	if ns.db.backgroundStyle == "blizzard" then
 		main.BlizzardBackground:Show()
@@ -1134,8 +1149,9 @@ function Frame.Render(mode)
 	local barHeight = Frame.IsRearranging() and REARRANGE_BAR_HEIGHT or 0
 	main.RearrangeBar:SetShown(barHeight > 0)
 	content:ClearAllPoints()
-	content:SetPoint("TOPLEFT", PADDING, -(TITLE_HEIGHT + barHeight))
-	main:SetSize(gridWidth + PADDING * 2, TITLE_HEIGHT + barHeight + contentHeight + FOOTER_HEIGHT + 6)
+	local pad = Frame.SidePadding()
+	content:SetPoint("TOPLEFT", pad, -(TITLE_HEIGHT + barHeight))
+	main:SetSize(gridWidth + pad * 2, TITLE_HEIGHT + barHeight + contentHeight + FOOTER_HEIGHT + 6)
 
 	local bagSlots = {}
 	for _, slot in ipairs(slots) do
