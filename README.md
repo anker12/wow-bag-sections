@@ -71,6 +71,11 @@ after asking, and their items go back to Rest.
 Switch layouts from the gear menu (Layout) or in Settings.
 
 * **Default:** the layout above. Each section is stacked at full width.
+* **Semi-compact:** like Default, but your sections sit side by side, a set number per row
+  (Gear menu → Layout → Sections per row, or Settings; default 3). Each section gets an
+  equal share of the width and grows downwards. Rest, Reagents and Keyring stay full
+  width. The number per row is capped so every section is at least one slot wide (8 at
+  10 columns). Names that don't fit are cut short; hover for the full name.
 * **Compact:** works like Blizzard's combined bag. All sections run through one grid with
   no gaps: each section starts in the slot right after the previous one ends and wraps onto
   the next line. Each section is outlined in its own colour, even across line breaks, with

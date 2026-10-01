@@ -22,6 +22,7 @@ local function NewFrame(frameType, name, parent, template)
 		HookScript = function(self, script, fn) local old = self._scripts[script]; self._scripts[script] = function(...) if old then old(...) end fn(...) end end,
 		GetFrameLevel = function(self) return self._level end,
 		SetPoint = function(self, point, rel, relPoint, x, y) self._point = { point, rel, relPoint, x, y } end,
+		SetSize = function(self, w, h) self._w, self._h = w, h end,
 		ClearAllPoints = function(self) self._point = nil end,
 		SetFrameLevel = function(self, level) self._level = level end,
 		GetPoint = function() return "BOTTOMRIGHT", nil, "BOTTOMRIGHT", -60, 100 end,
@@ -471,6 +472,47 @@ check(_G._lastPopup and _G._lastPopup.which == "BAGSECTIONS_DELETE_SECTION", "co
 StaticPopupDialogs.BAGSECTIONS_DELETE_SECTION.OnAccept(nil, _G._lastPopup.data)
 check(#db.sections == before - 1, "section deleted")
 check(next(db.rules.byGUID) == nil, "rules removed with section")
+
+-- Semi-compact: sections side by side, Rest full width.
+while #db.sections > 0 do ns.Rules.DeleteSection(db, db.sections[1].id) end
+for _, name in ipairs({ "SemiA", "SemiB", "SemiC", "SemiD" }) do
+	SlashCmdList.BAGSECTIONS("new " .. name)
+end
+local function SectionByName(name)
+	for _, s in ipairs(db.sections) do if s.name == name then return s end end
+end
+for _, s in ipairs(db.sections) do s.below, s.collapsed = false, false end
+ns.Rules.Assign(db, { itemID = 6948 }, SectionByName("SemiA").id, "itemID")
+ns.Rules.Assign(db, { itemID = 2901 }, SectionByName("SemiB").id, "itemID")
+ns.Rules.Assign(db, { itemID = 200 }, SectionByName("SemiC").id, "itemID")
+BagSectionsDB.sectionsPerRow = 3
+ns.Menu.SetLayout("semicompact")
+local function HeaderFor(name)
+	for _, frame in ipairs(frames) do
+		if frame._shown and rawget(frame, "Line") and frame.group and frame.group.name == name then return frame end
+	end
+end
+local function HeaderForKind(kind)
+	for _, frame in ipairs(frames) do
+		if frame._shown and rawget(frame, "Line") and frame.group and frame.group.kind == kind then return frame end
+	end
+end
+local a, b, c, d = HeaderFor("SemiA"), HeaderFor("SemiB"), HeaderFor("SemiC"), HeaderFor("SemiD")
+check(a and b and c and d, "semi-compact shows section headers")
+check(a._point[5] == b._point[5] and b._point[5] == c._point[5], "three sections share a row")
+check(a._point[4] < b._point[4] and b._point[4] < c._point[4], "side by side, in order")
+check(d._point[4] == 0 and d._point[5] < a._point[5], "fourth section starts the next row")
+check(a._w < 150, "sections get a third of the width")
+local semiRest = HeaderForKind("rest")
+check(semiRest._point[4] == 0 and semiRest._w == 406, "Rest stays full width")
+local hsButton = ns.ItemButtons.Get(0, 1)
+check(hsButton._point[4] >= a._point[4] and hsButton._point[4] < b._point[4], "items sit inside their section's column")
+BagSectionsDB.sectionsPerRow = 50
+ns.RequestRefresh()
+check(HeaderFor("SemiA")._w >= 37, "sections per row is capped so each is at least a slot wide")
+ns.Menu.OpenMainMenu(a)
+ns.Menu.SetLayout("default")
+check(HeaderFor("SemiA")._w == 406, "default layout: full width again")
 
 -- Every event handler runs without error.
 for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY", "INVENTORY_SEARCH_UPDATE", "GET_ITEM_INFO_RECEIVED", "MERCHANT_SHOW" }) do

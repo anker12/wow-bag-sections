@@ -270,36 +270,92 @@ local function SetupHeader(index, group)
 	return header
 end
 
+-- Draws one group the default way (header, then a grid of `columns` slots) in a box at
+-- (x, y) that is `width` pixels wide. Returns the height used.
+local function DrawGroup(index, group, x, y, width, columns, gridWidth, used)
+	local top = y
+	local header = SetupHeader(index, group)
+	header:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+	header:SetSize(width, HEADER_HEIGHT)
+	-- Narrower than the window (semi-compact): shorten long names, full name on hover.
+	header.Text:SetWidth(0)
+	if width < gridWidth then
+		header.Text:SetWidth(math.min(header.Text:GetStringWidth() or 0, width - 20))
+	end
+	header.showTitleInTooltip = width < gridWidth
+	y = y + HEADER_HEIGHT + 2
+
+	if not group.collapsed then
+		for i, slot in ipairs(group.slots) do
+			local column = (i - 1) % columns
+			local row = math.floor((i - 1) / columns)
+			PlaceButton(group, slot, x + column * CELL, y + row * CELL, used)
+		end
+		local rows = math.ceil(#group.slots / columns)
+		if rows == 0 and group.kind == "section" then
+			-- Empty section: leave a row so it can still receive drops.
+			rows = 1
+		end
+		y = y + rows * CELL
+	end
+
+	if IsDropTarget(group) then
+		ShowOverlay(index, group, x - 3, top - 2, width + 6, y - top + 1, true)
+	end
+	return y - top
+end
+
 -- Default layout: groups stacked top to bottom at full width.
 local function RenderDefault(groups, columns, gridWidth, used)
 	local y = 0
 	for index, group in ipairs(groups) do
-		local top = y
-		local header = SetupHeader(index, group)
-		header:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-		header:SetSize(gridWidth, HEADER_HEIGHT)
-		y = y + HEADER_HEIGHT + 2
-
-		if not group.collapsed then
-			for i, slot in ipairs(group.slots) do
-				local column = (i - 1) % columns
-				local row = math.floor((i - 1) / columns)
-				PlaceButton(group, slot, column * CELL, y + row * CELL, used)
-			end
-			local rows = math.ceil(#group.slots / columns)
-			if rows == 0 and group.kind == "section" then
-				-- Empty section: leave a row so it can still receive drops.
-				rows = 1
-			end
-			y = y + rows * CELL
-		end
-
-		if IsDropTarget(group) then
-			ShowOverlay(index, group, -3, top - 2, gridWidth + 6, y - top + 1, true)
-		end
-
-		y = y + GROUP_GAP
+		y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + GROUP_GAP
 	end
+	return y - GROUP_GAP
+end
+
+-- Semi-compact layout: like the default, but your sections sit side by side, a number per
+-- row (sectionsPerRow, at most one per slot column), each growing downwards. Rest,
+-- Reagents and Keyring stay full width.
+local SEMI_GAP = 12 -- space between sections on the same row
+
+-- The most sections that fit side by side with each at least one slot wide.
+function Frame.MaxSectionsPerRow(columns)
+	local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
+	return math.max(1, math.floor((gridWidth + SEMI_GAP) / (BUTTON_SIZE + SEMI_GAP)))
+end
+
+local function RenderSemiCompact(groups, columns, gridWidth, used)
+	local perRow = math.max(1, math.min(ns.db.sectionsPerRow or 3, Frame.MaxSectionsPerRow(columns)))
+	local boxWidth = (gridWidth - (perRow - 1) * SEMI_GAP) / perRow
+	local boxColumns = math.max(1, math.floor((boxWidth + SPACING) / CELL))
+
+	local y, row = 0, {}
+	local function FlushRow()
+		if #row == 0 then
+			return
+		end
+		local rowHeight = 0
+		for i, entry in ipairs(row) do
+			local x = math.floor((i - 1) * (boxWidth + SEMI_GAP) + 0.5)
+			rowHeight = math.max(rowHeight, DrawGroup(entry.index, entry.group, x, y, boxWidth, boxColumns, gridWidth, used))
+		end
+		y = y + rowHeight + GROUP_GAP
+		row = {}
+	end
+
+	for index, group in ipairs(groups) do
+		if group.kind == "section" then
+			table.insert(row, { index = index, group = group })
+			if #row == perRow then
+				FlushRow()
+			end
+		else
+			FlushRow()
+			y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + GROUP_GAP
+		end
+	end
+	FlushRow()
 	return y - GROUP_GAP
 end
 
@@ -781,6 +837,8 @@ function Frame.Render(mode)
 	if compact then
 		contentHeight, gridWidth = RenderCompact(groups, columns, used)
 		content:SetWidth(gridWidth)
+	elseif ns.db.layout == "semicompact" then
+		contentHeight = RenderSemiCompact(groups, columns, gridWidth, used)
 	else
 		contentHeight = RenderDefault(groups, columns, gridWidth, used)
 	end

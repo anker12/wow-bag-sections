@@ -55,3 +55,8 @@ mention BagSections.
 | T47 | Gear menu | The order is: New section, Show empty sections, Quest Items section, Show keyring, Layout, Profiles, then Settings. |
 | T48 | Untick Show keyring | The keyring disappears from the bags. |
 | T49 | Footer | It shows empty/total slots as `x / y`. |
+| T50 | Gear menu → Layout → Semi-compact | Your sections sit 3 per row, side by side, each growing downwards. Rest, Reagents and Keyring are full width. The window width is unchanged. |
+| T51 | Gear menu → Layout → Sections per row → 2, then 5 | Rows hold 2, then 5 sections. The list stops at the most that fit (8 at 10 columns). |
+| T52 | Semi-compact with a long section name | The name is cut short with "…"; hovering the header shows it in full. |
+| T53 | Semi-compact: drag an item onto a section, collapse a section, use right-click menus | Everything works as in Default. |
+| T54 | Switch back to Default | It looks exactly as before. |
