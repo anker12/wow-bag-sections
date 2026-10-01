@@ -538,6 +538,9 @@ Store sections **per character** because each character carries different things
   Highlights are stored at their group's position, so the pool has gaps (e.g. Rest at
   position 1 is never a target for its own items), and hiding them with `ipairs` stopped
   at the first gap. All pools are now hidden with `pairs`.
+* **Drop highlight look (v0.12.2):** a 1px blue edge with an 8px blue glow fading in
+  towards the middle (gradient textures), like Blizzard's item slot hover. It replaces the
+  2px border.
 * **Bag number from a parent frame:** item buttons no longer get `SetBagID` (an addon
   write, so tainted). Each sits in an invisible per-bag frame whose ID is the bag, which
   Blizzard's `GetBagID` falls back to. This is the long-standing Bagnon pattern.
