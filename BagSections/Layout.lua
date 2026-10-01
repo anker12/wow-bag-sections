@@ -81,111 +81,152 @@ function Layout.Build(db, slots, opts)
 	return result
 end
 
--- Compact ("flow") layout geometry. All groups share one grid of `columns` columns, like
--- Blizzard's combined bag: each group is a run of cells that starts right after the
--- previous one and wraps onto the next row. Cells are numbered from 0 in reading order.
+-- Compact ("flow") layout geometry. All groups run through one set of rows, like
+-- Blizzard's combined bag: each group's cells follow straight after the previous group's,
+-- wrapping onto the next row. A group that starts partway along a row is shifted right by
+-- `groupGap` extra pixels so neighbouring outlines get breathing room.
 
--- sizes[i] = number of cells group i takes. Returns runs[i] = { start, length } and the
--- total number of cells.
-function Layout.Flow(sizes)
-	local runs, start = {}, 0
+-- sizes[i]: cells in group i. width: row width in pixels. button: cell size. step: cell
+-- size plus spacing. Returns cells[i] = { { row, x }, ... } and the number of rows.
+function Layout.FlowRows(sizes, width, button, step, groupGap)
+	local cells = {}
+	local row, x, rowUsed = 0, 0, false
 	for i, size in ipairs(sizes) do
-		runs[i] = { start = start, length = size }
-		start = start + size
-	end
-	return runs, start
-end
-
-local function RunEnds(run, columns)
-	local last = run.start + run.length - 1
-	return math.floor(run.start / columns), run.start % columns, math.floor(last / columns), last % columns
-end
-
--- Rectangles covering a run, in grid units: { col, row, cols, rows }.
-function Layout.RunRects(run, columns)
-	if run.length <= 0 then
-		return {}
-	end
-	local r0, c0, r1, c1 = RunEnds(run, columns)
-	if r0 == r1 then
-		return { { col = c0, row = r0, cols = c1 - c0 + 1, rows = 1 } }
-	end
-	local rects = { { col = c0, row = r0, cols = columns - c0, rows = 1 } }
-	if r1 - r0 > 1 then
-		table.insert(rects, { col = 0, row = r0 + 1, cols = columns, rows = r1 - r0 - 1 })
-	end
-	table.insert(rects, { col = 0, row = r1, cols = c1 + 1, rows = 1 })
-	return rects
-end
-
-local function RectPolygon(c0, r0, c1, r1)
-	return { { x = c0, y = r0 }, { x = c1, y = r0 }, { x = c1, y = r1 }, { x = c0, y = r1 } }
-end
-
--- Outline of a run as clockwise polygons of grid corners { x = column line, y = row line }.
--- Usually one polygon; two when a run wraps without its rows overlapping.
-function Layout.RunPolygons(run, columns)
-	if run.length <= 0 then
-		return {}
-	end
-	local r0, c0, r1, c1 = RunEnds(run, columns)
-	if r0 == r1 then
-		return { RectPolygon(c0, r0, c1 + 1, r0 + 1) }
-	end
-	if r1 == r0 + 1 and c1 < c0 then
-		return { RectPolygon(c0, r0, columns, r0 + 1), RectPolygon(0, r1, c1 + 1, r1 + 1) }
-	end
-	local points = {}
-	local function Add(x, y) table.insert(points, { x = x, y = y }) end
-	Add(c0, r0)
-	Add(columns, r0)
-	if c1 == columns - 1 then
-		Add(columns, r1 + 1)
-	else
-		Add(columns, r1)
-		Add(c1 + 1, r1)
-		Add(c1 + 1, r1 + 1)
-	end
-	Add(0, r1 + 1)
-	if c0 > 0 then
-		Add(0, r0 + 1)
-		Add(c0, r0 + 1)
-	end
-	return { points }
-end
-
--- Where a run's name label goes: the longest stretch of the run's top edge.
--- Returns { row, col, cols } in grid units.
-function Layout.LabelSegment(run, columns)
-	local r0, c0, r1, c1 = RunEnds(run, columns)
-	local first = { row = r0, col = c0, cols = (r0 == r1 and c1 or columns - 1) - c0 + 1 }
-	if r1 > r0 and c0 > 0 then
-		local secondEnd = math.min(c0 - 1, r1 == r0 + 1 and c1 or columns - 1)
-		local second = { row = r0 + 1, col = 0, cols = secondEnd + 1 }
-		if second.cols > first.cols then
-			return second
+		cells[i] = {}
+		if rowUsed and size > 0 then
+			x = x + groupGap
+		end
+		for _ = 1, size do
+			if x + button > width then
+				row, x = row + 1, 0
+			end
+			table.insert(cells[i], { row = row, x = x })
+			x = x + step
+			rowUsed = true
 		end
 	end
-	return first
+	return cells, rowUsed and row + 1 or 0
 end
 
--- Moves every edge of a clockwise orthogonal polygon (screen coordinates, y down) inwards
--- by d, so neighbouring outlines sit side by side instead of on top of each other.
-function Layout.InsetPolygon(points, d)
-	local n = #points
-	local result = {}
-	local function Normal(a, b)
-		local dx, dy = b.x - a.x, b.y - a.y
-		local len = math.abs(dx) + math.abs(dy)
-		return -dy / len, dx / len
+-- Per-row horizontal extent of a group's cells: { row, left, right } in reading order.
+function Layout.Strips(groupCells, button)
+	local strips = {}
+	for _, cell in ipairs(groupCells) do
+		local last = strips[#strips]
+		if last and last.row == cell.row then
+			last.right = cell.x + button
+		else
+			table.insert(strips, { row = cell.row, left = cell.x, right = cell.x + button })
+		end
 	end
+	return strips
+end
+
+local function Overlaps(a, b)
+	return a.l < b.r and b.l < a.r
+end
+
+-- Splits padded strips { l, r, t, b } (pixels, y down) into chains of strips that touch
+-- horizontally on consecutive rows. Each chain is outlined as one shape.
+local function Chains(boxes)
+	local chains = {}
+	for i, box in ipairs(boxes) do
+		local chain = chains[#chains]
+		if i > 1 and Overlaps(boxes[i - 1], box) then
+			table.insert(chain, box)
+		else
+			table.insert(chains, { box })
+		end
+	end
+	return chains
+end
+
+local function AddPoint(points, x, y)
+	local last = points[#points]
+	if last and last.x == x and last.y == y then
+		return
+	end
+	table.insert(points, { x = x, y = y })
+end
+
+-- Removes points that sit in the middle of a straight edge.
+local function Simplify(points)
+	local result = {}
+	local n = #points
 	for i = 1, n do
 		local prev, cur, nxt = points[(i - 2) % n + 1], points[i], points[i % n + 1]
-		local nx1, ny1 = Normal(prev, cur)
-		local nx2, ny2 = Normal(cur, nxt)
-		result[i] = { x = cur.x + d * (nx1 + nx2), y = cur.y + d * (ny1 + ny2) }
+		local straight = (prev.x == cur.x and cur.x == nxt.x) or (prev.y == cur.y and cur.y == nxt.y)
+		if not straight then
+			table.insert(result, cur)
+		end
 	end
 	return result
+end
+
+-- Outline polygons (clockwise, pixels, y down) around padded strips { l, r, t, b }.
+-- Steps between rows sit on the edge of whichever row is wider, so the padding around the
+-- items is the same on every side.
+function Layout.StripPolygons(boxes)
+	local polygons = {}
+	for _, chain in ipairs(Chains(boxes)) do
+		local points = {}
+		local k = #chain
+		AddPoint(points, chain[1].l, chain[1].t)
+		AddPoint(points, chain[1].r, chain[1].t)
+		for i = 1, k - 1 do
+			local a, b = chain[i], chain[i + 1]
+			if a.r > b.r then
+				AddPoint(points, a.r, a.b)
+				AddPoint(points, b.r, a.b)
+			elseif a.r < b.r then
+				AddPoint(points, a.r, b.t)
+				AddPoint(points, b.r, b.t)
+			end
+		end
+		AddPoint(points, chain[k].r, chain[k].b)
+		AddPoint(points, chain[k].l, chain[k].b)
+		for i = k - 1, 1, -1 do
+			local below, above = chain[i + 1], chain[i]
+			if below.l < above.l then
+				AddPoint(points, below.l, below.t)
+				AddPoint(points, above.l, below.t)
+			elseif below.l > above.l then
+				AddPoint(points, below.l, above.b)
+				AddPoint(points, above.l, above.b)
+			end
+		end
+		table.insert(polygons, Simplify(points))
+	end
+	return polygons
+end
+
+-- Where a group's name goes: the longest stretch of top edge of each separate part of
+-- the group (a wrapped group whose rows don't touch has two parts, each gets a name).
+-- Returns a list of { index, l, r }, index being the strip the stretch belongs to.
+function Layout.TopEdges(boxes)
+	local edges, best = {}, nil
+	local function Consider(index, l, r)
+		if r > l and (not best or r - l > best.r - best.l) then
+			best = { index = index, l = l, r = r }
+		end
+	end
+	for i, box in ipairs(boxes) do
+		local above = boxes[i - 1]
+		if i == 1 or not Overlaps(above, box) then
+			if best then
+				table.insert(edges, best)
+				best = nil
+			end
+			Consider(i, box.l, box.r)
+		else
+			Consider(i, box.l, math.min(box.r, above.l))
+			Consider(i, math.max(box.l, above.r), box.r)
+		end
+	end
+	if best then
+		table.insert(edges, best)
+	end
+	return edges
 end
 
 -- Counts free and total slots for the footer.

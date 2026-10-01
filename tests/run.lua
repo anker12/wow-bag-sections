@@ -260,13 +260,6 @@ test("built-in groups can be collapsed", function()
 	eq(db.collapsedBuiltin.rest, nil)
 end)
 
-test("flow: runs follow each other with no gaps", function()
-	local runs, total = Layout.Flow({ 3, 5, 0, 2 })
-	eq(runs[1].start, 0); eq(runs[2].start, 3); eq(runs[3].start, 8); eq(runs[4].start, 8)
-	eq(runs[3].length, 0)
-	eq(total, 10)
-end)
-
 local function PolygonArea(points)
 	local area = 0
 	for i, a in ipairs(points) do
@@ -276,61 +269,122 @@ local function PolygonArea(points)
 	return area / 2
 end
 
-test("flow: run outlines cover exactly the run's cells, clockwise", function()
-	local columns = 10
-	for start = 0, 25 do
-		for length = 1, 32 do
-			local area = 0
-			for _, polygon in ipairs(Layout.RunPolygons({ start = start, length = length }, columns)) do
-				local a = PolygonArea(polygon)
-				assert(a > 0, ("run %d+%d: polygon not clockwise (y down)"):format(start, length))
-				area = area + a
-				for i, p in ipairs(polygon) do
-					local q = polygon[i % #polygon + 1]
-					assert(p.x == q.x or p.y == q.y, "edges are horizontal or vertical")
-					assert(not (p.x == q.x and p.y == q.y), "no repeated corners")
-				end
+-- 10 columns of 37px buttons with 4px spacing: 406px wide; 14px extra before a section
+-- that starts partway along a row.
+local W, BTN, STEP, GAP = 406, 37, 41, 14
+
+test("flow rows: a lone section fills the full width", function()
+	local cells, rows = Layout.FlowRows({ 25 }, W, BTN, STEP, GAP)
+	eq(rows, 3)
+	eq(cells[1][10].row, 0); eq(cells[1][10].x, 369)
+	eq(cells[1][11].row, 1); eq(cells[1][11].x, 0)
+end)
+
+test("flow rows: sections follow each other with a gap, wrapping when full", function()
+	local cells, rows = Layout.FlowRows({ 3, 5, 0, 9 }, W, BTN, STEP, GAP)
+	eq(cells[2][1].row, 0)
+	eq(cells[2][1].x, 3 * STEP + GAP, "gap before a section that starts mid-row")
+	eq(#cells[3], 0)
+	-- empty section adds no gap; the last section starts at 356 and its 2nd cell wraps
+	eq(cells[4][1].row, 0); eq(cells[4][1].x, 8 * STEP + 2 * GAP)
+	eq(cells[4][2].row, 1); eq(cells[4][2].x, 0, "no gap at the start of a row")
+	eq(rows, 2)
+end)
+
+test("flow rows: cells never overflow the width or overlap", function()
+	for _, sizes in ipairs({ { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 7, 2, 11, 3, 1, 20 }, { 0, 40 } }) do
+		local cells = Layout.FlowRows(sizes, W, BTN, STEP, GAP)
+		local seen = {}
+		for _, group in ipairs(cells) do
+			for _, cell in ipairs(group) do
+				assert(cell.x >= 0 and cell.x + BTN <= W, "cell inside width")
+				local key = cell.row .. ":" .. cell.x
+				assert(not seen[key], "cells overlap")
+				seen[key] = true
 			end
-			eq(area, length, ("run %d+%d area"):format(start, length))
-			local cells = 0
-			for _, rect in ipairs(Layout.RunRects({ start = start, length = length }, columns)) do
-				cells = cells + rect.cols * rect.rows
-			end
-			eq(cells, length, ("run %d+%d rects"):format(start, length))
 		end
 	end
 end)
 
-test("flow: wrapping run that doesn't overlap itself gives two shapes", function()
-	-- starts at column 8 of row 0, ends at column 1 of row 1
-	eq(#Layout.RunPolygons({ start = 8, length = 4 }, 10), 2)
-	-- starts at column 8, ends at column 9 of row 1: one connected shape
-	eq(#Layout.RunPolygons({ start = 8, length = 12 }, 10), 1)
+local function Boxes(strips, rowHeight, pad)
+	local boxes = {}
+	for _, strip in ipairs(strips) do
+		local top = strip.row * rowHeight
+		table.insert(boxes, { l = strip.left - pad, r = strip.right + pad, t = top - pad, b = top + BTN + pad })
+	end
+	return boxes
+end
+
+test("outline: equal padding on all sides of a single row", function()
+	local cells = Layout.FlowRows({ 3 }, W, BTN, STEP, GAP)
+	local polygons = Layout.StripPolygons(Boxes(Layout.Strips(cells[1], BTN), 50, 5))
+	eq(#polygons, 1)
+	local p = polygons[1]
+	eq(#p, 4)
+	eq(p[1].x, -5); eq(p[1].y, -5)
+	eq(p[3].x, 2 * STEP + BTN + 5); eq(p[3].y, BTN + 5)
 end)
 
-test("flow: name goes on the longest stretch of top edge", function()
-	-- one slot at the end of row 2, then 7 on row 3: the name goes on row 3
-	local seg = Layout.LabelSegment({ start = 29, length = 8 }, 10)
-	eq(seg.row, 3); eq(seg.col, 0); eq(seg.cols, 7)
-	-- starts at column 2 with lots of room on row 0
-	seg = Layout.LabelSegment({ start = 2, length = 15 }, 10)
-	eq(seg.row, 0); eq(seg.col, 2); eq(seg.cols, 8)
-	-- fits in one row
-	seg = Layout.LabelSegment({ start = 13, length = 3 }, 10)
-	eq(seg.row, 1); eq(seg.col, 3); eq(seg.cols, 3)
+test("outline: wrapped sections are one clockwise shape, or two if they don't touch", function()
+	-- starts partway along row 0 and fills row 1: rows overlap -> one shape
+	local cells = Layout.FlowRows({ 5, 16 }, W, BTN, STEP, GAP)
+	local strips = Layout.Strips(cells[2], BTN)
+	eq(#strips, 3)
+	local polygons = Layout.StripPolygons(Boxes(strips, 50, 5))
+	eq(#polygons, 1)
+	assert(PolygonArea(polygons[1]) > 0, "clockwise")
+	for i, a in ipairs(polygons[1]) do
+		local b = polygons[1][i % #polygons[1] + 1]
+		assert(a.x == b.x or a.y == b.y, "edges are straight")
+	end
+	-- two cells at the end of row 0, four at the start of row 1: they don't touch
+	cells = Layout.FlowRows({ 7, 6 }, W, BTN, STEP, GAP)
+	strips = Layout.Strips(cells[2], BTN)
+	eq(#strips, 2)
+	eq(#Layout.StripPolygons(Boxes(strips, 50, 5)), 2)
 end)
 
-test("flow: inset moves outlines inwards", function()
-	local square = { { x = 0, y = 0 }, { x = 10, y = 0 }, { x = 10, y = 10 }, { x = 0, y = 10 } }
-	local inset = Layout.InsetPolygon(square, 1)
-	eq(inset[1].x, 1); eq(inset[1].y, 1)
-	eq(inset[3].x, 9); eq(inset[3].y, 9)
-	-- concave corner of an L shape moves outward from the corner
-	local l = Layout.RunPolygons({ start = 8, length = 12 }, 10)[1]
-	local scaled = {}
-	for i, p in ipairs(l) do scaled[i] = { x = p.x * 10, y = p.y * 10 } end
-	local area = PolygonArea(Layout.InsetPolygon(scaled, 1))
-	assert(area < PolygonArea(scaled), "inset shape is smaller")
+test("outline: shape area covers all padded strips", function()
+	for start = 1, 9 do
+		for size = 1, 30 do
+			local cells = Layout.FlowRows({ start, size }, W, BTN, STEP, GAP)
+			local boxes = Boxes(Layout.Strips(cells[2], BTN), 41, 5)
+			local area = 0
+			for _, polygon in ipairs(Layout.StripPolygons(boxes)) do
+				local a = PolygonArea(polygon)
+				assert(a > 0, "clockwise")
+				area = area + a
+			end
+			-- boxes on consecutive rows overlap by 6px where they touch; the shape counts that once
+			local expected = 0
+			for i, box in ipairs(boxes) do
+				expected = expected + (box.r - box.l) * (box.b - box.t)
+				local prev = boxes[i - 1]
+				if prev and prev.l < box.r and box.l < prev.r then
+					expected = expected - (math.min(prev.r, box.r) - math.max(prev.l, box.l)) * (prev.b - box.t)
+				end
+			end
+			eq(area, expected, ("start %d size %d"):format(start, size))
+		end
+	end
+end)
+
+test("outline: name goes on the longest stretch of top edge", function()
+	-- one cell at the end of row 0, then a full row: the name goes on row 1
+	local cells = Layout.FlowRows({ 8, 12 }, W, BTN, STEP, GAP)
+	local strips = Layout.Strips(cells[2], BTN)
+	local edges = Layout.TopEdges(Boxes(strips, 50, 5))
+	eq(#edges, 1)
+	eq(strips[edges[1].index].row, 1)
+	-- fits in one row: the name goes on it
+	cells = Layout.FlowRows({ 2, 3 }, W, BTN, STEP, GAP)
+	edges = Layout.TopEdges(Boxes(Layout.Strips(cells[2], BTN), 50, 5))
+	eq(edges[1].index, 1)
+	eq(edges[1].l, 2 * STEP + GAP - 5)
+	-- two separate parts: each gets a name
+	cells = Layout.FlowRows({ 7, 6 }, W, BTN, STEP, GAP)
+	edges = Layout.TopEdges(Boxes(Layout.Strips(cells[2], BTN), 50, 5))
+	eq(#edges, 2)
 end)
 
 local QUEST = { itemID = 500, guid = "Item-1-0-Q", maxStack = 1, isQuest = true }

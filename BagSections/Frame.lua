@@ -18,10 +18,10 @@ local BUTTON_SIZE = ItemButtons.SIZE
 local CELL = BUTTON_SIZE + SPACING
 
 -- Compact layout: every group runs through one shared grid, outlined in its colour.
-local LANE_HEIGHT = 16 -- space above a row that carries section names
-local EDGE = 6 -- space above/below the grid where no name sits
+local OUTLINE_PADDING = 5 -- space between a section's items and its outline, on every side
+local SECTION_GAP = 8 -- space between neighbouring outlines
+local NAME_HEIGHT = 14 -- height of a section's name label on its outline
 local LINE = 2 -- outline thickness
-local INSET = 1 -- each outline sits this far inside its cells' boundary
 local REFLOW_AFTER_SORT = 3 -- seconds the compact layout keeps updating after a sort
 
 -- Outline colours for the built-in groups in the compact layout.
@@ -338,89 +338,126 @@ end
 -- other with no gaps, each outlined in its colour with its name on its top edge.
 local function RenderCompact(groups, columns, used)
 	local Layout = ns.Layout
+	local P = OUTLINE_PADDING
+	local width = columns * CELL - SPACING
+	-- Extra space before a section that starts partway along a row, on top of SPACING.
+	local groupGap = 2 * P + SECTION_GAP - SPACING
+
 	local sizes = {}
 	for i, group in ipairs(groups) do
 		group.placeholder = group.collapsed or #group.slots == 0
 		sizes[i] = group.placeholder and LabelCells(group, columns) or #group.slots
 	end
-	local runs, total = Layout.Flow(sizes)
-	local rows = math.max(1, math.ceil(total / columns))
+	local cells, rows = Layout.FlowRows(sizes, width, BUTTON_SIZE, CELL, groupGap)
 
-	local segments, labelRows = {}, {}
-	for i, run in ipairs(runs) do
-		segments[i] = Layout.LabelSegment(run, columns)
-		labelRows[segments[i].row] = true
+	-- Which groups have cells on each row, and each group's per-row strips.
+	local rowGroups, strips = {}, {}
+	for r = 0, rows - 1 do
+		rowGroups[r] = {}
+	end
+	for i in ipairs(groups) do
+		strips[i] = Layout.Strips(cells[i], BUTTON_SIZE)
+		for _, strip in ipairs(strips[i]) do
+			rowGroups[strip.row][i] = true
+		end
+	end
+	local function OnlyGroup(r)
+		local only
+		for i in pairs(rowGroups[r]) do
+			if only then return nil end
+			only = i
+		end
+		return only
 	end
 
-	-- Row positions: rows carrying a name get a taller gap above them.
-	local rowTop, gapAbove, y = {}, {}, 0
+	-- Name rows are known once rows exist; work out each group's top edge using
+	-- provisional row positions (row gaps only shift whole rows, not x positions).
+	local function Boxes(i, rowTop)
+		local boxes = {}
+		for _, strip in ipairs(strips[i]) do
+			table.insert(boxes, {
+				l = strip.left - P, r = strip.right + P,
+				t = rowTop[strip.row] - P, b = rowTop[strip.row] + BUTTON_SIZE + P,
+				row = strip.row,
+			})
+		end
+		return boxes
+	end
+	local provisional = {}
 	for r = 0, rows - 1 do
-		gapAbove[r] = labelRows[r] and LANE_HEIGHT or (r == 0 and EDGE or SPACING)
-		rowTop[r] = y + gapAbove[r]
+		provisional[r] = r * 100
+	end
+	-- One name per separate part of each group.
+	local nameRow, names = {}, {}
+	for i in ipairs(groups) do
+		local boxes = Boxes(i, provisional)
+		for _, edge in ipairs(Layout.TopEdges(boxes)) do
+			local row = boxes[edge.index].row
+			nameRow[row] = true
+			table.insert(names, { group = i, strip = edge.index, row = row, left = edge.l + 6 })
+		end
+	end
+
+	-- Row positions. Rows inside a single section stay close; rows where sections meet get
+	-- room for two outlines plus SECTION_GAP; rows carrying names get room for the name.
+	local rowTop, y = {}, 0
+	for r = 0, rows - 1 do
+		local gap
+		if r == 0 then
+			gap = P + LINE
+		elseif OnlyGroup(r) and OnlyGroup(r) == OnlyGroup(r - 1) then
+			gap = SPACING
+		else
+			gap = 2 * P + SECTION_GAP
+		end
+		if nameRow[r] then
+			-- The name is centred on the top outline; leave room above it, clear of the
+			-- outline of whatever sits in the row above.
+			local above = r == 0 and 1 or (P + LINE + 2)
+			gap = math.max(gap, P + NAME_HEIGHT / 2 + above)
+		end
+		rowTop[r] = y + gap
 		y = rowTop[r] + BUTTON_SIZE
 	end
-	local height = y + EDGE
+	local height = y + P + LINE
 
-	-- Pixel positions of grid lines: the middle of the gap between cells.
-	local function X(col) return col * CELL - SPACING / 2 end
-	local function Y(row)
-		if row >= rows then
-			return rowTop[rows - 1] + BUTTON_SIZE + EDGE / 2
-		end
-		return rowTop[row] - gapAbove[row] / 2
-	end
-	local function RectPixels(rect)
-		local lastRow = rect.row + rect.rows - 1
-		return rect.col * CELL, rowTop[rect.row], rect.cols * CELL - SPACING, rowTop[lastRow] + BUTTON_SIZE - rowTop[rect.row]
-	end
-
-	-- A name may run past its own top edge, up to where the next name on that row starts.
-	local labelLeft = {}
-	for i, segment in ipairs(segments) do
-		labelLeft[i] = X(segment.col) + INSET + 6
-	end
-	local function LabelRoom(i)
-		local right = columns * CELL - SPACING
-		for j, segment in ipairs(segments) do
-			if j ~= i and segment.row == segments[i].row and labelLeft[j] > labelLeft[i] then
-				right = math.min(right, labelLeft[j] - 6)
+	-- Names may run past their own top edge, up to where the next name on that row starts.
+	local function NameRoom(name)
+		local right = width + P
+		for _, other in ipairs(names) do
+			if other ~= name and other.row == name.row and other.left > name.left then
+				right = math.min(right, other.left - 6)
 			end
 		end
-		return math.max(right - labelLeft[i] - 8, 20)
+		return math.max(right - name.left - 8, 20)
 	end
 
 	local lineIndex, placeholderIndex, overlayIndex = 0, 0, 0
 	for index, group in ipairs(groups) do
-		local run, c = runs[index], GroupColor(group)
+		local c = GroupColor(group)
+		local boxes = Boxes(index, rowTop)
 
 		if group.placeholder then
-			for _, rect in ipairs(Layout.RunRects(run, columns)) do
+			for _, strip in ipairs(strips[index]) do
 				placeholderIndex = placeholderIndex + 1
 				local placeholder = placeholders[placeholderIndex] or CreatePlaceholder(placeholderIndex)
-				local x, top, width, h = RectPixels(rect)
 				placeholder:ClearAllPoints()
-				placeholder:SetPoint("TOPLEFT", content, "TOPLEFT", x, -top)
-				placeholder:SetSize(width, h)
+				placeholder:SetPoint("TOPLEFT", content, "TOPLEFT", strip.left, -rowTop[strip.row])
+				placeholder:SetSize(strip.right - strip.left, BUTTON_SIZE)
 				placeholder.Fill:SetColorTexture(c.r, c.g, c.b, 0.12)
 				placeholder.Text:SetText(group.collapsed and group.count > 0 and ("+" .. group.count) or "")
 				placeholder:Show()
 			end
 		else
 			for i, slot in ipairs(group.slots) do
-				local cell = run.start + i - 1
-				local row = math.floor(cell / columns)
-				PlaceButton(group, slot, (cell % columns) * CELL, rowTop[row], used)
+				local cell = cells[index][i]
+				PlaceButton(group, slot, cell.x, rowTop[cell.row], used)
 			end
 		end
 
-		for _, polygon in ipairs(Layout.RunPolygons(run, columns)) do
-			local points = {}
-			for i, p in ipairs(polygon) do
-				points[i] = { x = X(p.x), y = Y(p.y) }
-			end
-			points = Layout.InsetPolygon(points, INSET)
-			for i, a in ipairs(points) do
-				local b = points[i % #points + 1]
+		for _, polygon in ipairs(Layout.StripPolygons(boxes)) do
+			for i, a in ipairs(polygon) do
+				local b = polygon[i % #polygon + 1]
 				lineIndex = lineIndex + 1
 				local texture = GetLineTexture(lineIndex)
 				texture:ClearAllPoints()
@@ -431,32 +468,33 @@ local function RenderCompact(groups, columns, used)
 			end
 		end
 
-		local segment = segments[index]
-		local label = labels[index] or CreateLabel(index)
-		label.group = group
-		label.Text:SetText(CompactTitle(group))
-		label.Text:SetTextColor(c.r, c.g, c.b)
-		label.Text:SetWidth(0)
-		local textWidth = math.min(label.Text:GetStringWidth() or 0, LabelRoom(index))
-		label.Text:SetWidth(textWidth)
-		label:SetWidth(textWidth + 8)
-		label:ClearAllPoints()
-		label:SetPoint("LEFT", content, "TOPLEFT", labelLeft[index], -(Y(segment.row) + INSET))
-		label:SetFrameLevel(lineFrame:GetFrameLevel() + 2)
-		label:Show()
+		for nameIndex, name in ipairs(names) do
+			if name.group == index then
+				local label = labels[nameIndex] or CreateLabel(nameIndex)
+				label.group = group
+				label.Text:SetText(CompactTitle(group))
+				label.Text:SetTextColor(c.r, c.g, c.b)
+				label.Text:SetWidth(0)
+				local textWidth = math.min(label.Text:GetStringWidth() or 0, NameRoom(name))
+				label.Text:SetWidth(textWidth)
+				label:SetWidth(textWidth + 8)
+				label:ClearAllPoints()
+				label:SetPoint("LEFT", content, "TOPLEFT", name.left, -boxes[name.strip].t)
+				label:SetFrameLevel(lineFrame:GetFrameLevel() + 2)
+				label:Show()
+			end
+		end
 
 		if IsDropTarget(group) then
-			local rects = Layout.RunRects(run, columns)
 			local biggest = 1
-			for i, rect in ipairs(rects) do
-				if rect.cols * rect.rows > rects[biggest].cols * rects[biggest].rows then
+			for i, box in ipairs(boxes) do
+				if box.r - box.l > boxes[biggest].r - boxes[biggest].l then
 					biggest = i
 				end
 			end
-			for i, rect in ipairs(rects) do
+			for i, box in ipairs(boxes) do
 				overlayIndex = overlayIndex + 1
-				local x, top, width, h = RectPixels(rect)
-				ShowOverlay(overlayIndex, group, x - 2, top - 2, width + 4, h + 4, i ~= biggest and "" or nil)
+				ShowOverlay(overlayIndex, group, box.l, box.t, box.r - box.l, box.b - box.t, i ~= biggest and "" or nil)
 			end
 		end
 	end

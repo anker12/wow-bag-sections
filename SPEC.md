@@ -425,6 +425,17 @@ Store sections **per character** because each character carries different things
   Rest.
 * Gold text in the footer uses the same font size as section names.
 
+### v0.5 changes
+
+* **Compact spacing:** outlines sit 5px from the items on every side, with 8px between
+  neighbouring outlines. A section that starts partway along a row is shifted right to
+  make room, and wraps earlier if needed (`Layout.FlowRows`). Rows inside a single
+  section keep normal spacing; rows where sections meet get room for both outlines.
+  Outlines are built from padded per-row strips (`Layout.Strips`,
+  `Layout.StripPolygons`). Steps sit on the edge of the wider row, so padding is even.
+* A wrapped section whose parts don't touch gets a name on each part
+  (`Layout.TopEdges`).
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):
