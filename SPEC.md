@@ -5,7 +5,7 @@ and lets the player create named **sections** ("Essentials", "Weapon swap", …)
 holds the items assigned to it. Everything else goes into one big **Rest** area. Each
 section is sorted separately.
 
-Status: research and spec only. Nothing has been implemented yet.
+Status: v0.1 implements milestones M1–M3 with virtual sections (Option A). See §13 for where the code differs from this spec.
 
 ---
 
@@ -365,6 +365,19 @@ Store sections **per character** because each character carries different things
 * **Q6. Bank:** Is a sectioned bank wanted later?
 
 ---
+
+## 13. Implementation notes (v0.1)
+
+* **Opening the window:** the open/toggle functions (`ToggleBackpack`, `ToggleAllBags`,
+  `OpenBackpack`, `OpenAllBags`, and `ToggleBag`/`OpenBag` for bags 0–5 and the keyring)
+  are replaced, as Bagnon does. The close functions are only post-hooked with
+  `hooksecurefunc`, so Blizzard's Escape and game-menu paths never run addon code. Bank
+  bags still go to Blizzard's code. Settings has an option to turn the takeover off.
+* **Empty sections while dragging:** empty sections are always shown while a bag item is on
+  the cursor, so a brand-new section can receive its first item.
+* **Bag-slot bar:** not included. Bags are still equipped and swapped from Blizzard's bag
+  bar.
+* **Money:** shown as text, not with Blizzard's money frame template.
 
 ## Sources
 
