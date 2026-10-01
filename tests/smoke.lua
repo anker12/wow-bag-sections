@@ -310,6 +310,28 @@ local probe = ns.ItemButtons.Get(1, 2)
 check(rawget(probe, "bagID") == nil, "no bag number written onto the button")
 check(probe:GetBagID() == 1 and probe:GetID() == 2, "button still knows its bag and slot")
 
+-- Fresh session with Rest on top: pick up a Rest item and put it straight back. Rest isn't
+-- a drop target for its own items, so the first highlight slot is never used; the
+-- highlights must still all go away.
+local function FindHighlight()
+	for _, frame in ipairs(frames) do
+		if frame.group and frame._shown and rawget(frame, "Border") and frame._scripts.OnReceiveDrag then
+			return frame
+		end
+	end
+end
+SlashCmdList.BAGSECTIONS("new Below")
+BagSectionsCharDB.sections[1].below = true
+ns.RequestRefresh()
+C_Container.PickupContainerItem(0, 1)
+Fire("CURSOR_CHANGED")
+check(FindHighlight(), "section highlighted while holding a Rest item")
+C_Container.PickupContainerItem(0, 1) -- dropped back on the same slot
+Fire("CURSOR_CHANGED")
+check(FindHighlight() == nil, "highlights gone after dropping the item back in Rest")
+ns.Rules.DeleteSection(BagSectionsCharDB, BagSectionsCharDB.sections[1].id)
+ns.RequestRefresh()
+
 -- Sections: create, drag the hearthstone in.
 SlashCmdList.BAGSECTIONS("new Essentials")
 local db = BagSectionsCharDB
@@ -603,6 +625,7 @@ check(secondRowFirst ~= nil, "had a second row before")
 local restHdr = HeaderForKind("rest")
 Drag(restHdr, 10, -a._point[5] - 5)
 check(ns.Rows.Get(db, 3)[1][1] == "rest", "Rest moved to its own row at the top")
+
 -- Lock again.
 ns.Frame.SetRearranging(false)
 check(not ns.Frame.IsRearranging(), "locked again")

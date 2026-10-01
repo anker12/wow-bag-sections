@@ -74,3 +74,4 @@ mention BagSections.
 | T66 | Right-click a bind-on-equip item, then Cancel on the bind prompt | No blue drop highlights left behind; everything stays clickable. |
 | T67 | Drag gear from the character pane and drop it back on the character pane | No blue drop highlights left behind. |
 | T68 | B, merchant, bank, Escape, close button | The bags open and close as with Blizzard's bags; Escape closes them. |
+| T69 | With Rest at the top, `/reload`, then click a Rest item and click it back into the same slot | The blue highlights disappear straight away. |
