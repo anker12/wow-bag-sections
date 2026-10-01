@@ -52,6 +52,9 @@ function Rules.Upgrade(db)
 	db.rules.byItemID = type(db.rules.byItemID) == "table" and db.rules.byItemID or {}
 	db.rules.byGUID = type(db.rules.byGUID) == "table" and db.rules.byGUID or {}
 	db.collapsedBuiltin = type(db.collapsedBuiltin) == "table" and db.collapsedBuiltin or {}
+	if type(db.rows) ~= "table" then
+		db.rows = nil
+	end
 	db.autoQuest = db.autoQuest and true or false
 	db.nextId = tonumber(db.nextId) or 1
 	for index, section in ipairs(db.sections) do
@@ -329,6 +332,8 @@ function Rules.ExportProfile(db)
 			color = c and { r = c.r, g = c.g, b = c.b } or nil,
 		})
 	end
+	-- Semi-compact row arrangement, by section name (nil while it's automatic).
+	profile.rows = ns.Rows.Export(db)
 	return profile
 end
 
@@ -377,6 +382,7 @@ function Rules.ApplyProfile(db, profile)
 		end
 	end
 	Rules.Prune(db)
+	ns.Rows.Import(db, profile.rows)
 	return removed
 end
 

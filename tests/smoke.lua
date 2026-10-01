@@ -23,6 +23,9 @@ local function NewFrame(frameType, name, parent, template)
 		GetFrameLevel = function(self) return self._level end,
 		SetPoint = function(self, point, rel, relPoint, x, y) self._point = { point, rel, relPoint, x, y } end,
 		SetSize = function(self, w, h) self._w, self._h = w, h end,
+		GetLeft = function() return 0 end,
+		GetTop = function() return 0 end,
+		GetEffectiveScale = function() return 1 end,
 		ClearAllPoints = function(self) self._point = nil end,
 		SetFrameLevel = function(self, level) self._level = level end,
 		GetPoint = function() return "BOTTOMRIGHT", nil, "BOTTOMRIGHT", -60, 100 end,
@@ -158,6 +161,8 @@ _G.PixelUtil = {
 }
 _G._now = 100
 _G.GetTime = function() return _G._now end
+_G._cursorX, _G._cursorY = 0, 0
+_G.GetCursorPosition = function() return _G._cursorX, _G._cursorY end
 _G.GetMoneyString = function(m) return tostring(m) end
 _G.GetMouseFoci = function() return {} end
 _G.strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
@@ -510,6 +515,40 @@ check(hsButton._point[4] >= a._point[4] and hsButton._point[4] < b._point[4], "i
 BagSectionsDB.sectionsPerRow = 50
 ns.RequestRefresh()
 check(HeaderFor("SemiA")._w >= 37, "sections per row is capped so each is at least a slot wide")
+BagSectionsDB.sectionsPerRow = 3
+ns.RequestRefresh()
+
+-- Rearranging: locked by default, so dragging a name does nothing.
+local function Drag(hdr, x, y)
+	_G._cursorX, _G._cursorY = x, -y -- content's top-left is (0, 0) in the mock
+	if hdr._scripts.OnDragStart then hdr._scripts.OnDragStart(hdr) end
+	if hdr._scripts.OnDragStop then hdr._scripts.OnDragStop(hdr) end
+end
+local secondRowFirst = ns.Rows.Get(db, 3)[2][1]
+d = HeaderFor("SemiD")
+Drag(d, 10, a._point[5] * -1 + 20)
+check(db.rows == nil, "locked: dragging a section name changes nothing")
+
+ns.Menu.OpenMainMenu(a)
+ns.Frame.SetRearranging(true)
+check(ns.Frame.IsRearranging(), "unlocked from the menu")
+-- Drop SemiD onto the first row, just left of SemiB's middle: joins row 1 before SemiB.
+a, b = HeaderFor("SemiA"), HeaderFor("SemiB")
+d = HeaderFor("SemiD")
+Drag(d, b._point[4] + 5, -a._point[5] + 40)
+local first = ns.Rows.Get(db, 3)[1]
+local names = {}
+for _, key in ipairs(first) do names[#names + 1] = ns.Rules.GetSection(db, key).name end
+check(table.concat(names, ",") == "SemiA,SemiD,SemiB,SemiC", "SemiD joined row 1 before SemiB (" .. table.concat(names, ",") .. ")")
+check(secondRowFirst ~= nil, "had a second row before")
+-- Drag Rest above everything: new top row.
+local restHdr = HeaderForKind("rest")
+Drag(restHdr, 10, -a._point[5] - 5)
+check(ns.Rows.Get(db, 3)[1][1] == "rest", "Rest moved to its own row at the top")
+-- Lock again.
+ns.Frame.SetRearranging(false)
+check(not ns.Frame.IsRearranging(), "locked again")
+
 ns.Menu.OpenMainMenu(a)
 ns.Menu.SetLayout("default")
 check(HeaderFor("SemiA")._w == 406, "default layout: full width again")

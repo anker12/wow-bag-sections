@@ -14,6 +14,7 @@ local HEADER_HEIGHT = 20
 local GROUP_GAP = 6
 local TITLE_HEIGHT = 30
 local FOOTER_HEIGHT = 22
+local REARRANGE_BAR_HEIGHT = 22
 local BUTTON_SIZE = ItemButtons.SIZE
 local CELL = BUTTON_SIZE + SPACING
 
@@ -53,6 +54,26 @@ local lastSlots = {}
 
 -- Information about the item on the cursor, or nil. Used to show drop targets.
 local cursorState
+
+-- Rearranging (semi-compact): while unlocked, section names can be dragged to move the
+-- section to another row or position. Locked again on every /reload, so the window can be
+-- moved without accidentally moving sections.
+local rearranging = false
+local sectionDrag -- { key, target } while a section is being dragged
+local dragGhost, dropLine
+
+function Frame.IsRearranging()
+	return rearranging and ns.db.layout == "semicompact"
+end
+
+function Frame.SetRearranging(on)
+	rearranging = on and true or false
+	ns.RequestRefresh()
+end
+
+local function CanDrag(group)
+	return group and (group.kind == "section" or group.kind == "rest")
+end
 
 local function GroupTitle(group)
 	local marker = group.collapsed and "+" or "-"
@@ -189,6 +210,9 @@ local function SetGroupScripts(button)
 		if self.group.kind == "section" then
 			GameTooltip_AddNormalLine(GameTooltip, L.HEADER_MENU)
 		end
+		if Frame.IsRearranging() and CanDrag(self.group) then
+			GameTooltip_AddInstructionLine(GameTooltip, L.HEADER_DRAG)
+		end
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", GameTooltip_Hide)
@@ -209,6 +233,8 @@ local function CreateHeader(index)
 	header:GetHighlightTexture():SetAlpha(0.25)
 
 	SetGroupScripts(header)
+	header:SetScript("OnDragStart", function(self) Frame.BeginSectionDrag(self.group) end)
+	header:SetScript("OnDragStop", function() Frame.EndSectionDrag() end)
 	headers[index] = header
 	return header
 end
@@ -266,6 +292,11 @@ local function SetupHeader(index, group)
 	header.group = group
 	header:ClearAllPoints()
 	header.Text:SetText(GroupTitle(group))
+	if Frame.IsRearranging() and CanDrag(group) then
+		header:RegisterForDrag("LeftButton")
+	else
+		header:RegisterForDrag()
+	end
 	header:Show()
 	return header
 end
@@ -325,38 +356,165 @@ function Frame.MaxSectionsPerRow(columns)
 	return math.max(1, math.floor((gridWidth + SEMI_GAP) / (BUTTON_SIZE + SEMI_GAP)))
 end
 
-local function RenderSemiCompact(groups, columns, gridWidth, used)
-	local perRow = math.max(1, math.min(ns.db.sectionsPerRow or 3, Frame.MaxSectionsPerRow(columns)))
-	local boxWidth = (gridWidth - (perRow - 1) * SEMI_GAP) / perRow
-	local boxColumns = math.max(1, math.floor((boxWidth + SPACING) / CELL))
+-- Where each drawn row sits, for dragging sections around: { y, height, dataRow, boxes =
+-- { { x, width, key } } }. Filled by RenderSemiCompact.
+local rowGeometry = {}
 
-	local y, row = 0, {}
-	local function FlushRow()
-		if #row == 0 then
-			return
-		end
-		local rowHeight = 0
-		for i, entry in ipairs(row) do
-			local x = math.floor((i - 1) * (boxWidth + SEMI_GAP) + 0.5)
-			rowHeight = math.max(rowHeight, DrawGroup(entry.index, entry.group, x, y, boxWidth, boxColumns, gridWidth, used))
-		end
-		y = y + rowHeight + GROUP_GAP
-		row = {}
+local function RenderSemiCompact(groups, columns, gridWidth, used)
+	local maxPerRow = Frame.MaxSectionsPerRow(columns)
+	local perRow = math.max(1, math.min(ns.db.sectionsPerRow or 3, maxPerRow))
+	local rows = ns.Rows.Get(ns.charDB, perRow)
+
+	local byKey, indexOf = {}, {}
+	for index, group in ipairs(groups) do
+		byKey[group.key] = group
+		indexOf[group.key] = index
 	end
 
-	for index, group in ipairs(groups) do
-		if group.kind == "section" then
-			table.insert(row, { index = index, group = group })
-			if #row == perRow then
-				FlushRow()
+	local y = 0
+	rowGeometry = {}
+	local function DrawRow(entries, dataRow)
+		local count = #entries
+		local boxWidth = (gridWidth - (count - 1) * SEMI_GAP) / count
+		local boxColumns = math.max(1, math.floor((boxWidth + SPACING) / CELL))
+		local geometry = { y = y, dataRow = dataRow, boxes = {} }
+		local rowHeight = 0
+		for i, key in ipairs(entries) do
+			local x = math.floor((i - 1) * (boxWidth + SEMI_GAP) + 0.5)
+			local width = count == 1 and gridWidth or boxWidth
+			local columnsHere = count == 1 and columns or boxColumns
+			rowHeight = math.max(rowHeight, DrawGroup(indexOf[key], byKey[key], x, y, width, columnsHere, gridWidth, used))
+			table.insert(geometry.boxes, { x = x, width = width, key = key })
+		end
+		geometry.height = rowHeight
+		table.insert(rowGeometry, geometry)
+		y = y + rowHeight + GROUP_GAP
+	end
+
+	for dataRow, row in ipairs(rows) do
+		-- Only groups that are showing (empty sections may be hidden); rows that hold more
+		-- than fit (e.g. after lowering Columns) wrap onto extra lines.
+		local visible = {}
+		for _, key in ipairs(row) do
+			if byKey[key] then
+				table.insert(visible, key)
 			end
-		else
-			FlushRow()
+		end
+		for first = 1, #visible, maxPerRow do
+			local chunk = {}
+			for i = first, math.min(first + maxPerRow - 1, #visible) do
+				table.insert(chunk, visible[i])
+			end
+			DrawRow(chunk, dataRow)
+		end
+	end
+	-- Reagents and Keyring: full width at the bottom.
+	for index, group in ipairs(groups) do
+		if group.kind == "reagent" or group.kind == "keyring" then
 			y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + GROUP_GAP
 		end
 	end
-	FlushRow()
 	return y - GROUP_GAP
+end
+
+local function CursorInContent()
+	local x, y = GetCursorPosition()
+	local scale = content:GetEffectiveScale()
+	return x / scale - content:GetLeft(), content:GetTop() - y / scale
+end
+
+-- Where a dragged section would land. Returns a Rows.Move target and where to draw the
+-- blue line, or nil when the spot can't take it (e.g. the row is full).
+local function FindSectionDropTarget(key)
+	if #rowGeometry == 0 then
+		return nil
+	end
+	local columns = ns.db.columns or 10
+	local maxPerRow = Frame.MaxSectionsPerRow(columns)
+	local rows = ns.Rows.Get(ns.charDB, math.min(ns.db.sectionsPerRow or 3, maxPerRow))
+	local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
+	local cx, cy = CursorInContent()
+
+	for i, row in ipairs(rowGeometry) do
+		if cy < row.y + 10 then
+			-- Above this row, or in the gap before it: start a new row here.
+			return { newRow = row.dataRow }, { x = 0, y = row.y - GROUP_GAP / 2 - 1, width = gridWidth, height = 2 }
+		end
+		if cy <= row.y + row.height then
+			-- Inside the row: join it at the nearest gap between sections.
+			local others = 0
+			for _, k in ipairs(rows[row.dataRow] or {}) do
+				if k ~= key then others = others + 1 end
+			end
+			if others >= maxPerRow then
+				return nil
+			end
+			local before, lineX
+			for _, box in ipairs(row.boxes) do
+				if cx < box.x + box.width / 2 then
+					before, lineX = box.key, box.x - SEMI_GAP / 2
+					break
+				end
+			end
+			if not before then
+				local last = row.boxes[#row.boxes]
+				lineX = last.x + last.width + SEMI_GAP / 2
+				local nextRow = rowGeometry[i + 1]
+				if nextRow and nextRow.dataRow == row.dataRow then
+					before = nextRow.boxes[1].key -- the row wraps onto another line
+				end
+			end
+			return { row = row.dataRow, before = before }, { x = lineX - 1, y = row.y, width = 2, height = row.height }
+		end
+	end
+	local last = rowGeometry[#rowGeometry]
+	return { newRow = #rows + 1 }, { x = 0, y = last.y + last.height + GROUP_GAP / 2 - 1, width = gridWidth, height = 2 }
+end
+
+local function UpdateSectionDrag()
+	local x, y = GetCursorPosition()
+	local scale = UIParent:GetEffectiveScale()
+	dragGhost:ClearAllPoints()
+	dragGhost:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x / scale + 12, y / scale - 8)
+
+	local target, line = FindSectionDropTarget(sectionDrag.key)
+	sectionDrag.target = target
+	if line then
+		dropLine:ClearAllPoints()
+		dropLine:SetPoint("TOPLEFT", content, "TOPLEFT", line.x, -line.y)
+		dropLine:SetSize(line.width, line.height)
+		dropLine:Show()
+	else
+		dropLine:Hide()
+	end
+end
+
+function Frame.BeginSectionDrag(group)
+	if not (Frame.IsRearranging() and CanDrag(group)) then
+		return
+	end
+	sectionDrag = { key = group.key }
+	dragGhost.Text:SetText(group.kind == "rest" and L.REST or group.name)
+	dragGhost:SetWidth((dragGhost.Text:GetStringWidth() or 60) + 16)
+	dragGhost:Show()
+	UpdateSectionDrag()
+end
+
+function Frame.EndSectionDrag()
+	if not sectionDrag then
+		return
+	end
+	local key, target = sectionDrag.key, sectionDrag.target
+	sectionDrag = nil
+	dragGhost:Hide()
+	dropLine:Hide()
+	if target then
+		local columns = ns.db.columns or 10
+		local maxPerRow = Frame.MaxSectionsPerRow(columns)
+		if ns.Rows.Move(ns.charDB, key, target, math.min(ns.db.sectionsPerRow or 3, maxPerRow), maxPerRow) then
+			ns.RequestRefresh()
+		end
+	end
 end
 
 local function CreateLabel(index)
@@ -727,6 +885,7 @@ function Frame.Init()
 	main:SetScript("OnHide", function()
 		PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE)
 		frozen = nil
+		Frame.EndSectionDrag()
 		ns.Hooks.OnWindowHidden()
 	end)
 	tinsert(UISpecialFrames, main:GetName())
@@ -759,6 +918,41 @@ function Frame.Init()
 	dividerLine:Hide()
 	measure = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	measure:Hide()
+
+	-- Rearranging: blue line where a dragged section will land, its name following the
+	-- cursor, and a bar under the title while unlocked (click it to lock).
+	dropLine = lineFrame:CreateTexture(nil, "OVERLAY")
+	dropLine:SetColorTexture(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 1)
+	dropLine:Hide()
+	dragGhost = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+	dragGhost:SetFrameStrata("TOOLTIP")
+	dragGhost:SetHeight(20)
+	dragGhost:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+	dragGhost:SetBackdropColor(0.05, 0.05, 0.07, 0.9)
+	dragGhost:SetBackdropBorderColor(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 1)
+	dragGhost.Text = dragGhost:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	dragGhost.Text:SetPoint("CENTER")
+	dragGhost:Hide()
+	dragGhost:SetScript("OnUpdate", function()
+		if sectionDrag then
+			UpdateSectionDrag()
+		end
+	end)
+
+	main.RearrangeBar = CreateFrame("Button", nil, main)
+	main.RearrangeBar:SetHeight(REARRANGE_BAR_HEIGHT - 4)
+	main.RearrangeBar:SetPoint("TOPLEFT", PADDING, -TITLE_HEIGHT + 2)
+	main.RearrangeBar:SetPoint("TOPRIGHT", -PADDING, -TITLE_HEIGHT + 2)
+	main.RearrangeBar.Background = main.RearrangeBar:CreateTexture(nil, "BACKGROUND")
+	main.RearrangeBar.Background:SetAllPoints()
+	main.RearrangeBar.Background:SetColorTexture(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 0.2)
+	main.RearrangeBar.Text = main.RearrangeBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	main.RearrangeBar.Text:SetPoint("CENTER")
+	main.RearrangeBar.Text:SetText(L.REARRANGE_BAR)
+	main.RearrangeBar:SetHighlightTexture("Interface\\Buttons\\WHITE8x8", "ADD")
+	main.RearrangeBar:GetHighlightTexture():SetVertexColor(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 0.15)
+	main.RearrangeBar:SetScript("OnClick", function() Frame.SetRearranging(false) end)
+	main.RearrangeBar:Hide()
 
 	CreateTitleBar()
 	CreateFooter()
@@ -852,7 +1046,12 @@ function Frame.Render(mode)
 	end
 
 	content:SetHeight(math.max(contentHeight, 1))
-	main:SetSize(gridWidth + PADDING * 2, TITLE_HEIGHT + contentHeight + FOOTER_HEIGHT + 6)
+	-- While rearranging, a bar under the title pushes the content down a little.
+	local barHeight = Frame.IsRearranging() and REARRANGE_BAR_HEIGHT or 0
+	main.RearrangeBar:SetShown(barHeight > 0)
+	content:ClearAllPoints()
+	content:SetPoint("TOPLEFT", PADDING, -(TITLE_HEIGHT + barHeight))
+	main:SetSize(gridWidth + PADDING * 2, TITLE_HEIGHT + barHeight + contentHeight + FOOTER_HEIGHT + 6)
 
 	local bagSlots = {}
 	for _, slot in ipairs(slots) do

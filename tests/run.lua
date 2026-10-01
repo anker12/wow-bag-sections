@@ -2,10 +2,10 @@
 -- Run from the repo root: lua tests/run.lua
 
 local ns = {}
-for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Layout.lua" }) do
+for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Rows.lua", "BagSections/Layout.lua" }) do
 	assert(loadfile(file))("BagSections", ns)
 end
-local Rules, Layout = ns.Rules, ns.Layout
+local Rules, Layout, Rows = ns.Rules, ns.Layout, ns.Rows
 
 local passed, failed = 0, 0
 local function test(name, fn)
@@ -499,6 +499,104 @@ test("profiles: loading keeps items in same-named sections and removes others", 
 		assert(not ids[section.id], "duplicate id " .. section.id)
 		ids[section.id] = true
 	end
+end)
+
+local function RowsString(rows, db)
+	local names = { rest = "Rest" }
+	for _, section in ipairs(db.sections) do names[section.id] = section.name end
+	local parts = {}
+	for _, row in ipairs(rows) do
+		local keys = {}
+		for _, key in ipairs(row) do table.insert(keys, names[key] or key) end
+		table.insert(parts, table.concat(keys, ","))
+	end
+	return table.concat(parts, " | ")
+end
+
+local function SectionsDB(names, belowFrom)
+	local db = Rules.NewCharDB()
+	for i, name in ipairs(names) do
+		Rules.CreateSection(db, name, belowFrom and i >= belowFrom)
+	end
+	return db
+end
+
+local function Id(db, name)
+	for _, section in ipairs(db.sections) do
+		if section.name == name then return section.id end
+	end
+end
+
+test("rows: automatic arrangement uses sections per row around Rest", function()
+	local db = SectionsDB({ "A", "B", "C", "D", "E" }, 5)
+	eq(RowsString(Rows.Get(db, 3), db), "A,B,C | D | Rest | E")
+	eq(db.rows, nil, "nothing saved until something is moved")
+end)
+
+test("rows: move a section into another row, at a position", function()
+	local db = SectionsDB({ "A", "B", "C", "D" })
+	-- A,B,C | D | Rest  ->  move D into row 1 before B
+	eq(Rows.Move(db, Id(db, "D"), { row = 1, before = Id(db, "B") }, 3, 8), true)
+	eq(RowsString(db.rows, db), "A,D,B,C | Rest")
+	eq(db.sections[2].name, "D", "section list follows the rows")
+end)
+
+test("rows: start a new row anywhere, and build Rest-on-top, 2, 3, 1", function()
+	local db = SectionsDB({ "A", "B", "C", "D", "E", "F" })
+	-- A,B,C | D,E,F | Rest. Move Rest to the top.
+	Rows.Move(db, "rest", { newRow = 1 }, 3, 8)
+	eq(RowsString(db.rows, db), "Rest | A,B,C | D,E,F")
+	-- Move C down into D's row: A,B | C,D,E,F would exceed nothing (cap 8).
+	Rows.Move(db, Id(db, "C"), { row = 3, before = Id(db, "D") }, 3, 8)
+	eq(RowsString(db.rows, db), "Rest | A,B | C,D,E,F")
+	-- F to its own row at the end.
+	Rows.Move(db, Id(db, "F"), { newRow = 4 }, 3, 8)
+	eq(RowsString(db.rows, db), "Rest | A,B | C,D,E | F")
+	for _, section in ipairs(db.sections) do
+		eq(section.below, true, section.name .. " is below Rest")
+	end
+end)
+
+test("rows: a full row refuses more sections", function()
+	local db = SectionsDB({ "A", "B", "C", "D" })
+	Rows.Move(db, Id(db, "D"), { row = 1 }, 3, 3)
+	eq(RowsString(db.rows, db), "A,B,C | D | Rest", "row 1 already has 3 of max 3")
+	-- moving within the full row is still fine
+	eq(Rows.Move(db, Id(db, "C"), { row = 1, before = Id(db, "A") }, 3, 3), true)
+	eq(RowsString(db.rows, db), "C,A,B | D | Rest")
+end)
+
+test("rows: moving the only section of a row removes the empty row", function()
+	local db = SectionsDB({ "A", "B", "C", "D" })
+	Rows.Move(db, Id(db, "D"), { row = 1, before = Id(db, "A") }, 3, 8)
+	eq(RowsString(db.rows, db), "D,A,B,C | Rest")
+	eq(Rows.Move(db, Id(db, "A"), { row = 1, before = Id(db, "A") }, 3, 8), false, "dropping on itself does nothing")
+end)
+
+test("rows: new and deleted sections stay in step", function()
+	local db = SectionsDB({ "A", "B" })
+	Rows.Move(db, "rest", { newRow = 1 }, 3, 8) -- Rest | A,B
+	Rules.CreateSection(db, "Above", false)
+	Rules.CreateSection(db, "Below", true)
+	Rules.DeleteSection(db, Id(db, "A"))
+	eq(RowsString(Rows.Get(db, 3), db), "Above | Rest | B | Below")
+end)
+
+test("rows: saved in profiles by name", function()
+	local source = SectionsDB({ "Gear", "Food", "Quest" })
+	Rows.Move(source, "rest", { newRow = 1 }, 3, 8)
+	Rows.Move(source, Id(source, "Quest"), { newRow = 3 }, 3, 8)
+	eq(RowsString(source.rows, source), "Rest | Gear,Food | Quest")
+	local profile = Rules.ExportProfile(source)
+
+	local db = SectionsDB({ "Food" })
+	Rules.ApplyProfile(db, profile)
+	eq(RowsString(db.rows, db), "Rest | Gear,Food | Quest")
+
+	local auto = Rules.ExportProfile(SectionsDB({ "X" }))
+	eq(auto.rows, nil, "automatic rows aren't saved")
+	Rules.ApplyProfile(db, auto)
+	eq(db.rows, nil, "loading a profile without rows goes back to automatic")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))
