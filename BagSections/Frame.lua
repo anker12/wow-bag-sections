@@ -843,12 +843,15 @@ local function RestorePosition()
 end
 
 local function CreateTitleBar()
-	main.Title = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	main.Title:SetPoint("TOPLEFT", PADDING, -9)
-	main.Title:SetText(L.BAGS)
-
 	main.CloseButton = CreateFrame("Button", nil, main, "UIPanelCloseButton")
 	main.CloseButton:SetPoint("TOPRIGHT", 1, 1)
+
+	-- The title (and the search box next to it) are centred on the same line as the close,
+	-- options and sort buttons, inside the border's top band.
+	local buttonRowY = 1 - (main.CloseButton:GetHeight() or 24) / 2
+	main.Title = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", PADDING, buttonRowY)
+	main.Title:SetText(L.BAGS)
 
 	main.MenuButton = CreateFrame("Button", nil, main.Chrome)
 	main.MenuButton:SetSize(20, 20)
