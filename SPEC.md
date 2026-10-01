@@ -444,6 +444,8 @@ Store sections **per character** because each character carries different things
   neighbouring sections. The compact window is a little wider than the default layout
   as a result.
 * **Thinner outlines:** 1px at 70% opacity, 3px from the items on every side.
+* **One name per section:** a wrapped section whose parts don't touch shows its name
+  once, on its longest stretch of top edge. The outline colour ties the parts together.
 
 ## Sources
 

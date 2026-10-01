@@ -375,14 +375,21 @@ local function RenderCompact(groups, columns, used)
 	for r = 0, rows - 1 do
 		provisional[r] = r * 100
 	end
-	-- One name per separate part of each group.
+	-- One name per group, on the longest stretch of top edge. Wrapped parts are tied
+	-- together by the outline colour, so they don't repeat the name.
 	local nameRow, names = {}, {}
 	for i in ipairs(groups) do
 		local boxes = Boxes(i, provisional)
+		local best
 		for _, edge in ipairs(Layout.TopEdges(boxes)) do
-			local row = boxes[edge.index].row
+			if not best or edge.r - edge.l > best.r - best.l then
+				best = edge
+			end
+		end
+		if best then
+			local row = boxes[best.index].row
 			nameRow[row] = true
-			table.insert(names, { group = i, strip = edge.index, row = row, left = edge.l + 6 })
+			table.insert(names, { group = i, strip = best.index, row = row, left = best.l + 6 })
 		end
 	end
 
