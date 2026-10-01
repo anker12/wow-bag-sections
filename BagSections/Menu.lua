@@ -207,18 +207,100 @@ function Menu.DeleteProfile(name)
 	})
 end
 
--- Adds Save / Load / Delete entries to a menu description.
+-- Share codes: copy a profile as text, or paste one in.
+StaticPopupDialogs["BAGSECTIONS_SHARE_CODE"] = {
+	text = "%s",
+	button1 = OKAY,
+	hasEditBox = 1,
+	maxLetters = 0,
+	editBoxWidth = 320,
+	timeout = 0,
+	whileDead = 1,
+	hideOnEscape = 1,
+	OnShow = function(dialog, data)
+		local editBox = dialog:GetEditBox()
+		editBox:SetText(data.code)
+		editBox:HighlightText()
+		editBox:SetFocus()
+	end,
+	EditBoxOnTextChanged = function(editBox, data)
+		-- Keep the code intact if a key is pressed by accident.
+		if editBox:GetText() ~= data.code then
+			editBox:SetText(data.code)
+			editBox:HighlightText()
+		end
+	end,
+	EditBoxOnEnterPressed = function(editBox) editBox:GetParent():Hide() end,
+	EditBoxOnEscapePressed = StaticPopup_StandardEditBoxOnEscapePressed,
+}
+
+StaticPopupDialogs["BAGSECTIONS_IMPORT_CODE"] = {
+	text = "%s",
+	button1 = ACCEPT,
+	button2 = CANCEL,
+	hasEditBox = 1,
+	maxLetters = 0,
+	editBoxWidth = 320,
+	timeout = 0,
+	whileDead = 1,
+	hideOnEscape = 1,
+	OnShow = function(dialog)
+		dialog:GetEditBox():SetText("")
+		dialog:GetEditBox():SetFocus()
+	end,
+	OnAccept = function(dialog)
+		Menu.ImportCode(dialog:GetEditBox():GetText())
+	end,
+	EditBoxOnEnterPressed = function(editBox)
+		local dialog = editBox:GetParent()
+		Menu.ImportCode(editBox:GetText())
+		dialog:Hide()
+	end,
+	EditBoxOnEscapePressed = StaticPopup_StandardEditBoxOnEscapePressed,
+}
+
+function Menu.ShareProfile(name)
+	local profile = ns.db.profiles[name]
+	if profile then
+		StaticPopup_Show("BAGSECTIONS_SHARE_CODE", L.PROFILE_SHARE_PROMPT:format(name), nil, { code = ns.Share.Encode(name, profile) })
+	end
+end
+
+-- Saves a pasted code as a profile (renamed if that name is taken). Returns the name used.
+function Menu.ImportCode(code)
+	local name, profile = ns.Share.Decode(code)
+	if not name then
+		ns.Print(profile == "damaged" and L.PROFILE_IMPORT_DAMAGED or L.PROFILE_IMPORT_INVALID)
+		return nil
+	end
+	local unique, n = name, 2
+	while ns.db.profiles[unique] do
+		unique = ("%s (%d)"):format(name, n)
+		n = n + 1
+	end
+	ns.db.profiles[unique] = profile
+	ns.Print(L.PROFILE_IMPORTED:format(unique))
+	return unique
+end
+
+-- Adds Save / Load / Share / Import / Delete entries to a menu description.
 function Menu.AddProfileEntries(root)
 	root:CreateButton(L.PROFILE_SAVE, function() Menu.PromptSaveProfile() end)
 	local names = ProfileNames()
 	local load = root:CreateButton(L.PROFILE_LOAD)
+	local share = root:CreateButton(L.PROFILE_SHARE)
+	root:CreateButton(L.PROFILE_IMPORT, function()
+		StaticPopup_Show("BAGSECTIONS_IMPORT_CODE", L.PROFILE_IMPORT_PROMPT)
+	end)
 	local delete = root:CreateButton(L.PROFILE_DELETE)
 	if #names == 0 then
 		load:SetEnabled(false)
+		share:SetEnabled(false)
 		delete:SetEnabled(false)
 	end
 	for _, name in ipairs(names) do
 		load:CreateButton(name, function() Menu.LoadProfile(name) end)
+		share:CreateButton(name, function() Menu.ShareProfile(name) end)
 		delete:CreateButton(name, function() Menu.DeleteProfile(name) end)
 	end
 end

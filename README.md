@@ -66,6 +66,21 @@ items are in them. Profiles are shared by all your characters. Loading a profile
 items in any section whose name matches. Sections that aren't in the profile are removed
 after asking, and their items go back to Rest.
 
+**Share codes:** Profiles → *Share profile* → pick one, and copy the code it shows
+(Ctrl+C). Anyone can paste it into Profiles → *Import profile...* to get that profile,
+then load it like any other. Codes only contain sections, their names, colours and
+rows, never your items.
+
+### Appearance
+
+In Settings:
+* **Background:** *Dark* (plain dark) or *Blizzard* (Blizzard's own panel background).
+  **Background opacity** sets how see-through it is.
+* **Blizzard border:** Blizzard's bronze frame border around the bag window (on by
+  default). Turn off for a thin plain border.
+* **Outline opacity:** how strong the coloured section outlines are in the Compact layout.
+* **Section name tooltips:** turn off the tooltips when hovering section names.
+
 ### Layouts
 
 Switch layouts from the gear menu (Layout) or in Settings.

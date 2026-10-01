@@ -2,7 +2,7 @@
 -- Run from the repo root: lua tests/run.lua
 
 local ns = {}
-for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Rows.lua", "BagSections/Layout.lua" }) do
+for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Rows.lua", "BagSections/Share.lua", "BagSections/Layout.lua" }) do
 	assert(loadfile(file))("BagSections", ns)
 end
 local Rules, Layout, Rows = ns.Rules, ns.Layout, ns.Rows
@@ -597,6 +597,76 @@ test("rows: saved in profiles by name", function()
 	eq(auto.rows, nil, "automatic rows aren't saved")
 	Rules.ApplyProfile(db, auto)
 	eq(db.rows, nil, "loading a profile without rows goes back to automatic")
+end)
+
+local Share = ns.Share
+
+local function SampleProfile()
+	local db = SectionsDB({ "Essentials", "Gear | Swap", "Ünïcødé ✓ 100%" })
+	Rules.SetAutoQuest(db, true, "Quest Items")
+	Rules.SetSectionColor(db, Id(db, "Essentials"), 0.25, 0.5, 1)
+	Rows.Move(db, "rest", { newRow = 1 }, 3, 8)
+	return Rules.ExportProfile(db)
+end
+
+test("share: code round-trips a profile, rows and odd names included", function()
+	local profile = SampleProfile()
+	local code = Share.Encode("Raid setup", profile)
+	assert(not code:find("|", 1, true), "no pipe characters (WoW edit boxes treat | specially)")
+	assert(not code:find("%s"), "no spaces or line breaks")
+	local name, decoded = Share.Decode(code)
+	eq(name, "Raid setup")
+	eq(#decoded.sections, 4)
+	eq(decoded.sections[2].name, "Gear | Swap")
+	eq(decoded.sections[3].name, "Ünïcødé ✓ 100%")
+	eq(decoded.sections[1].color.b, 1)
+	eq(decoded.sections[4].auto, "quest")
+	eq(decoded.rows[1][1].rest, true)
+	-- loads like a saved profile
+	local db = Rules.NewCharDB()
+	Rules.ApplyProfile(db, decoded)
+	eq(#db.sections, 4)
+	eq(db.autoQuest, true)
+	eq(db.rows[1][1], "rest")
+end)
+
+test("share: same profile gives the same code; whitespace from pasting is ignored", function()
+	local profile = SampleProfile()
+	local code = Share.Encode("X", profile)
+	eq(Share.Encode("X", profile), code)
+	local spaced = code:sub(1, 20) .. "\n  " .. code:sub(21)
+	eq((Share.Decode(spaced)), "X")
+end)
+
+test("share: rejects other text, cut-off and edited codes", function()
+	local code = Share.Encode("X", SampleProfile())
+	local _, err = Share.Decode("hello")
+	eq(err, "format")
+	_, err = Share.Decode(code:sub(1, #code - 10))
+	assert(err == "format" or err == "damaged", "cut-off code rejected")
+	local tampered = code:gsub("Essentials", "Essentialz")
+	_, err = Share.Decode(tampered)
+	eq(err, "damaged", "edited code fails its checksum")
+	eq(Share.Decode(nil), nil)
+end)
+
+test("share: a well-formed code with the wrong shape is rejected", function()
+	-- Valid encoding and checksum, but sections isn't a list of named tables.
+	local bad = Share.Encode("X", { sections = { { name = "" } } })
+	local name = Share.Decode(bad)
+	eq(name, nil)
+	bad = Share.Encode("X", { sections = { { name = "A", color = { r = 5, g = 0, b = 0 } } } })
+	eq((Share.Decode(bad)), nil, "colour out of range")
+	bad = Share.Encode("X", { sections = { { name = "A", auto = "evil" } } })
+	eq((Share.Decode(bad)), nil, "unknown automatic section")
+end)
+
+test("share: unknown extra fields are dropped", function()
+	local code = Share.Encode("X", { sections = { { name = "A", junk = "x", below = true } }, extra = 1 })
+	local _, profile = Share.Decode(code)
+	eq(profile.extra, nil)
+	eq(profile.sections[1].junk, nil)
+	eq(profile.sections[1].below, true)
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

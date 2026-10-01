@@ -549,6 +549,22 @@ Store sections **per character** because each character carries different things
   pane. That left drop targets stuck. Cursor reads now require `GetCursorInfo() == "item"`
   first, and so does the drop-target watcher.
 
+### v0.13: Appearance options and share codes
+
+* Settings: *Background* (`backgroundStyle`: `"dark"` = the existing plain backdrop, or
+  `"blizzard"` = `FlatPanelBackgroundTemplate`), *Background opacity* (`backgroundAlpha`,
+  default 0.94), *Blizzard border* (`blizzardBorder`, default on: a
+  `NineSlicePanelTemplate` with the `ButtonFrameTemplateNoPortrait` layout, which Forever
+  draws with its bronze metal art; off = the thin plain border), *Outline opacity*
+  (`outlineAlpha`, default 0.7, compact outlines), and *Section name tooltips*
+  (`sectionTooltips`, default on).
+* **Share codes** (`Share.lua`): `BagSections1:` + a small hand-written serialisation +
+  `:` + a 6-hex-digit checksum. Strings are %XX-escaped, so codes have no spaces or `|`.
+  Decoding parses by hand, never runs code, checks the checksum, and copies only known
+  fields with valid values (names ≤ 200 chars, colours 0–1, `auto` only `"quest"`). The
+  UI is Profiles → *Share profile* (a popup showing the code, selected for Ctrl+C) and
+  *Import profile...* (paste). Imports get a free name if theirs is taken.
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):

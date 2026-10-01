@@ -176,6 +176,8 @@ _G.StaticPopup_Show = function(which, _, _, data) _G._lastPopup = { which = whic
 _G.ClearCursor = function() cursor = nil end
 _G.CursorHasItem = function() return cursor ~= nil end
 _G.CreateColor = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end
+_G.NineSliceUtil = { ApplyLayoutByName = function(frame, name) frame._layout = name end }
+_G.OKAY = "Okay"
 _G.GetCursorInfo = function() if cursor then return "item" end end
 _G.InCombatLockdown = function() return _G._inCombat end
 _G.IsAltKeyDown = function() return false end
@@ -634,6 +636,45 @@ check(not ns.Frame.IsRearranging(), "locked again")
 ns.Menu.OpenMainMenu(a)
 ns.Menu.SetLayout("default")
 check(HeaderFor("SemiA")._w == 406, "default layout: full width again")
+
+-- Appearance settings.
+check(BagSectionsDB.blizzardBorder == true and BagSectionsDB.backgroundStyle == "dark", "appearance defaults")
+local mainFrame = _G.BagSectionsFrame
+for _, frame in ipairs(frames) do if frame._name == "BagSectionsFrame" then mainFrame = frame end end
+local border = rawget(mainFrame, "BlizzardBorder")
+local blizzBg = rawget(mainFrame, "BlizzardBackground")
+check(border and border._layout == "ButtonFrameTemplateNoPortrait" and border._shown, "Blizzard border shown by default")
+check(blizzBg and not blizzBg._shown, "dark background by default")
+BagSectionsDB.blizzardBorder = false
+BagSectionsDB.backgroundStyle = "blizzard"
+BagSectionsDB.backgroundAlpha = 0.5
+ns.Frame.ApplyAppearance()
+check(not border._shown and blizzBg._shown, "settings switch border and background")
+BagSectionsDB.blizzardBorder, BagSectionsDB.backgroundStyle, BagSectionsDB.backgroundAlpha = true, "dark", 0.94
+ns.Frame.ApplyAppearance()
+
+-- Section name tooltips can be turned off.
+local anyHeader = HeaderForKind("rest")
+local tooltipShown = false
+_G.GameTooltip.Show = function() tooltipShown = true end
+BagSectionsDB.sectionTooltips = false
+anyHeader._scripts.OnEnter(anyHeader)
+check(not tooltipShown, "no tooltip when turned off")
+BagSectionsDB.sectionTooltips = true
+anyHeader._scripts.OnEnter(anyHeader)
+check(tooltipShown, "tooltip when on")
+
+-- Share and import a profile code.
+ns.Menu.PromptSaveProfile()
+_G._lastPopup.data.onAccept("Shared")
+ns.Menu.ShareProfile("Shared")
+check(_G._lastPopup.which == "BAGSECTIONS_SHARE_CODE" and _G._lastPopup.data.code:find("^BagSections1:"), "share shows a code")
+local shared = _G._lastPopup.data.code
+local imported = ns.Menu.ImportCode(shared)
+check(imported == "Shared (2)" and BagSectionsDB.profiles[imported], "import saves it under a free name")
+check(#BagSectionsDB.profiles[imported].sections == #BagSectionsDB.profiles.Shared.sections, "imported profile matches")
+check(ns.Menu.ImportCode("nonsense") == nil, "bad code rejected")
+ns.Menu.OpenProfileMenu(anyHeader)
 
 -- Every event handler runs without error.
 for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY", "INVENTORY_SEARCH_UPDATE", "GET_ITEM_INFO_RECEIVED", "MERCHANT_SHOW" }) do
