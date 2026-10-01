@@ -843,14 +843,14 @@ local function RestorePosition()
 end
 
 local function CreateTitleBar()
-	main.Title = main:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	main.Title = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	main.Title:SetPoint("TOPLEFT", PADDING, -9)
 	main.Title:SetText(L.BAGS)
 
 	main.CloseButton = CreateFrame("Button", nil, main, "UIPanelCloseButton")
 	main.CloseButton:SetPoint("TOPRIGHT", 1, 1)
 
-	main.MenuButton = CreateFrame("Button", nil, main)
+	main.MenuButton = CreateFrame("Button", nil, main.Chrome)
 	main.MenuButton:SetSize(20, 20)
 	main.MenuButton:SetPoint("RIGHT", main.CloseButton, "LEFT", -2, 0)
 	main.MenuButton:SetNormalAtlas("GM-icon-settings")
@@ -863,7 +863,7 @@ local function CreateTitleBar()
 	end)
 	main.MenuButton:SetScript("OnLeave", GameTooltip_Hide)
 
-	main.SortButton = CreateFrame("Button", nil, main)
+	main.SortButton = CreateFrame("Button", nil, main.Chrome)
 	main.SortButton:SetSize(24, 23)
 	main.SortButton:SetPoint("RIGHT", main.MenuButton, "LEFT", -4, 0)
 	main.SortButton:SetNormalAtlas("bags-button-autosort-up")
@@ -886,16 +886,16 @@ local function CreateTitleBar()
 	end)
 	main.SortButton:SetScript("OnLeave", GameTooltip_Hide)
 
-	main.SearchBox = CreateFrame("EditBox", "BagSectionsSearchBox", main, "BagSearchBoxTemplate")
+	main.SearchBox = CreateFrame("EditBox", "BagSectionsSearchBox", main.Chrome, "BagSearchBoxTemplate")
 	main.SearchBox:SetHeight(20)
 	main.SearchBox:SetPoint("LEFT", main.Title, "RIGHT", 14, 0)
 	main.SearchBox:SetPoint("RIGHT", main.SortButton, "LEFT", -8, 0)
 end
 
 local function CreateFooter()
-	main.Money = main:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	main.Money = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	main.Money:SetPoint("BOTTOMRIGHT", -PADDING, 8)
-	main.FreeSlots = main:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	main.FreeSlots = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	main.FreeSlots:SetPoint("BOTTOMLEFT", PADDING, 8)
 end
 
@@ -927,6 +927,13 @@ function Frame.Init()
 	main.BlizzardBackground:SetFrameLevel(main:GetFrameLevel())
 	main.BlizzardBorder = CreateFrame("Frame", nil, main, "NineSlicePanelTemplate")
 	NineSliceUtil.ApplyLayoutByName(main.BlizzardBorder, "ButtonFrameTemplateNoPortrait")
+
+	-- Title row and footer sit on their own layer above the border art, which Blizzard
+	-- draws very high up (frame level 500) and would otherwise cover them. The close button
+	-- stays a direct child of the window so it hides the window, and is already above it.
+	main.Chrome = CreateFrame("Frame", nil, main)
+	main.Chrome:SetAllPoints()
+	main.Chrome:SetFrameLevel(main.BlizzardBorder:GetFrameLevel() + 5)
 	main:SetScript("OnShow", function()
 		PlaySound(SOUNDKIT.IG_BACKPACK_OPEN)
 		Frame.Render("layout")
@@ -993,7 +1000,7 @@ function Frame.Init()
 		end
 	end)
 
-	main.RearrangeBar = CreateFrame("Button", nil, main)
+	main.RearrangeBar = CreateFrame("Button", nil, main.Chrome)
 	main.RearrangeBar:SetHeight(REARRANGE_BAR_HEIGHT - 4)
 	main.RearrangeBar:SetPoint("TOPLEFT", PADDING, -TITLE_HEIGHT + 2)
 	main.RearrangeBar:SetPoint("TOPRIGHT", -PADDING, -TITLE_HEIGHT + 2)

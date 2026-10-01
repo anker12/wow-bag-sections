@@ -558,6 +558,10 @@ Store sections **per character** because each character carries different things
   draws with its bronze metal art; off = the thin plain border), *Outline opacity*
   (`outlineAlpha`, default 0.7, compact outlines), and *Section name tooltips*
   (`sectionTooltips`, default on).
+* The Blizzard border is a `NineSlicePanelTemplate`, which Blizzard puts at frame level
+  500, so it covered the title row and footer. Those now sit on a `Chrome` child frame a
+  few levels above the border. The close button stays a direct child of the window
+  (template level 510), so it still hides the window.
 * **Share codes** (`Share.lua`): `BagSections1:` + a small hand-written serialisation +
   `:` + a 6-hex-digit checksum. Strings are %XX-escaped, so codes have no spaces or `|`.
   Decoding parses by hand, never runs code, checks the checksum, and copies only known
