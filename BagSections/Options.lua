@@ -39,6 +39,14 @@ function Options.Init()
 		return container:GetData()
 	end, L.OPT_LAYOUT_DESC)
 
+	local restSetting = Settings.RegisterAddOnSetting(category, "BagSections_restPosition", "restPosition", ns.db, Settings.VarType.String, L.REST_POSITION, ns.DEFAULTS.restPosition)
+	Settings.CreateDropdown(category, restSetting, function()
+		local container = Settings.CreateControlTextContainer()
+		container:Add("bottom", L.REST_POSITION_BOTTOM)
+		container:Add("top", L.REST_POSITION_TOP)
+		return container:GetData()
+	end, L.OPT_REST_POSITION_DESC)
+
 	AddSlider("columns", L.OPT_COLUMNS, L.OPT_COLUMNS_DESC, ns.DEFAULTS.columns, 6, 24, 1, nil, Refresh)
 	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, function(value)
 		return ("%d%%"):format(math.floor(value * 100 + 0.5))
@@ -58,7 +66,7 @@ function Options.Init()
 		L.QUEST_SECTION, false,
 		function() return ns.charDB.autoQuest end,
 		function(value)
-			Rules.SetAutoQuest(ns.charDB, value, L.QUEST_ITEMS)
+			Rules.SetAutoQuest(ns.charDB, value, L.QUEST_ITEMS, ns.NewSectionsBelowRest())
 			Refresh()
 		end)
 	Settings.CreateCheckbox(category, questSetting, L.OPT_QUEST_SECTION_DESC)

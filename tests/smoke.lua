@@ -21,6 +21,8 @@ local function NewFrame(frameType, name, parent, template)
 		GetScript = function(self, script) return self._scripts[script] end,
 		HookScript = function(self, script, fn) local old = self._scripts[script]; self._scripts[script] = function(...) if old then old(...) end fn(...) end end,
 		GetFrameLevel = function(self) return self._level end,
+		SetPoint = function(self, point, rel, relPoint, x, y) self._point = { point, rel, relPoint, x, y } end,
+		ClearAllPoints = function(self) self._point = nil end,
 		SetFrameLevel = function(self, level) self._level = level end,
 		GetPoint = function() return "BOTTOMRIGHT", nil, "BOTTOMRIGHT", -60, 100 end,
 		CreateFontString = function() return NewFrame("FontString") end,
@@ -149,6 +151,8 @@ _G.CursorHasItem = function() return cursor ~= nil end
 _G.InCombatLockdown = function() return _G._inCombat end
 _G.IsAltKeyDown = function() return false end
 _G.GetMoney = function() return 12345 end
+_G._now = 100
+_G.GetTime = function() return _G._now end
 _G.GetMoneyString = function(m) return tostring(m) end
 _G.GetMouseFoci = function() return {} end
 _G.strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
@@ -338,28 +342,58 @@ check(section.color.r == 0.1 and section.color.b == 0.3, "colour picked")
 ColorPickerFrame.info.cancelFunc({ r = 0.5, g = 0.5, b = 0.5 })
 check(section.color.r == 0.5, "colour restored on cancel")
 
--- Compact layout renders and places outlines; switching back keeps default working.
+-- Compact layout: one grid, outlines and names drawn; switching back keeps default working.
 ns.Menu.SetLayout("compact")
 check(BagSectionsDB.layout == "compact", "layout saved")
-local outlinesShown = 0
-for _, frame in ipairs(frames) do
-	if frame._shown and frame._template == "BackdropTemplate" and frame._parent and not rawget(frame, "Text") and frame._parent ~= UIParent and not rawget(frame._parent, "Background") then
-		outlinesShown = outlinesShown + 1
+local function CountShown(predicate)
+	local n = 0
+	for _, frame in ipairs(frames) do
+		if frame._shown and predicate(frame) then n = n + 1 end
 	end
+	return n
 end
-check(outlinesShown >= 3, "compact layout draws outlines (got " .. outlinesShown .. ")")
+local function IsLabel(frame) return frame.showTitleInTooltip and frame.group ~= nil end
+check(CountShown(IsLabel) >= 3, "compact layout shows a name for each group")
+local function ButtonPos(bag, slot)
+	local p = ns.ItemButtons.Get(bag, slot)._point
+	return p and (p[4] .. "," .. p[5])
+end
+
+-- Nothing moves while the window is open: use up an item, layout stays.
+local potionPos = ButtonPos(0, 5)
+local potion = ITEMS["0:5"]
+ITEMS["0:5"] = nil
+Fire("BAG_UPDATE_DELAYED")
+check(ButtonPos(0, 5) == potionPos, "slot keeps its place when its item is used up")
+ITEMS["0:5"] = potion
+Fire("BAG_UPDATE_DELAYED")
+
+-- Drag into a section in compact: it reflows.
 C_Container.PickupContainerItem(0, 2)
 Fire("CURSOR_CHANGED")
 target = FindGroupFrame("section", section.id)
 check(target, "compact layout shows drop targets")
 target._scripts.OnReceiveDrag(target)
 check(db.rules.byItemID[2901] == section.id, "drop works in compact layout")
+
+-- Sorting lets the layout follow items for a few seconds.
+local emptyPos = ButtonPos(0, 7)
+SlashCmdList.BAGSECTIONS("sort")
+ITEMS["0:5"], ITEMS["0:7"] = nil, potion
+Fire("BAG_UPDATE_DELAYED")
+check(ButtonPos(0, 7) ~= emptyPos, "layout follows the sort")
+sortCalls = 0
+ITEMS["0:7"], ITEMS["0:5"] = nil, potion
+_G._now = _G._now + 10
+
+-- Collapsed section in compact keeps a placeholder with its name.
+db.sections[1].collapsed = true
+ns.RequestRefresh()
+check(CountShown(IsLabel) >= 3, "collapsed section still has its name")
+db.sections[1].collapsed = false
+
 ns.Menu.SetLayout("default")
-for _, frame in ipairs(frames) do
-	if frame._template == "BackdropTemplate" and frame._parent and frame._parent ~= UIParent and not rawget(frame._parent, "Background") then
-		check(not frame._shown, "outlines hidden in default layout")
-	end
-end
+check(CountShown(IsLabel) == 0, "no compact names in default layout")
 
 -- Quest Items section: off by default, then catches the quest item automatically.
 groups = ns.Layout.Build(db, ns.Inventory.Scan())

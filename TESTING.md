@@ -25,9 +25,9 @@ mention BagSections.
 | T17 | Click sort during combat | A message says sorting is queued, and the sort runs when combat ends. |
 | T18 | Right-click a section header, then "Move below Rest" | The section is drawn after Rest. "Move above Rest" puts it back. |
 | T19 | Left-click the Rest header, then the Reagents header | Each collapses to just its header. Click again to expand. |
-| T20 | Gear menu, Layout, Compact | Sections become coloured outlined boxes with their names showing, small ones sit side by side, and the window width doesn't change. |
+| T20 | Gear menu, Layout, Compact | All sections run through one grid with no gaps, and each starts right after the previous one. Each is outlined in its colour, including across line breaks, with its name on its top edge. The window width doesn't change. |
 | T21 | In compact, right-click a section header, then Colour... and pick a colour | The outline and name change colour as you pick. Cancel restores the old colour. |
-| T22 | In compact, drag an item onto another section's box | It's added to that section. |
+| T22 | In compact, drag an item onto another section | It's added to that section, and the layout updates once. |
 | T23 | Switch back to Layout, Default | The window looks and works exactly as before. |
 | T24 | With a quest item in your bags, turn on Settings → Quest Items section | A "Quest Items" section appears with the quest item in it. |
 | T25 | Loot or accept a quest that gives a quest item | The new item goes straight into Quest Items. |
@@ -37,3 +37,9 @@ mention BagSections.
 | T29 | On another character, Profiles... → Load profile → Main | You get the same sections with the same names, colours and order, and they're empty until you add items. |
 | T30 | Add a section "Temp", then load "Main" again | A confirmation says 1 section will be removed. Accept: "Temp" is gone, and other sections keep their items. |
 | T31 | Profiles... → Delete profile → Main | The profile is gone from the Load list. |
+| T32 | In compact, with the bag open, drink a potion until the stack is gone, and loot something | Nothing moves; the used-up slot stays as a gap. Close and reopen: the gap is gone. |
+| T33 | In compact, click sort | The layout follows the items as they're sorted. |
+| T34 | In compact, collapse a section, and create an empty one | Both keep a small outlined space with their name visible. |
+| T35 | In compact, hover over a short or cut-off name | The tooltip shows the full name. |
+| T36 | Settings → Rest position → Rest at top, then create a section and turn on Quest Items | Both new sections appear below Rest. Existing sections don't move. |
+| T37 | Look at the footer | The gold amount is the same text size as the section names. |

@@ -75,12 +75,13 @@ function Rules.GetSection(db, id)
 	end
 end
 
-function Rules.CreateSection(db, name)
+-- below = true places the new section below Rest.
+function Rules.CreateSection(db, name, below)
 	local section = {
 		id = "s" .. db.nextId,
 		name = name,
 		collapsed = false,
-		below = false,
+		below = below and true or false,
 		color = PaletteColor(db.nextId),
 	}
 	db.nextId = db.nextId + 1
@@ -289,7 +290,7 @@ end
 -- Turns the automatic "Quest Items" section on or off. Turning it on reuses an existing
 -- quest section or creates one called `name`. Turning it off deletes that section if
 -- nothing was added to it by hand; otherwise it stays as a normal section.
-function Rules.SetAutoQuest(db, enabled, name)
+function Rules.SetAutoQuest(db, enabled, name, below)
 	local existing
 	for _, section in ipairs(db.sections) do
 		if section.auto == Rules.AUTO_QUEST then
@@ -299,7 +300,7 @@ function Rules.SetAutoQuest(db, enabled, name)
 	if enabled then
 		db.autoQuest = true
 		if not existing then
-			existing = Rules.CreateSection(db, name)
+			existing = Rules.CreateSection(db, name, below)
 			existing.auto = Rules.AUTO_QUEST
 		end
 		return existing

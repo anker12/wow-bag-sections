@@ -406,6 +406,25 @@ Store sections **per character** because each character carries different things
   Sections not in the profile are removed after a confirmation. The UI is a button in
   Settings and a submenu in the gear menu.
 
+### v0.4 changes
+
+* **Compact layout, second version** (replaces the packed boxes). All groups flow through
+  one grid of `columns` columns in order, each a contiguous run of cells (`Layout.Flow`).
+  `Layout.RunPolygons` gives each run's outline as clockwise orthogonal polygons (two when
+  a wrapping run doesn't overlap itself). They're drawn as 2px lines inset 1px, so
+  neighbouring outlines sit side by side. Each name goes on the longest stretch of its
+  run's top edge (`Layout.LabelSegment`), in a taller gap above that row, and may extend
+  until the next name on that row starts. Empty and collapsed groups take enough cells
+  for their name.
+* **No jumping:** the compact arrangement is frozen while the window is open. Bag-content
+  events (`"items"` refresh) reuse it and only update counts. It's rebuilt on open, on
+  player actions (`"layout"` refresh), on bag container changes, and for 3 seconds after
+  a sort.
+* **Rest position setting** (`restPosition`: `"bottom"` default, or `"top"`): decides
+  whether new sections, including the Quest Items section, are created above or below
+  Rest.
+* Gold text in the footer uses the same font size as section names.
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):
