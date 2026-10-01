@@ -39,6 +39,8 @@ local BUILTIN_COLORS = {
 
 -- Blizzard's blue for "this item can go here".
 local DROP_COLOR = { r = 0.3, g = 0.7, b = 1 }
+local DROP_GLOW_SIZE = 8 -- how far the drop highlight's glow reaches in from the edge
+local DROP_GLOW_ALPHA = 0.35
 
 local main, content, dropWatcher
 local headers, overlays = {}, {}
@@ -253,10 +255,39 @@ end
 local function CreateOverlay(index)
 	local overlay = CreateFrame("Button", nil, content)
 	overlay:RegisterForClicks("LeftButtonUp")
-	overlay.Border = CreateFrame("Frame", nil, overlay, "BackdropTemplate")
+	-- Like Blizzard's slot hover: a thin blue edge with a glow fading in towards the middle.
+	overlay.Border = CreateFrame("Frame", nil, overlay)
 	overlay.Border:SetAllPoints()
-	overlay.Border:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
-	overlay.Border:SetBackdropBorderColor(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 1)
+	local c = DROP_COLOR
+	local strong, clear = CreateColor(c.r, c.g, c.b, DROP_GLOW_ALPHA), CreateColor(c.r, c.g, c.b, 0)
+	-- Per side: the two corners it spans, gradient direction, and its min/max colours
+	-- (VERTICAL runs bottom -> top, HORIZONTAL left -> right), so each side is strongest at
+	-- the outer edge and clear towards the middle.
+	local sides = {
+		{ "TOPLEFT", "TOPRIGHT", "VERTICAL", clear, strong, true },
+		{ "BOTTOMLEFT", "BOTTOMRIGHT", "VERTICAL", strong, clear, true },
+		{ "TOPLEFT", "BOTTOMLEFT", "HORIZONTAL", strong, clear, false },
+		{ "TOPRIGHT", "BOTTOMRIGHT", "HORIZONTAL", clear, strong, false },
+	}
+	for _, side in ipairs(sides) do
+		local fromPoint, toPoint, orientation, minColor, maxColor, horizontalEdge = unpack(side)
+		local fade = overlay.Border:CreateTexture(nil, "ARTWORK")
+		fade:SetColorTexture(1, 1, 1, 1)
+		fade:SetGradient(orientation, minColor, maxColor)
+		fade:SetPoint(fromPoint)
+		fade:SetPoint(toPoint)
+		local line = overlay.Border:CreateTexture(nil, "OVERLAY")
+		line:SetColorTexture(c.r, c.g, c.b, 0.9)
+		line:SetPoint(fromPoint)
+		line:SetPoint(toPoint)
+		if horizontalEdge then
+			fade:SetHeight(DROP_GLOW_SIZE)
+			line:SetHeight(1)
+		else
+			fade:SetWidth(DROP_GLOW_SIZE)
+			line:SetWidth(1)
+		end
+	end
 	overlay:SetHighlightTexture("Interface\\Buttons\\WHITE8x8", "ADD")
 	overlay:GetHighlightTexture():SetVertexColor(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 0.15)
 	overlay:SetScript("OnClick", function(self) HandleDrop(self.group) end)

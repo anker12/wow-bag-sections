@@ -175,6 +175,7 @@ end
 _G.StaticPopup_Show = function(which, _, _, data) _G._lastPopup = { which = which, data = data } end
 _G.ClearCursor = function() cursor = nil end
 _G.CursorHasItem = function() return cursor ~= nil end
+_G.CreateColor = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end
 _G.GetCursorInfo = function() if cursor then return "item" end end
 _G.InCombatLockdown = function() return _G._inCombat end
 _G.IsAltKeyDown = function() return false end
