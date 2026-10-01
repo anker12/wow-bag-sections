@@ -44,4 +44,4 @@ mention BagSections.
 | T36 | Settings → Rest position → Rest at top, then create a section and turn on Quest Items | Both new sections appear below Rest. Existing sections don't move. |
 | T37 | Look at the footer | The gold amount is the same text size as the section names. |
 | T38 | In compact, look at the spacing | Every row has the same number of slots and they line up in columns. Outlines are thin, each the same distance from its items on all sides, with space between neighbouring sections. |
-| T39 | In compact, make a section wrap so its two parts don't touch | Both parts show the section's name. |
+| T39 | In compact, make a section wrap so its two parts don't touch | The name shows once, on the larger part; both parts have the same outline colour. |
