@@ -48,6 +48,21 @@ function Options.Init()
 		return container:GetData()
 	end, L.OPT_REST_POSITION_DESC)
 
+	local function Appearance() ns.Frame.ApplyAppearance() end
+	local backgroundSetting = Settings.RegisterAddOnSetting(category, "BagSections_backgroundStyle", "backgroundStyle", ns.db, Settings.VarType.String, L.OPT_BACKGROUND, ns.DEFAULTS.backgroundStyle)
+	backgroundSetting:SetValueChangedCallback(Appearance)
+	Settings.CreateDropdown(category, backgroundSetting, function()
+		local container = Settings.CreateControlTextContainer()
+		container:Add("dark", L.OPT_BACKGROUND_DARK)
+		container:Add("blizzard", L.OPT_BACKGROUND_BLIZZARD)
+		return container:GetData()
+	end, L.OPT_BACKGROUND_DESC)
+	local percent = function(value) return ("%d%%"):format(math.floor(value * 100 + 0.5)) end
+	AddSlider("backgroundAlpha", L.OPT_BACKGROUND_ALPHA, L.OPT_BACKGROUND_ALPHA_DESC, ns.DEFAULTS.backgroundAlpha, 0, 1, 0.05, percent, Appearance)
+	AddCheckbox("blizzardBorder", L.OPT_BLIZZARD_BORDER, L.OPT_BLIZZARD_BORDER_DESC, ns.DEFAULTS.blizzardBorder, Appearance)
+	AddSlider("outlineAlpha", L.OPT_OUTLINE_ALPHA, L.OPT_OUTLINE_ALPHA_DESC, ns.DEFAULTS.outlineAlpha, 0.1, 1, 0.05, percent, Refresh)
+	AddCheckbox("sectionTooltips", L.OPT_SECTION_TOOLTIPS, L.OPT_SECTION_TOOLTIPS_DESC, ns.DEFAULTS.sectionTooltips)
+
 	AddSlider("columns", L.OPT_COLUMNS, L.OPT_COLUMNS_DESC, ns.DEFAULTS.columns, 6, 24, 1, nil, Refresh)
 	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, function(value)
 		return ("%d%%"):format(math.floor(value * 100 + 0.5))

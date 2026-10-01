@@ -10,6 +10,7 @@
 Locales\enUS.lua
 Rules.lua
 Rows.lua
+Share.lua
 Layout.lua
 Inventory.lua
 Sorter.lua

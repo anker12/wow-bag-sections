@@ -75,3 +75,9 @@ mention BagSections.
 | T67 | Drag gear from the character pane and drop it back on the character pane | No blue drop highlights left behind. |
 | T68 | B, merchant, bank, Escape, close button | The bags open and close as with Blizzard's bags; Escape closes them. |
 | T69 | With Rest at the top, `/reload`, then click a Rest item and click it back into the same slot | The blue highlights disappear straight away. |
+| T70 | Look at the bag window | It has Blizzard's bronze border by default. Settings → Blizzard border off gives the thin plain border. |
+| T71 | Settings → Background → Blizzard, then move Background opacity | Blizzard's panel background, getting more see-through as the slider goes down. Dark works the same way. |
+| T72 | Compact layout, Settings → Outline opacity | The section outlines get fainter or stronger. |
+| T73 | Settings → Section name tooltips off, hover a section name | No tooltip. |
+| T74 | Profiles → Share profile → pick one, Ctrl+C, then Profiles → Import profile..., Ctrl+V, Accept | Chat says it was imported as "name (2)"; loading it gives the same sections and rows. |
+| T75 | Import some random text, or a code with a few characters deleted | Chat says it isn't a valid code or is damaged; nothing is saved. |

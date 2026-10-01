@@ -27,7 +27,7 @@ local OUTLINE_PADDING = 3 -- space between a section's items and its outline, on
 local NAME_HEIGHT = 12 -- height of a section's name label on its outline
 local NAME_RAISE = 3 -- names sit this far above their outline, clear of the item icons
 local LINE = 1 -- outline thickness
-local LINE_ALPHA = 0.7
+-- Outline opacity comes from the "Outline opacity" setting (ns.db.outlineAlpha).
 local REFLOW_AFTER_SORT = 3 -- seconds the compact layout keeps updating after a sort
 
 -- Outline colours for the built-in groups in the compact layout.
@@ -207,7 +207,7 @@ local function SetGroupScripts(button)
 	end)
 	button:SetScript("OnReceiveDrag", function(self) HandleDrop(self.group) end)
 	button:SetScript("OnEnter", function(self)
-		if CursorHasItem() then
+		if CursorHasItem() or not ns.db.sectionTooltips then
 			return
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -713,7 +713,7 @@ local function RenderFlow(groups, columns, used, top, counters)
 		-- While this group can take the item on the cursor, its outline turns blue.
 		local dropTarget = IsDropTarget(group)
 		local lineColor = dropTarget and DROP_COLOR or c
-		local lineAlpha = dropTarget and 1 or LINE_ALPHA
+		local lineAlpha = dropTarget and 1 or (ns.db.outlineAlpha or 0.7)
 
 		-- Lines are placed on whole pixels and are at least one screen pixel thick, so none
 		-- get rounded away at any UI scale.
@@ -919,8 +919,14 @@ function Frame.Init()
 		tile = true, tileSize = 16, edgeSize = 16,
 		insets = { left = 4, right = 4, top = 4, bottom = 4 },
 	})
-	main:SetBackdropColor(0.05, 0.05, 0.07, 0.94)
-	main:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+	-- Optional Blizzard look: the bronze Forever frame border and Blizzard's panel
+	-- background (see Frame.ApplyAppearance).
+	main.BlizzardBackground = CreateFrame("Frame", nil, main, "FlatPanelBackgroundTemplate")
+	main.BlizzardBackground:SetPoint("TOPLEFT", 2, -2)
+	main.BlizzardBackground:SetPoint("BOTTOMRIGHT", -2, 2)
+	main.BlizzardBackground:SetFrameLevel(main:GetFrameLevel())
+	main.BlizzardBorder = CreateFrame("Frame", nil, main, "NineSlicePanelTemplate")
+	NineSliceUtil.ApplyLayoutByName(main.BlizzardBorder, "ButtonFrameTemplateNoPortrait")
 	main:SetScript("OnShow", function()
 		PlaySound(SOUNDKIT.IG_BACKPACK_OPEN)
 		Frame.Render("layout")
@@ -1006,6 +1012,26 @@ function Frame.Init()
 	CreateFooter()
 	RestorePosition()
 	Frame.ApplyScale()
+	Frame.ApplyAppearance()
+end
+
+-- Background style and opacity, and which border to use, from Settings.
+function Frame.ApplyAppearance()
+	if not main then
+		return
+	end
+	local alpha = ns.db.backgroundAlpha or 0.94
+	if ns.db.backgroundStyle == "blizzard" then
+		main.BlizzardBackground:Show()
+		main.BlizzardBackground:SetAlpha(alpha)
+		main:SetBackdropColor(0, 0, 0, 0)
+	else
+		main.BlizzardBackground:Hide()
+		main:SetBackdropColor(0.05, 0.05, 0.07, alpha)
+	end
+	local blizzardBorder = ns.db.blizzardBorder ~= false
+	main.BlizzardBorder:SetShown(blizzardBorder)
+	main:SetBackdropBorderColor(0.5, 0.5, 0.5, blizzardBorder and 0 or 1)
 end
 
 function Frame.ApplyScale()

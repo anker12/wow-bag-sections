@@ -18,6 +18,12 @@ ns.DEFAULTS = {
 	stackableRule = Rules.KIND_ITEMID,
 	equippableRule = Rules.KIND_GUID,
 	takeOverBags = true,
+	-- Appearance
+	outlineAlpha = 0.7, -- compact layout section outlines
+	backgroundAlpha = 0.94,
+	backgroundStyle = "dark", -- "dark" | "blizzard"
+	blizzardBorder = true, -- Blizzard's bronze frame border around the window
+	sectionTooltips = true, -- tooltips when hovering section names
 	-- Saved section lists: name -> { sections = { { name, color, below, collapsed, auto } } }
 	profiles = {},
 }
