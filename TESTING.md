@@ -45,3 +45,5 @@ mention BagSections.
 | T37 | Look at the footer | The gold amount is the same text size as the section names. |
 | T38 | In compact, look at the spacing | Every row has the same number of slots and they line up in columns. Outlines are thin, each the same distance from its items on all sides, with space between neighbouring sections. |
 | T39 | In compact, make a section wrap so its two parts don't touch | The name shows once, on the larger part; both parts have the same outline colour. |
+| T40 | In compact, look at sections that start partway along a row (e.g. after another section) | Their left-hand outline is fully drawn, the same as the other sides. |
+| T41 | In compact, with a reagent bag (and keyring) | Reagents and Keyring sit below a thin divider, separate from your sections and Rest. |

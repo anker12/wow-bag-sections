@@ -38,7 +38,7 @@ local BUILTIN_COLORS = {
 local main, content
 local headers, overlays = {}, {}
 local labels, placeholders, lineTextures = {}, {}, {}
-local lineFrame, measure
+local lineFrame, measure, dividerLine
 
 -- Compact layout keeps its arrangement while the window is open, so items don't jump
 -- around when things are looted or used up. It's rebuilt on open, on any change the
@@ -340,7 +340,9 @@ end
 
 -- Compact layout: all groups run through one grid of `columns` columns, one after the
 -- other with no gaps, each outlined in its colour with its name on its top edge.
-local function RenderCompact(groups, columns, used)
+-- Draws one flowing grid of groups starting at y = top. `counters` carries pool indexes
+-- across calls so several grids can share the label/line/placeholder/overlay pools.
+local function RenderFlow(groups, columns, used, top, counters)
 	local Layout = ns.Layout
 	local P = OUTLINE_PADDING
 	local width = columns * COMPACT_CELL - COMPACT_GAP
@@ -394,7 +396,7 @@ local function RenderCompact(groups, columns, used)
 	end
 
 	-- Row positions: the same gap between all rows, a little more where a row carries names.
-	local rowTop, y = {}, 0
+	local rowTop, y = {}, top
 	for r = 0, rows - 1 do
 		local gap = r == 0 and (P + LINE) or COMPACT_GAP
 		if nameRow[r] then
@@ -419,7 +421,7 @@ local function RenderCompact(groups, columns, used)
 		return math.max(right - name.left - 8, 20)
 	end
 
-	local lineIndex, placeholderIndex, overlayIndex = 0, 0, 0
+	local lineIndex, placeholderIndex, overlayIndex = counters.lines, counters.placeholders, counters.overlays
 	for index, group in ipairs(groups) do
 		local c = GroupColor(group)
 		local boxes = Boxes(index, rowTop)
@@ -455,9 +457,11 @@ local function RenderCompact(groups, columns, used)
 			end
 		end
 
-		for nameIndex, name in ipairs(names) do
+		for _, name in ipairs(names) do
 			if name.group == index then
-				local label = labels[nameIndex] or CreateLabel(nameIndex)
+				counters.labels = counters.labels + 1
+				local labelIndex = counters.labels
+				local label = labels[labelIndex] or CreateLabel(labelIndex)
 				label.group = group
 				label.Text:SetText(CompactTitle(group))
 				label.Text:SetTextColor(c.r, c.g, c.b)
@@ -484,6 +488,33 @@ local function RenderCompact(groups, columns, used)
 				ShowOverlay(overlayIndex, group, box.l, box.t, box.r - box.l, box.b - box.t, i ~= biggest and "" or nil)
 			end
 		end
+	end
+	counters.lines, counters.placeholders, counters.overlays = lineIndex, placeholderIndex, overlayIndex
+	return height, width
+end
+
+-- Compact layout: sections and Rest flow through one grid; the reagent bag and keyring sit
+-- in a second grid below a divider, like the default layout keeps them separate.
+local COMPACT_DIVIDER_GAP = 10
+
+local function RenderCompact(groups, columns, used)
+	local bagGroups, extra = {}, {}
+	for _, group in ipairs(groups) do
+		if group.kind == "reagent" or group.kind == "keyring" then
+			table.insert(extra, group)
+		else
+			table.insert(bagGroups, group)
+		end
+	end
+	local counters = { labels = 0, lines = 0, placeholders = 0, overlays = 0 }
+	local height, width = RenderFlow(bagGroups, columns, used, 0, counters)
+	if #extra > 0 then
+		local dividerY = height + COMPACT_DIVIDER_GAP / 2
+		dividerLine:ClearAllPoints()
+		dividerLine:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -dividerY)
+		dividerLine:SetSize(width, 1)
+		dividerLine:Show()
+		height = RenderFlow(extra, columns, used, height + COMPACT_DIVIDER_GAP, counters)
 	end
 	return height, width
 end
@@ -638,10 +669,15 @@ function Frame.Init()
 	content:SetPoint("TOPLEFT", PADDING, -TITLE_HEIGHT)
 	ItemButtons.SetParent(content)
 
-	-- Compact-layout outlines draw below the item buttons; names draw above them.
+	-- Compact-layout outlines draw above the item buttons: the buttons' slot art is larger
+	-- than the slot and would otherwise cover parts of the outlines. Outlines only sit in
+	-- the gaps between slots, so they never cover an icon. Names draw above the outlines.
 	lineFrame = CreateFrame("Frame", nil, content)
 	lineFrame:SetAllPoints()
-	lineFrame:SetFrameLevel(content:GetFrameLevel() + 1)
+	lineFrame:SetFrameLevel(content:GetFrameLevel() + 10)
+	dividerLine = lineFrame:CreateTexture(nil, "ARTWORK")
+	dividerLine:SetColorTexture(1, 1, 1, 0.15)
+	dividerLine:Hide()
 	measure = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	measure:Hide()
 
@@ -715,6 +751,7 @@ function Frame.Render(mode)
 	for _, label in ipairs(labels) do label:Hide() end
 	for _, placeholder in ipairs(placeholders) do placeholder:Hide() end
 	for _, texture in ipairs(lineTextures) do texture:Hide() end
+	dividerLine:Hide()
 
 	local contentHeight
 	if compact then

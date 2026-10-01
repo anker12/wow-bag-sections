@@ -74,7 +74,8 @@ Switch layouts from the gear menu (Layout) or in Settings.
   the next line. Each section is outlined in its own colour, even across line breaks, with
   its name on its top edge. Slots always line up in the same columns on every row. Compact
   spaces slots a little further apart than Default to fit thin outlines between sections,
-  so its window is slightly wider. Hover a name to see it in full. Change a section's colour
+  so its window is slightly wider. Reagents and Keyring sit below a thin divider, apart
+  from your sections. Hover a name to see it in full. Change a section's colour
   from its right-click menu (Colour...). Rest is grey and Reagents green. Empty and
   collapsed sections keep a small space so their name stays visible.
 
