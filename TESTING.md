@@ -29,3 +29,11 @@ mention BagSections.
 | T21 | In compact, right-click a section header, then Colour... and pick a colour | The outline and name change colour as you pick. Cancel restores the old colour. |
 | T22 | In compact, drag an item onto another section's box | It's added to that section. |
 | T23 | Switch back to Layout, Default | The window looks and works exactly as before. |
+| T24 | With a quest item in your bags, turn on Settings → Quest Items section | A "Quest Items" section appears with the quest item in it. |
+| T25 | Loot or accept a quest that gives a quest item | The new item goes straight into Quest Items. |
+| T26 | Drag a quest item from Quest Items to Rest | It stays in Rest, including after `/reload`. |
+| T27 | Turn the Quest Items option off | The section disappears and quest items go back to Rest. |
+| T28 | Settings → Profiles... → Save sections as profile..., name it "Main" | A chat message says it was saved. |
+| T29 | On another character, Profiles... → Load profile → Main | You get the same sections with the same names, colours and order, and they're empty until you add items. |
+| T30 | Add a section "Temp", then load "Main" again | A confirmation says 1 section will be removed. Accept: "Temp" is gone, and other sections keep their items. |
+| T31 | Profiles... → Delete profile → Main | The profile is gone from the Load list. |

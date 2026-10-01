@@ -32,6 +32,11 @@ local function KeyringSize()
 	return C_Container.GetContainerNumSlots(KEYRING) or 0
 end
 
+local function IsQuestClass(itemID)
+	local classID = select(6, C_Item.GetItemInfoInstant(itemID))
+	return classID == Enum.ItemClass.Questitem
+end
+
 -- Item identity used for section rules. Returns nil for an empty slot.
 function Inventory.GetItem(bag, slot)
 	local itemID = C_Container.GetContainerItemID(bag, slot)
@@ -40,11 +45,13 @@ function Inventory.GetItem(bag, slot)
 	end
 	local location = ItemLocation:CreateFromBagAndSlot(bag, slot)
 	local guid = C_Item.DoesItemExist(location) and C_Item.GetItemGUID(location) or nil
+	local questInfo = C_Container.GetContainerItemQuestInfo(bag, slot)
 	return {
 		itemID = itemID,
 		guid = guid,
 		equippable = C_Item.IsEquippableItem(itemID),
 		maxStack = C_Item.GetItemMaxStackSizeByID(itemID),
+		isQuest = (questInfo and (questInfo.isQuestItem or questInfo.questID ~= nil)) or IsQuestClass(itemID),
 	}
 end
 
@@ -57,11 +64,15 @@ function Inventory.GetItemFromLocation(location)
 	if not itemID then
 		return nil
 	end
+	if location:IsBagAndSlot() then
+		return Inventory.GetItem(location:GetBagAndSlot())
+	end
 	return {
 		itemID = itemID,
 		guid = C_Item.GetItemGUID(location),
 		equippable = C_Item.IsEquippableItem(itemID),
 		maxStack = C_Item.GetItemMaxStackSizeByID(itemID),
+		isQuest = IsQuestClass(itemID),
 	}
 end
 

@@ -46,6 +46,24 @@ Copy the `BagSections` folder into
   this for gear in the settings, or per item with Alt+Right-click.
 * Sections are saved per character.
 
+### Quest Items section
+
+Turn on **Quest Items section** in Settings (or the gear menu), and quest items go into
+their own "Quest Items" section automatically. That includes quest starters and items
+whose type is Quest. It's a normal section otherwise: rename it, colour it, or move it
+below Rest. Drag a quest item to Rest to keep that item out, or into another section to
+put it there instead. Turning the option off removes the section, unless you've added
+other items to it by hand. The option is per character.
+
+### Profiles
+
+Settings → Profiles... (or the gear menu → Profiles) has *Save sections as profile...*,
+*Load profile* and *Delete profile*. A profile saves your list of sections: names, order,
+colours, above/below Rest, and whether the Quest Items section is on. It doesn't save which
+items are in them. Profiles are shared by all your characters. Loading a profile keeps the
+items in any section whose name matches. Sections that aren't in the profile are removed
+after asking, and their items go back to Rest.
+
 ### Layouts
 
 Switch layouts from the gear menu (Layout) or in Settings.

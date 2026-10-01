@@ -25,7 +25,8 @@ local function AddSlider(key, name, tooltip, default, minValue, maxValue, step, 
 end
 
 function Options.Init()
-	category = Settings.RegisterVerticalLayoutCategory(L.ADDON_NAME)
+	local layout
+	category, layout = Settings.RegisterVerticalLayoutCategory(L.ADDON_NAME)
 
 	local function Refresh() ns.RequestRefresh() end
 
@@ -52,7 +53,24 @@ function Options.Init()
 		function(value) ns.db.equippableRule = value and Rules.KIND_GUID or Rules.KIND_ITEMID end)
 	Settings.CreateCheckbox(category, gearSetting, L.OPT_GEAR_EXACT_DESC)
 
+	-- Per character, so it reads from the character's saved data.
+	local questSetting = Settings.RegisterProxySetting(category, "BagSections_autoQuest", Settings.VarType.Boolean,
+		L.QUEST_SECTION, false,
+		function() return ns.charDB.autoQuest end,
+		function(value)
+			Rules.SetAutoQuest(ns.charDB, value, L.QUEST_ITEMS)
+			Refresh()
+		end)
+	Settings.CreateCheckbox(category, questSetting, L.OPT_QUEST_SECTION_DESC)
+
 	AddCheckbox("takeOverBags", L.OPT_TAKEOVER, L.OPT_TAKEOVER_DESC, ns.DEFAULTS.takeOverBags)
+
+	if layout then
+		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(L.PROFILES, L.PROFILES_DESC))
+		layout:AddInitializer(CreateSettingsButtonInitializer(L.PROFILES, L.PROFILES_BUTTON, function(button)
+			ns.Menu.OpenProfileMenu(button)
+		end, L.PROFILES_DESC, true))
+	end
 
 	Settings.RegisterAddOnCategory(category)
 end

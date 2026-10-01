@@ -41,6 +41,18 @@ StaticPopupDialogs["BAGSECTIONS_SECTION_NAME"] = {
 	EditBoxOnEscapePressed = StaticPopup_StandardEditBoxOnEscapePressed,
 }
 
+StaticPopupDialogs["BAGSECTIONS_CONFIRM"] = {
+	text = "%s",
+	button1 = YES,
+	button2 = NO,
+	timeout = 0,
+	whileDead = 1,
+	hideOnEscape = 1,
+	OnAccept = function(_, data)
+		data.onAccept()
+	end,
+}
+
 StaticPopupDialogs["BAGSECTIONS_DELETE_SECTION"] = {
 	text = "%s",
 	button1 = YES,
@@ -139,6 +151,80 @@ function Menu.PickColour(section)
 	})
 end
 
+-- Profiles (account wide): saved section lists that any character can load.
+
+local function ProfileNames()
+	local names = {}
+	for name in pairs(ns.db.profiles) do
+		table.insert(names, name)
+	end
+	table.sort(names, function(a, b) return a:lower() < b:lower() end)
+	return names
+end
+
+function Menu.PromptSaveProfile()
+	StaticPopup_Show("BAGSECTIONS_SECTION_NAME", L.PROFILE_SAVE_PROMPT, nil, {
+		onAccept = function(name)
+			local function Save()
+				ns.db.profiles[name] = Rules.ExportProfile(ns.charDB)
+				ns.Print(L.PROFILE_SAVED:format(name))
+			end
+			if ns.db.profiles[name] then
+				StaticPopup_Show("BAGSECTIONS_CONFIRM", L.PROFILE_OVERWRITE:format(name), nil, { onAccept = Save })
+			else
+				Save()
+			end
+		end,
+	})
+end
+
+function Menu.LoadProfile(name)
+	local profile = ns.db.profiles[name]
+	if not profile then
+		return
+	end
+	local function Load()
+		Rules.ApplyProfile(ns.charDB, profile)
+		ns.Print(L.PROFILE_LOADED:format(name))
+		Changed()
+	end
+	local removed = Rules.CountRemovedByProfile(ns.charDB, profile)
+	if removed > 0 then
+		StaticPopup_Show("BAGSECTIONS_CONFIRM", L.PROFILE_LOAD_CONFIRM:format(name, removed), nil, { onAccept = Load })
+	else
+		Load()
+	end
+end
+
+function Menu.DeleteProfile(name)
+	StaticPopup_Show("BAGSECTIONS_CONFIRM", L.PROFILE_DELETE_CONFIRM:format(name), nil, {
+		onAccept = function() ns.db.profiles[name] = nil end,
+	})
+end
+
+-- Adds Save / Load / Delete entries to a menu description.
+function Menu.AddProfileEntries(root)
+	root:CreateButton(L.PROFILE_SAVE, function() Menu.PromptSaveProfile() end)
+	local names = ProfileNames()
+	local load = root:CreateButton(L.PROFILE_LOAD)
+	local delete = root:CreateButton(L.PROFILE_DELETE)
+	if #names == 0 then
+		load:SetEnabled(false)
+		delete:SetEnabled(false)
+	end
+	for _, name in ipairs(names) do
+		load:CreateButton(name, function() Menu.LoadProfile(name) end)
+		delete:CreateButton(name, function() Menu.DeleteProfile(name) end)
+	end
+end
+
+function Menu.OpenProfileMenu(owner)
+	MenuUtil.CreateContextMenu(owner, function(_, root)
+		root:CreateTitle(L.PROFILES)
+		Menu.AddProfileEntries(root)
+	end)
+end
+
 function Menu.SetLayout(layout)
 	ns.db.layout = layout
 	Changed()
@@ -158,6 +244,13 @@ function Menu.OpenMainMenu(owner)
 		local layout = root:CreateButton(L.LAYOUT)
 		layout:CreateRadio(L.LAYOUT_DEFAULT, function() return ns.db.layout ~= "compact" end, function() Menu.SetLayout("default") end)
 		layout:CreateRadio(L.LAYOUT_COMPACT, function() return ns.db.layout == "compact" end, function() Menu.SetLayout("compact") end)
+		root:CreateCheckbox(L.QUEST_SECTION, function()
+			return ns.charDB.autoQuest
+		end, function()
+			Rules.SetAutoQuest(ns.charDB, not ns.charDB.autoQuest, L.QUEST_ITEMS)
+			Changed()
+		end)
+		Menu.AddProfileEntries(root:CreateButton(L.PROFILES))
 		root:CreateDivider()
 		root:CreateButton(L.SETTINGS, function() ns.Options.Open() end)
 	end)

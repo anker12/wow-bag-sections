@@ -392,6 +392,20 @@ Store sections **per character** because each character carries different things
   (`Layout.Pack`). Each section stores a `color`. New sections take the next colour from
   a palette. Colours can be changed with Blizzard's colour picker.
 
+### v0.3 additions
+
+* **Automatic Quest Items section** (per character, `charDB.autoQuest`): a section with
+  `auto = "quest"` catches items where `GetContainerItemQuestInfo` reports a quest item or
+  quest starter, or whose item class is `Enum.ItemClass.Questitem`. Classification order
+  is: exact-item rule, item-type rule, automatic section, Rest. Dragging an
+  auto-matched item to Rest stores an item-type rule pointing at `"rest"`, so the item
+  stays out.
+* **Profiles** (account wide, `BagSectionsDB.profiles`): each profile stores the section
+  list only (name, order, colour, below/above Rest, collapsed, auto flag), not item rules.
+  Loading matches existing sections by name, case-insensitive, and keeps their items.
+  Sections not in the profile are removed after a confirmation. The UI is a button in
+  Settings and a submenu in the gear menu.
+
 ## Sources
 
 * Blizzard UI source, Forever branch (build 1.60.1.70124):
