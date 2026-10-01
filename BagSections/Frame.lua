@@ -23,7 +23,8 @@ local CELL = BUTTON_SIZE + SPACING
 local COMPACT_GAP = 10 -- space between slots, in every direction
 local COMPACT_CELL = BUTTON_SIZE + COMPACT_GAP
 local OUTLINE_PADDING = 3 -- space between a section's items and its outline, on every side
-local NAME_HEIGHT = 14 -- height of a section's name label on its outline
+local NAME_HEIGHT = 12 -- height of a section's name label on its outline
+local NAME_RAISE = 3 -- names sit this far above their outline, clear of the item icons
 local LINE = 1 -- outline thickness
 local LINE_ALPHA = 0.7
 local REFLOW_AFTER_SORT = 3 -- seconds the compact layout keeps updating after a sort
@@ -296,11 +297,11 @@ end
 
 local function CreateLabel(index)
 	local label = CreateFrame("Button", nil, content)
-	label:SetHeight(14)
+	label:SetHeight(NAME_HEIGHT)
 	label.Background = label:CreateTexture(nil, "BACKGROUND")
 	label.Background:SetAllPoints()
 	label.Background:SetColorTexture(0.05, 0.05, 0.07, 1)
-	label.Text = label:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	label.Text = label:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	label.Text:SetPoint("LEFT", 4, 0)
 	label.Text:SetJustifyH("LEFT")
 	label.Text:SetWordWrap(false)
@@ -403,7 +404,7 @@ local function RenderFlow(groups, columns, used, top, counters)
 			-- The name is centred on the top outline; leave room above it, clear of the
 			-- outline of whatever sits in the row above.
 			local above = r == 0 and 1 or (P + LINE + 2)
-			gap = math.max(gap, P + NAME_HEIGHT / 2 + above)
+			gap = math.max(gap, P + NAME_RAISE + NAME_HEIGHT / 2 + above)
 		end
 		rowTop[r] = y + gap
 		y = rowTop[r] + BUTTON_SIZE
@@ -444,17 +445,19 @@ local function RenderFlow(groups, columns, used, top, counters)
 			end
 		end
 
-		for _, polygon in ipairs(Layout.StripPolygons(boxes)) do
-			for i, a in ipairs(polygon) do
-				local b = polygon[i % #polygon + 1]
-				lineIndex = lineIndex + 1
-				local texture = GetLineTexture(lineIndex)
-				texture:ClearAllPoints()
-				texture:SetPoint("TOPLEFT", content, "TOPLEFT", math.min(a.x, b.x) - LINE / 2, -(math.min(a.y, b.y) - LINE / 2))
-				texture:SetSize(math.abs(b.x - a.x) + LINE, math.abs(b.y - a.y) + LINE)
-				texture:SetColorTexture(c.r, c.g, c.b, LINE_ALPHA)
-				texture:Show()
-			end
+		-- Lines are placed on whole pixels and are at least one screen pixel thick, so none
+		-- get rounded away at any UI scale.
+		for _, edge in ipairs(Layout.StripEdges(boxes)) do
+			lineIndex = lineIndex + 1
+			local texture = GetLineTexture(lineIndex)
+			local ex, ey = math.floor(edge.x1 + 0.5), math.floor(edge.y1 + 0.5)
+			local w = math.floor(edge.x2 + 0.5) - ex
+			local h = math.floor(edge.y2 + 0.5) - ey
+			texture:ClearAllPoints()
+			PixelUtil.SetPoint(texture, "TOPLEFT", content, "TOPLEFT", ex, -ey)
+			PixelUtil.SetSize(texture, w + LINE, h + LINE, 1, 1)
+			texture:SetColorTexture(c.r, c.g, c.b, LINE_ALPHA)
+			texture:Show()
 		end
 
 		for _, name in ipairs(names) do
@@ -470,7 +473,7 @@ local function RenderFlow(groups, columns, used, top, counters)
 				label.Text:SetWidth(textWidth)
 				label:SetWidth(textWidth + 8)
 				label:ClearAllPoints()
-				label:SetPoint("LEFT", content, "TOPLEFT", name.left, -boxes[name.strip].t)
+				label:SetPoint("LEFT", content, "TOPLEFT", name.left, -(boxes[name.strip].t - NAME_RAISE))
 				label:SetFrameLevel(lineFrame:GetFrameLevel() + 2)
 				label:Show()
 			end
@@ -678,7 +681,7 @@ function Frame.Init()
 	dividerLine = lineFrame:CreateTexture(nil, "ARTWORK")
 	dividerLine:SetColorTexture(1, 1, 1, 0.15)
 	dividerLine:Hide()
-	measure = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	measure = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	measure:Hide()
 
 	CreateTitleBar()
