@@ -528,6 +528,12 @@ Store sections **per character** because each character carries different things
   shows whenever `IsAnyBagOpen()` is true, synced from OnShow/OnHide hooks on those frames.
   Closing the window hides Blizzard's frames directly. It's only added to
   `UISpecialFrames` when it isn't replacing the bags.
+* **v0.12.1 hotfix:** the window didn't open at all. OnShow/OnHide scripts never fire
+  for frames inside a hidden parent, because they only fire on visibility changes. So
+  hooking those scripts never noticed Blizzard opening its (hidden) bags. It now
+  post-hooks the frames' `Show`/`Hide`/`SetShown` methods, and Blizzard's open/close
+  functions, with `hooksecurefunc`. The test stand-in now models visibility the way WoW
+  does, so it catches this.
 * **Bag number from a parent frame:** item buttons no longer get `SetBagID` (an addon
   write, so tainted). Each sits in an invisible per-bag frame whose ID is the bag, which
   Blizzard's `GetBagID` falls back to. This is the long-standing Bagnon pattern.

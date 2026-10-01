@@ -12,11 +12,28 @@ local function NewFrame(frameType, name, parent, template)
 	if frameType == "Frame" and parent == nil then frame._shown = true end
 	local methods = {
 		GetName = function(self) return self._name end,
-		Show = function(self) local was = self._shown; self._shown = true; if not was and self._scripts.OnShow then self._scripts.OnShow(self) end end,
-		Hide = function(self) local was = self._shown; self._shown = false; if was and self._scripts.OnHide then self._scripts.OnHide(self) end end,
+		-- Like WoW: OnShow/OnHide only fire when visibility changes, and a frame is only
+		-- visible if its parents are.
+		Show = function(self)
+			local was = self:IsVisible()
+			self._shown = true
+			if not was and self:IsVisible() and self._scripts.OnShow then self._scripts.OnShow(self) end
+			for _, hook in ipairs(rawget(self, "_methodHooks") and self._methodHooks.Show or {}) do hook(self) end
+		end,
+		Hide = function(self)
+			local was = self:IsVisible()
+			self._shown = false
+			if was and self._scripts.OnHide then self._scripts.OnHide(self) end
+			for _, hook in ipairs(rawget(self, "_methodHooks") and self._methodHooks.Hide or {}) do hook(self) end
+		end,
 		SetShown = function(self, shown) if shown then self:Show() else self:Hide() end end,
 		IsShown = function(self) return self._shown end,
-		IsVisible = function(self) return self._shown end,
+		IsVisible = function(self)
+			if not self._shown then return false end
+			local up = rawget(self, "_parent")
+			if up and type(up) == "table" and up.IsVisible then return up:IsVisible() end
+			return true
+		end,
 		SetScript = function(self, script, fn) self._scripts[script] = fn end,
 		GetScript = function(self, script) return self._scripts[script] end,
 		HookScript = function(self, script, fn) local old = self._scripts[script]; self._scripts[script] = function(...) if old then old(...) end fn(...) end end,
@@ -207,7 +224,18 @@ _G.Settings = {
 }
 _G.CreateSettingsListSectionHeaderInitializer = function() return {} end
 _G.CreateSettingsButtonInitializer = function(_, _, onClick) return { onClick = onClick } end
-_G.hooksecurefunc = function() end
+-- hooksecurefunc(frame, "Method", fn) adds a post-hook to that frame's method;
+-- hooksecurefunc("Global", fn) wraps the global function.
+_G.hooksecurefunc = function(a, b, c)
+	if type(a) == "table" then
+		a._methodHooks = a._methodHooks or {}
+		a._methodHooks[b] = a._methodHooks[b] or {}
+		table.insert(a._methodHooks[b], c)
+	elseif type(_G[a]) == "function" then
+		local original = _G[a]
+		_G[a] = function(...) original(...) b(...) end
+	end
+end
 -- A stand-in for Blizzard's combined bag frame and the functions that open/close it.
 _G.NUM_CONTAINER_FRAMES = 0
 _G.ContainerFrameCombinedBags = NewFrame("Frame", "ContainerFrameCombinedBags", _G.UIParent)
