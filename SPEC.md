@@ -449,6 +449,14 @@ Store sections **per character** because each character carries different things
   above the buttons. They only sit in the gaps between slots, so they never cover icons.
 * **Reagents and Keyring separated:** in compact they sit in their own grid below a thin
   divider, as in the default layout, with a smaller gap.
+* **Simpler outlines (v0.7):** outlines are no longer traced as shapes. Each row piece of
+  a section always gets a line at its start and end. Top and bottom lines are drawn
+  wherever the row above/below isn't the same section, and end lines reach across the
+  row gap where the section continues (`Layout.StripEdges`). Lines are placed on whole
+  pixels with `PixelUtil` and are at least one screen pixel thick, so none disappear at
+  any UI scale.
+* **Names (v0.7):** smaller font (GameFontNormalSmall), raised 3px above the outline so
+  they don't overlap the item icons.
 * **One name per section:** a wrapped section whose parts don't touch shows its name
   once, on its longest stretch of top edge. The outline colour ties the parts together.
 

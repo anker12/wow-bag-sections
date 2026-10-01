@@ -151,6 +151,10 @@ _G.CursorHasItem = function() return cursor ~= nil end
 _G.InCombatLockdown = function() return _G._inCombat end
 _G.IsAltKeyDown = function() return false end
 _G.GetMoney = function() return 12345 end
+_G.PixelUtil = {
+	SetPoint = function(region, ...) region:SetPoint(...) end,
+	SetSize = function(region, w, h) region:SetSize(w, h) end,
+}
 _G._now = 100
 _G.GetTime = function() return _G._now end
 _G.GetMoneyString = function(m) return tostring(m) end

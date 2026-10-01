@@ -260,15 +260,6 @@ test("built-in groups can be collapsed", function()
 	eq(db.collapsedBuiltin.rest, nil)
 end)
 
-local function PolygonArea(points)
-	local area = 0
-	for i, a in ipairs(points) do
-		local b = points[i % #points + 1]
-		area = area + (a.x * b.y - b.x * a.y)
-	end
-	return area / 2
-end
-
 -- 10 columns of 37px buttons with 4px spacing: 406px wide; 14px extra before a section
 -- that starts partway along a row.
 local W, BTN, STEP, GAP = 406, 37, 41, 14
@@ -327,58 +318,62 @@ local function Boxes(strips, rowHeight, pad)
 	return boxes
 end
 
-test("outline: equal padding on all sides of a single row", function()
-	local cells = Layout.FlowRows({ 3 }, W, BTN, STEP, GAP)
-	local polygons = Layout.StripPolygons(Boxes(Layout.Strips(cells[1], BTN), 50, 5))
-	eq(#polygons, 1)
-	local p = polygons[1]
-	eq(#p, 4)
-	eq(p[1].x, -5); eq(p[1].y, -5)
-	eq(p[3].x, 2 * STEP + BTN + 5); eq(p[3].y, BTN + 5)
-end)
-
-test("outline: wrapped sections are one clockwise shape, or two if they don't touch", function()
-	-- starts partway along row 0 and fills row 1: rows overlap -> one shape
-	local cells = Layout.FlowRows({ 5, 16 }, W, BTN, STEP, GAP)
-	local strips = Layout.Strips(cells[2], BTN)
-	eq(#strips, 3)
-	local polygons = Layout.StripPolygons(Boxes(strips, 50, 5))
-	eq(#polygons, 1)
-	assert(PolygonArea(polygons[1]) > 0, "clockwise")
-	for i, a in ipairs(polygons[1]) do
-		local b = polygons[1][i % #polygons[1] + 1]
-		assert(a.x == b.x or a.y == b.y, "edges are straight")
-	end
-	-- two cells at the end of row 0, four at the start of row 1: they don't touch
-	cells = Layout.FlowRows({ 7, 6 }, W, BTN, STEP, GAP)
-	strips = Layout.Strips(cells[2], BTN)
-	eq(#strips, 2)
-	eq(#Layout.StripPolygons(Boxes(strips, 50, 5)), 2)
-end)
-
-test("outline: shape area covers all padded strips", function()
-	for start = 1, 9 do
-		for size = 1, 30 do
-			local cells = Layout.FlowRows({ start, size }, W, BTN, STEP, GAP)
-			local boxes = Boxes(Layout.Strips(cells[2], BTN), 41, 5)
-			local area = 0
-			for _, polygon in ipairs(Layout.StripPolygons(boxes)) do
-				local a = PolygonArea(polygon)
-				assert(a > 0, "clockwise")
-				area = area + a
-			end
-			-- boxes on consecutive rows overlap by 6px where they touch; the shape counts that once
-			local expected = 0
-			for i, box in ipairs(boxes) do
-				expected = expected + (box.r - box.l) * (box.b - box.t)
-				local prev = boxes[i - 1]
-				if prev and prev.l < box.r and box.l < prev.r then
-					expected = expected - (math.min(prev.r, box.r) - math.max(prev.l, box.l)) * (prev.b - box.t)
-				end
-			end
-			eq(area, expected, ("start %d size %d"):format(start, size))
+-- Is the point (x, y) on any of the segments?
+local function OnEdge(edges, x, y)
+	for _, e in ipairs(edges) do
+		if x >= e.x1 and x <= e.x2 and y >= e.y1 and y <= e.y2 then
+			return true
 		end
 	end
+	return false
+end
+
+test("outline: single row is a box with equal padding", function()
+	local cells = Layout.FlowRows({ 3 }, W, BTN, STEP, GAP)
+	local edges = Layout.StripEdges(Boxes(Layout.Strips(cells[1], BTN), 50, 5))
+	eq(#edges, 4)
+	local right = 2 * STEP + BTN + 5
+	assert(OnEdge(edges, -5, -5) and OnEdge(edges, right, -5), "top corners")
+	assert(OnEdge(edges, -5, BTN + 5) and OnEdge(edges, right, BTN + 5), "bottom corners")
+	assert(OnEdge(edges, -5, 10), "left side")
+	assert(OnEdge(edges, right, 10), "right side")
+end)
+
+test("outline: every row piece has a line at its start and end", function()
+	-- strict grid (no gap between sections), 10 columns of 47px, rows 60px apart
+	for start = 0, 9 do
+		for size = 1, 25 do
+			local cells = Layout.FlowRows({ start, size }, 460, 37, 47, 0)
+			local boxes = Boxes(Layout.Strips(cells[2], 37), 60, 3)
+			local edges = Layout.StripEdges(boxes)
+			for i, box in ipairs(boxes) do
+				local mid = (box.t + box.b) / 2
+				assert(OnEdge(edges, box.l, mid), ("start %d size %d row %d: left end"):format(start, size, i))
+				assert(OnEdge(edges, box.r, mid), ("start %d size %d row %d: right end"):format(start, size, i))
+				-- top line wherever the row above doesn't continue the section
+				local above = boxes[i - 1]
+				local x = box.l + 1
+				if not (above and above.l <= x and x <= above.r) then
+					assert(OnEdge(edges, x, box.t), ("start %d size %d row %d: top"):format(start, size, i))
+				end
+			end
+			for _, e in ipairs(edges) do
+				assert(e.x1 == e.x2 or e.y1 == e.y2, "straight lines only")
+			end
+		end
+	end
+end)
+
+test("outline: wrapped section is joined across the gap between rows", function()
+	-- starts at column 6 of row 0, fills row 1: the right end crosses the row gap
+	local cells = Layout.FlowRows({ 6, 14 }, 460, 37, 47, 0)
+	local boxes = Boxes(Layout.Strips(cells[2], 37), 60, 3)
+	local edges = Layout.StripEdges(boxes)
+	local gapY = (boxes[1].b + boxes[2].t) / 2
+	assert(OnEdge(edges, boxes[1].r, gapY), "right side continues between rows")
+	assert(OnEdge(edges, boxes[1].l, gapY), "row 0's start line reaches down to row 1")
+	-- no line between the rows where the section continues
+	assert(not OnEdge(edges, boxes[1].l + 20, boxes[2].t), "no top line under the section's own row")
 end)
 
 test("outline: name goes on the longest stretch of top edge", function()

@@ -128,76 +128,59 @@ end
 
 -- Splits padded strips { l, r, t, b } (pixels, y down) into chains of strips that touch
 -- horizontally on consecutive rows. Each chain is outlined as one shape.
-local function Chains(boxes)
-	local chains = {}
-	for i, box in ipairs(boxes) do
-		local chain = chains[#chains]
-		if i > 1 and Overlaps(boxes[i - 1], box) then
-			table.insert(chain, box)
-		else
-			table.insert(chains, { box })
+-- Outline edges around a group's padded row strips { l, r, t, b } (pixels, y down), as
+-- straight segments { x1, y1, x2, y2 }. Simple rules, one strip at a time:
+--   * every strip has a line at its left and right end (start/end of the section, or
+--     start/end of the bag row);
+--   * top and bottom lines are drawn wherever the row above/below isn't the same section;
+--   * where the row above/below continues the section, the end lines reach across the
+--     gap between rows so the outline stays joined.
+function Layout.StripEdges(boxes)
+	local edges = {}
+	local function Add(x1, y1, x2, y2)
+		if x1 ~= x2 or y1 ~= y2 then
+			table.insert(edges, { x1 = x1, y1 = y1, x2 = x2, y2 = y2 })
 		end
 	end
-	return chains
-end
-
-local function AddPoint(points, x, y)
-	local last = points[#points]
-	if last and last.x == x and last.y == y then
-		return
+	local function Covers(other, x)
+		return other and other.l <= x and x <= other.r
 	end
-	table.insert(points, { x = x, y = y })
-end
+	for i, box in ipairs(boxes) do
+		local above = boxes[i - 1]
+		local below = boxes[i + 1]
+		if above and not Overlaps(above, box) then above = nil end
+		if below and not Overlaps(below, box) then below = nil end
 
--- Removes points that sit in the middle of a straight edge.
-local function Simplify(points)
+		-- Ends, stretched to meet the neighbouring row where it continues past this end.
+		for _, x in ipairs({ box.l, box.r }) do
+			local top = Covers(above, x) and above.b or box.t
+			local bottom = Covers(below, x) and below.t or box.b
+			Add(x, top, x, bottom)
+		end
+
+		-- Top: the parts not covered by the row above.
+		if above then
+			Add(box.l, box.t, math.min(box.r, above.l), box.t)
+			Add(math.max(box.l, above.r), box.t, box.r, box.t)
+		else
+			Add(box.l, box.t, box.r, box.t)
+		end
+		-- Bottom: the parts not covered by the row below.
+		if below then
+			Add(box.l, box.b, math.min(box.r, below.l), box.b)
+			Add(math.max(box.l, below.r), box.b, box.r, box.b)
+		else
+			Add(box.l, box.b, box.r, box.b)
+		end
+	end
+	-- Drop zero-length or inverted pieces left by the min/max clipping above.
 	local result = {}
-	local n = #points
-	for i = 1, n do
-		local prev, cur, nxt = points[(i - 2) % n + 1], points[i], points[i % n + 1]
-		local straight = (prev.x == cur.x and cur.x == nxt.x) or (prev.y == cur.y and cur.y == nxt.y)
-		if not straight then
-			table.insert(result, cur)
+	for _, e in ipairs(edges) do
+		if e.x2 >= e.x1 and e.y2 >= e.y1 then
+			table.insert(result, e)
 		end
 	end
 	return result
-end
-
--- Outline polygons (clockwise, pixels, y down) around padded strips { l, r, t, b }.
--- Steps between rows sit on the edge of whichever row is wider, so the padding around the
--- items is the same on every side.
-function Layout.StripPolygons(boxes)
-	local polygons = {}
-	for _, chain in ipairs(Chains(boxes)) do
-		local points = {}
-		local k = #chain
-		AddPoint(points, chain[1].l, chain[1].t)
-		AddPoint(points, chain[1].r, chain[1].t)
-		for i = 1, k - 1 do
-			local a, b = chain[i], chain[i + 1]
-			if a.r > b.r then
-				AddPoint(points, a.r, a.b)
-				AddPoint(points, b.r, a.b)
-			elseif a.r < b.r then
-				AddPoint(points, a.r, b.t)
-				AddPoint(points, b.r, b.t)
-			end
-		end
-		AddPoint(points, chain[k].r, chain[k].b)
-		AddPoint(points, chain[k].l, chain[k].b)
-		for i = k - 1, 1, -1 do
-			local below, above = chain[i + 1], chain[i]
-			if below.l < above.l then
-				AddPoint(points, below.l, below.t)
-				AddPoint(points, above.l, below.t)
-			elseif below.l > above.l then
-				AddPoint(points, below.l, above.b)
-				AddPoint(points, above.l, above.b)
-			end
-		end
-		table.insert(polygons, Simplify(points))
-	end
-	return polygons
 end
 
 -- Where a group's name goes: the longest stretch of top edge of each separate part of

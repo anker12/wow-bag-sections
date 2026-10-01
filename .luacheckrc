@@ -22,7 +22,7 @@ read_globals = {
 	"ContainerFrame_AllowedToOpenBags", "MinimalSliderWithSteppersMixin",
 	"StaticPopup_Show", "StaticPopup_StandardEditBoxOnEscapePressed",
 	"ClearCursor", "CursorHasItem", "GetMouseFoci", "GetMoney", "GetMoneyString", "GetKeyRingSize",
-	"InCombatLockdown", "GetTime", "CreateSettingsButtonInitializer", "CreateSettingsListSectionHeaderInitializer", "ColorPickerFrame", "NORMAL_FONT_COLOR", "IsAltKeyDown", "PlaySound", "hooksecurefunc", "strtrim", "tinsert", "bit",
+	"InCombatLockdown", "GetTime", "PixelUtil", "CreateSettingsButtonInitializer", "CreateSettingsListSectionHeaderInitializer", "ColorPickerFrame", "NORMAL_FONT_COLOR", "IsAltKeyDown", "PlaySound", "hooksecurefunc", "strtrim", "tinsert", "bit",
 	"ACCEPT", "CANCEL", "YES", "NO", "NUM_BAG_SLOTS",
 }
 
