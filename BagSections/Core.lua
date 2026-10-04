@@ -109,6 +109,15 @@ local BUTTON_REFRESH_EVENTS = {
 	MERCHANT_CLOSED = true,
 }
 
+-- Bank contents are remembered on every visit (see Bank.lua).
+local BANK_EVENTS = {
+	BANKFRAME_OPENED = true,
+	BANKFRAME_CLOSED = true,
+	PLAYERBANKSLOTS_CHANGED = true,
+	BANK_TABS_CHANGED = true,
+	BANK_TAB_SETTINGS_UPDATED = true,
+}
+
 local events = CreateFrame("Frame")
 
 local function OnAddonLoaded()
@@ -118,6 +127,7 @@ local function OnAddonLoaded()
 	ns.charDB = BagSectionsCharDB
 
 	ns.Frame.Init()
+	ns.BankFrame.Init()
 	ns.Options.Init()
 	if ns.db.takeOverBags then
 		ns.Hooks.Install()
@@ -147,6 +157,9 @@ local function OnAddonLoaded()
 		EventRegistry:RegisterCallback("TokenFrame.OnTokenWatchChanged", function() ns.Frame.UpdateFooter() end, events)
 	end
 	events:RegisterEvent("PLAYER_REGEN_ENABLED")
+	for event in pairs(BANK_EVENTS) do
+		events:RegisterEvent(event)
+	end
 	events:RegisterEvent("PLAYER_LOGIN")
 end
 
@@ -158,8 +171,17 @@ events:SetScript("OnEvent", function(_, event, arg1)
 		end
 	elseif event == "PLAYER_LOGIN" then
 		ns.ItemButtons.Precreate(ns.Inventory.Scan())
+	elseif event == "BANKFRAME_OPENED" then
+		ns.Bank.OnOpened()
+	elseif event == "BANKFRAME_CLOSED" then
+		ns.Bank.OnClosed()
+	elseif BANK_EVENTS[event] then
+		ns.Bank.RequestSnapshot()
 	elseif FULL_REFRESH_EVENTS[event] then
 		ns.RequestRefresh(FULL_REFRESH_EVENTS[event])
+		if event == "BAG_UPDATE_DELAYED" then
+			ns.Bank.RequestSnapshot()
+		end
 	elseif BUTTON_REFRESH_EVENTS[event] then
 		ns.RequestRefresh("buttons")
 	elseif event == "BAG_UPDATE_COOLDOWN" then
@@ -222,6 +244,8 @@ SlashCmdList.BAGSECTIONS = function(input)
 		Rules.Assign(ns.charDB, item, section.id, Rules.MatchedKind(ns.charDB, item) or Rules.DefaultKind(item, ns.db))
 		ns.Print(L.ADDED_TO:format(C_Item.GetItemNameByID(item.itemID) or item.itemID, section.name))
 		ns.RequestRefresh()
+	elseif command == "bank" then
+		ns.BankFrame.Toggle()
 	elseif command == "config" or command == "options" then
 		ns.Options.Open()
 	else

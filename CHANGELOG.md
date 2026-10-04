@@ -5,6 +5,13 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-04
+
+### Added
+- View your bank from anywhere: right-click the "Bags" title, or type `/bs bank`. The
+  bank is remembered on every visit, your character's bank per character and the account
+  bank for all characters. Shows each bank tab, free slots, and when it was last updated.
+
 ## [1.1.0] - 2026-10-04
 
 ### Added

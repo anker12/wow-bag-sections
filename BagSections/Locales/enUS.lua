@@ -120,10 +120,23 @@ L.OPT_LAYOUT_DESC = "Default stacks each section at full width. Semi-compact put
 L.OPT_TAKEOVER = "Replace the default bags"
 L.OPT_TAKEOVER_DESC = "Open this window instead of Blizzard's bags. Needs /reload to take effect."
 
+L.BANK = "Bank"
+L.BANK_TAB = "Tab %d"
+L.ACCOUNT_BANK_TAB = "Account: %s"
+L.BANK_LIVE = "Live"
+L.BANK_UPDATED = "Updated %s"
+L.BANK_EMPTY = "Visit a bank once to see its contents here."
+L.VIEW_BANK_HINT = "Right-click: view bank"
+L.AGE_NOW = "just now"
+L.AGE_MINUTES = "%d min ago"
+L.AGE_HOURS = "%d h ago"
+L.AGE_DAYS = "%d days ago"
+
 L.HELP = {
 	"/bs - open or close the bags",
 	"/bs sort - sort the bags",
 	"/bs new <name> - create a section",
 	"/bs add <section> - add the item under the mouse to a section",
+	"/bs bank - view your bank from anywhere (also: right-click the Bags title)",
 	"/bs config - open settings",
 }

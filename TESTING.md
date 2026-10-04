@@ -85,3 +85,10 @@ mention BagSections.
 | T77 | Track several currencies (or set Columns to 6) so they don't fit between the free slots and the gold | They move to their own line above the gold, right-aligned, wrapping onto more lines as needed. Nothing overlaps and nothing runs past the window edge; the window grows to fit. |
 | T78 | Untick "Show on Backpack" with the bags open, and earn or spend some of a tracked currency | The footer updates straight away. |
 | T79 | Settings → Section name size, Gold and currency size, Free slots size | Each changes only its own text, in every layout. Big section names get taller headers; in Compact, names stay clear of the items. None of the three is in the gear menu. |
+| T80 | Fresh install, right-click the "Bags" title before visiting a bank | A Bank window opens next to the bags saying to visit a bank first. Right-click the title again: it closes. Hovering the title shows "Right-click: view bank". |
+| T81 | Drag the window by its "Bags" title | The window still moves, and left-click on the title does nothing else. |
+| T82 | Visit a banker, then right-click the title | The Bank window shows every character bank tab (and account bank tabs, marked "Account: …") with the same items as Blizzard's bank. The footer says "Live". |
+| T83 | At the bank, move items between bank and bags, buy a bank tab, rename a tab | The Bank window follows each change. |
+| T84 | Leave the bank, fly somewhere, `/reload`, then `/bs bank` | Same contents as when you left. The footer says "Updated … ago". Tooltips work; Shift-click links an item in chat. |
+| T85 | Log in to another character on the same account | Its own character bank (or the visit hint), and the same account bank tabs. |
+| T86 | Change Columns, Section name size, background and border settings with the Bank window open | It follows them, like the bags. |

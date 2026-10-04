@@ -2,7 +2,7 @@
 -- Run from the repo root: lua tests/run.lua
 
 local ns = {}
-for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Rows.lua", "BagSections/Share.lua", "BagSections/Layout.lua" }) do
+for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Rows.lua", "BagSections/Share.lua", "BagSections/Layout.lua", "BagSections/Bank.lua" }) do
 	assert(loadfile(file))("BagSections", ns)
 end
 local Rules, Layout, Rows = ns.Rules, ns.Layout, ns.Rows
@@ -698,6 +698,40 @@ test("footer currencies: none tracked", function()
 	local footer = Layout.FooterCurrencies({}, -20, 100, 10)
 	eq(footer.extraLines, 0)
 	eq(#footer.places, 0)
+end)
+
+test("bank: snapshots in order, character bank first", function()
+	local Bank = ns.Bank
+	local mine = { updated = 1, tabs = {} }
+	local shared = { updated = 2, tabs = {} }
+	local list = Bank.GetSnapshots({ bank = mine }, { accountBank = shared })
+	eq(#list, 2)
+	eq(list[1].kind, "character")
+	eq(list[2].data, shared)
+	eq(#Bank.GetSnapshots({}, {}), 0, "never visited")
+end)
+
+test("bank: free slots count across tabs and banks", function()
+	local Bank = ns.Bank
+	local snapshots = {
+		{ kind = "character", data = { tabs = {
+			{ size = 4, items = { [1] = { id = 1 }, [3] = { id = 2 } } },
+			{ size = 2, items = {} },
+		} } },
+		{ kind = "account", data = { tabs = { { size = 3, items = { [2] = { id = 3 } } } } } },
+	}
+	local free, total = Bank.CountFree(snapshots)
+	eq(free, 6)
+	eq(total, 9)
+end)
+
+test("bank: snapshot age reads naturally", function()
+	local L = { AGE_NOW = "now", AGE_MINUTES = "%d min", AGE_HOURS = "%d h", AGE_DAYS = "%d d" }
+	local Bank = ns.Bank
+	eq(Bank.FormatAge(30, L), "now")
+	eq(Bank.FormatAge(5 * 60 + 10, L), "5 min")
+	eq(Bank.FormatAge(3 * 3600 + 5, L), "3 h")
+	eq(Bank.FormatAge(2 * 86400 + 5, L), "2 d")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

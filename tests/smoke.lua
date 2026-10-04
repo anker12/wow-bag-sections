@@ -95,6 +95,10 @@ local ITEMS = {
 	["1:3"] = { itemID = 600, name = "Bloody Tooth", stack = 1, quest = true },
 }
 local NUM_SLOTS = { [0] = 16, [1] = 4, [2] = 0, [3] = 0, [4] = 0, [5] = 2, [-1] = 0 }
+-- Bank: one character bank tab (bag 6, 4 slots) and one account bank tab (bag 15, 2 slots).
+NUM_SLOTS[6], NUM_SLOTS[15] = 4, 2
+ITEMS["6:2"] = { itemID = 700, name = "Old Robe", stack = 1 }
+ITEMS["15:1"] = { itemID = 800, name = "Shared Ore", stack = 12, maxStack = 20 }
 local cursor -- { bag, slot }
 local sortCalls = 0
 
@@ -110,6 +114,7 @@ local function MakeLocation(bag, slot)
 end
 
 _G.Enum = {
+	BankType = { Character = 0, Guild = 1, Account = 2 },
 	BagIndex = { Keyring = -1, Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5 },
 	TooltipDataType = { Item = 0 },
 	ItemClass = { Questitem = 12 },
@@ -163,6 +168,17 @@ _G.C_Item = {
 	GetItemNameByID = function(itemID) for _, i in pairs(ITEMS) do if i.itemID == itemID then return i.name end end end,
 }
 _G.C_Timer = { After = function(_, fn) fn() end }
+_G._atBank = false
+_G.C_Bank = {
+	CanViewBank = function() return _G._atBank end,
+	FetchPurchasedBankTabData = function(bankType)
+		if bankType == 0 then return { { ID = 6, name = "Gear", icon = 1 } } end
+		if bankType == 2 then return { { ID = 15, name = "", icon = 1 } } end
+		return {}
+	end,
+}
+_G.time = os.time
+_G.HandleModifiedItemClick = function(link) _G._linked = link end
 _G.C_ActionBar = { ShouldShowKeyring = function() return false end }
 _G.ItemLocation = { CreateFromBagAndSlot = function(_, bag, slot) return MakeLocation(bag, slot) end }
 _G.CreateFrame = NewFrame
@@ -741,6 +757,57 @@ BagSectionsDB.sectionFontSize, BagSectionsDB.moneyFontSize, BagSectionsDB.slotsF
 ns.Frame.ApplyFonts()
 check(mainFrame._h == baseHeight, "back to the default size")
 
+-- Bank viewer: right-click the Bags title before ever visiting a bank.
+local bankWindow
+for _, frame in ipairs(frames) do if frame._name == "BagSectionsBankFrame" then bankWindow = frame end end
+local function BankButtons()
+	local list = {}
+	for _, frame in ipairs(frames) do
+		if frame._template == "ItemButtonTemplate" and frame._shown then table.insert(list, frame) end
+	end
+	return list
+end
+local titleButton = rawget(mainFrame, "TitleButton")
+check(titleButton, "the Bags title is clickable")
+titleButton._scripts.OnClick(titleButton, "RightButton")
+check(bankWindow:IsShown(), "right-clicking the title opens the bank viewer")
+check(bankWindow.Empty._shown and #BankButtons() == 0, "explains how to fill it before the first visit")
+titleButton._scripts.OnClick(titleButton, "RightButton")
+check(not bankWindow:IsShown(), "right-clicking again closes it")
+
+-- Visiting the bank takes a snapshot, character and account bank.
+_G._atBank = true
+Fire("BANKFRAME_OPENED")
+check(BagSectionsCharDB.bank and #BagSectionsCharDB.bank.tabs == 1, "character bank remembered")
+check(BagSectionsCharDB.bank.tabs[1].items[2].id == 700, "with its items in their slots")
+check(BagSectionsDB.accountBank and BagSectionsDB.accountBank.tabs[1].items[1].count == 12, "account bank remembered account wide")
+SlashCmdList.BAGSECTIONS("bank")
+check(bankWindow:IsShown() and #BankButtons() == 6, "bank viewer shows every bank slot")
+check(not bankWindow.Empty._shown, "no hint once there's a snapshot")
+check(bankWindow.Updated._text == "Live", "says it's live while at the bank")
+check(bankWindow.FreeSlots._text == "4 / 6", "bank free slots")
+
+-- Items moved at the bank update the snapshot.
+ITEMS["6:3"], ITEMS["6:2"] = ITEMS["6:2"], nil
+Fire("PLAYERBANKSLOTS_CHANGED")
+check(BagSectionsCharDB.bank.tabs[1].items[3] and not BagSectionsCharDB.bank.tabs[1].items[2], "snapshot follows changes at the bank")
+
+-- After leaving, the snapshot stays and can be looked at from anywhere.
+_G._atBank = false
+Fire("BANKFRAME_CLOSED")
+ITEMS["6:3"] = nil
+Fire("BAG_UPDATE_DELAYED")
+check(BagSectionsCharDB.bank.tabs[1].items[3], "nothing is read away from the bank")
+check(bankWindow.Updated._text == "Updated just now", "says how old the snapshot is")
+local robe
+for _, button in ipairs(BankButtons()) do if button.link then robe = button end end
+robe._scripts.OnClick(robe)
+check(_G._linked == "link", "Shift-click links a bank item")
+local bankFont = rawget(bankWindow, "FreeSlots")._font
+check(bankFont == _G.BagSectionsFont_slots, "bank footer uses the free slots font")
+SlashCmdList.BAGSECTIONS("bank")
+check(not bankWindow:IsShown(), "/bs bank closes it again")
+
 -- Share and import a profile code.
 ns.Menu.PromptSaveProfile()
 _G._lastPopup.data.onAccept("Shared")
@@ -754,7 +821,7 @@ check(ns.Menu.ImportCode("nonsense") == nil, "bad code rejected")
 ns.Menu.OpenProfileMenu(anyHeader)
 
 -- Every event handler runs without error.
-for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY", "CURRENCY_DISPLAY_UPDATE", "INVENTORY_SEARCH_UPDATE", "GET_ITEM_INFO_RECEIVED", "MERCHANT_SHOW" }) do
+for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY", "CURRENCY_DISPLAY_UPDATE", "BANK_TABS_CHANGED", "BANK_TAB_SETTINGS_UPDATED", "INVENTORY_SEARCH_UPDATE", "GET_ITEM_INFO_RECEIVED", "MERCHANT_SHOW" }) do
 	Fire(event)
 end
 
