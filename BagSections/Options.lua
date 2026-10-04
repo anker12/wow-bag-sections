@@ -63,6 +63,11 @@ function Options.Init()
 	AddSlider("outlineAlpha", L.OPT_OUTLINE_ALPHA, L.OPT_OUTLINE_ALPHA_DESC, ns.DEFAULTS.outlineAlpha, 0.1, 1, 0.05, percent, Refresh)
 	AddCheckbox("sectionTooltips", L.OPT_SECTION_TOOLTIPS, L.OPT_SECTION_TOOLTIPS_DESC, ns.DEFAULTS.sectionTooltips)
 
+	local function Fonts() ns.Frame.ApplyFonts() end
+	AddSlider("sectionFontSize", L.OPT_SECTION_FONT, L.OPT_SECTION_FONT_DESC, ns.DEFAULTS.sectionFontSize, 8, 20, 1, nil, Fonts)
+	AddSlider("moneyFontSize", L.OPT_MONEY_FONT, L.OPT_MONEY_FONT_DESC, ns.DEFAULTS.moneyFontSize, 8, 20, 1, nil, Fonts)
+	AddSlider("slotsFontSize", L.OPT_SLOTS_FONT, L.OPT_SLOTS_FONT_DESC, ns.DEFAULTS.slotsFontSize, 8, 20, 1, nil, Fonts)
+
 	AddSlider("columns", L.OPT_COLUMNS, L.OPT_COLUMNS_DESC, ns.DEFAULTS.columns, 6, 24, 1, nil, Refresh)
 	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, function(value)
 		return ("%d%%"):format(math.floor(value * 100 + 0.5))

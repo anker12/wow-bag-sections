@@ -80,6 +80,15 @@ In Settings:
   default). Turn off for a thin plain border.
 * **Outline opacity:** how strong the coloured section outlines are in the Compact layout.
 * **Section name tooltips:** turn off the tooltips when hovering section names.
+* **Text sizes:** *Section name size*, *Gold and currency size* and *Free slots size*.
+  Compact layout names are 2 sizes smaller than the setting, to fit on the outlines.
+
+### Currencies
+
+Currencies you track show at the bottom, left of your gold, like in Blizzard's bags. To
+track one, open the Currency tab on your character window, click the currency and tick
+**Show on Backpack**. Hover a currency for its tooltip. If they don't all fit next to the
+gold, they move to their own line above it, and wrap onto more lines if needed.
 
 ### Layouts
 

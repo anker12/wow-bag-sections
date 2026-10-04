@@ -40,6 +40,13 @@ local function NewFrame(frameType, name, parent, template)
 		GetFrameLevel = function(self) return self._level end,
 		SetPoint = function(self, point, rel, relPoint, x, y) self._point = { point, rel, relPoint, x, y } end,
 		SetSize = function(self, w, h) self._w, self._h = w, h end,
+		SetWidth = function(self, w) self._w = w end,
+		SetHeight = function(self, h) self._h = h end,
+		GetWidth = function(self) return self._w end,
+		GetHeight = function(self) return self._h end,
+		-- Roughly 6 pixels per character, so text has a width to lay out.
+		GetStringWidth = function(self) return #(self._text or "") * 6 end,
+		SetFontObject = function(self, font) self._font = font end,
 		GetLeft = function() return 0 end,
 		GetTop = function() return 0 end,
 		GetEffectiveScale = function() return 1 end,
@@ -191,6 +198,26 @@ _G.GetTime = function() return _G._now end
 _G._cursorX, _G._cursorY = 0, 0
 _G.GetCursorPosition = function() return _G._cursorX, _G._cursorY end
 _G.GetMoneyString = function(m) return tostring(m) end
+-- Fonts: Blizzard's font objects and our own copies of them.
+local function NewFont(size)
+	local font = { _size = size }
+	function font:GetFont() return "Fonts\\FRIZQT__.TTF", self._size, "" end
+	function font:SetFont(_, newSize) self._size = newSize end
+	function font:CopyFontObject(base) self._size = _G[base]._size end
+	return font
+end
+_G.GameFontNormal, _G.GameFontNormalSmall = NewFont(12), NewFont(10)
+_G.GameFontHighlight, _G.GameFontHighlightSmall = NewFont(12), NewFont(10)
+_G.CreateFont = function(name) local font = NewFont(12); _G[name] = font; return font end
+-- Currencies ticked "Show on Backpack". Change _G._currencies to change what is tracked.
+_G._currencies = {}
+_G.C_CurrencyInfo = { GetBackpackCurrencyInfo = function(index)
+	local c = _G._currencies[index]
+	return c and { name = c.name, quantity = c.quantity, iconFileID = 1, currencyTypesID = index } or nil
+end }
+_G.BreakUpLargeNumbers = function(n) return tostring(n) end
+_G.AbbreviateNumbers = function(n) return math.floor(n / 1000) .. "K" end
+_G.EventRegistry = { RegisterCallback = function(_, event, fn) _G._registryCallbacks = _G._registryCallbacks or {}; _G._registryCallbacks[event] = fn end }
 _G.GetMouseFoci = function() return {} end
 _G.strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
 _G.tinsert = table.insert
@@ -664,6 +691,56 @@ BagSectionsDB.sectionTooltips = true
 anyHeader._scripts.OnEnter(anyHeader)
 check(tooltipShown, "tooltip when on")
 
+-- Footer: tracked currencies sit left of the gold while they fit, and get their own
+-- lines above it (never past the window edge) when they don't.
+local function Currencies()
+	local shown = {}
+	for _, frame in ipairs(frames) do
+		if rawget(frame, "Count") and rawget(frame, "Icon") and frame._shown then table.insert(shown, frame) end
+	end
+	return shown
+end
+local money = rawget(mainFrame, "Money")
+check(#Currencies() == 0, "no currencies shown when none are tracked")
+local baseHeight = mainFrame._h
+_G._currencies = { { name = "Honor", quantity = 50 } }
+Fire("CURRENCY_DISPLAY_UPDATE")
+check(#Currencies() == 1, "tracked currency shown")
+check(Currencies()[1]._point[5] == money._point[5], "a currency that fits sits on the gold's line")
+check(mainFrame._h == baseHeight, "window keeps its height when currencies fit")
+_G._currencies = {}
+for i = 1, 8 do
+	table.insert(_G._currencies, { name = "Currency " .. i, quantity = 1234567 })
+end
+_G._registryCallbacks["TokenFrame.OnTokenWatchChanged"]()
+local shown = Currencies()
+check(#shown == 8, "every tracked currency shown")
+check(shown[1].Count._text == "1234K", "long amounts are shortened")
+local pad = ns.Frame.SidePadding()
+for _, currency in ipairs(shown) do
+	check(currency._point[5] > money._point[5], "currencies that don't fit go above the gold")
+	-- Anchored by its right edge, this far in from the window's right side.
+	check(-currency._point[4] >= pad, "currencies stay inside the right edge")
+	check(-currency._point[4] + currency._w <= mainFrame._w - pad, "currencies never run past the left edge")
+end
+check(mainFrame._h > baseHeight, "window grows to fit the currency lines")
+_G._currencies = {}
+Fire("CURRENCY_DISPLAY_UPDATE")
+check(#Currencies() == 0 and mainFrame._h == baseHeight, "untracked currencies disappear again")
+
+-- Font sizes come from Settings and change the header height.
+check(BagSectionsDB.sectionFontSize == 12 and BagSectionsDB.moneyFontSize == 12 and BagSectionsDB.slotsFontSize == 10, "font size defaults")
+BagSectionsDB.sectionFontSize, BagSectionsDB.moneyFontSize, BagSectionsDB.slotsFontSize = 18, 16, 14
+ns.Frame.ApplyFonts()
+check(_G.BagSectionsFont_section._size == 18 and _G.BagSectionsFont_sectionSmall._size == 16, "section fonts follow the setting")
+check(_G.BagSectionsFont_money._size == 16 and _G.BagSectionsFont_slots._size == 14, "footer fonts follow the setting")
+check(_G.GameFontNormal._size == 12, "Blizzard's own font unchanged")
+check(HeaderForKind("rest")._h == 26, "headers grow with a bigger font")
+check(mainFrame._h > baseHeight, "footer grows with a bigger font")
+BagSectionsDB.sectionFontSize, BagSectionsDB.moneyFontSize, BagSectionsDB.slotsFontSize = 12, 12, 10
+ns.Frame.ApplyFonts()
+check(mainFrame._h == baseHeight, "back to the default size")
+
 -- Share and import a profile code.
 ns.Menu.PromptSaveProfile()
 _G._lastPopup.data.onAccept("Shared")
@@ -677,7 +754,7 @@ check(ns.Menu.ImportCode("nonsense") == nil, "bad code rejected")
 ns.Menu.OpenProfileMenu(anyHeader)
 
 -- Every event handler runs without error.
-for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY", "INVENTORY_SEARCH_UPDATE", "GET_ITEM_INFO_RECEIVED", "MERCHANT_SHOW" }) do
+for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY", "CURRENCY_DISPLAY_UPDATE", "INVENTORY_SEARCH_UPDATE", "GET_ITEM_INFO_RECEIVED", "MERCHANT_SHOW" }) do
 	Fire(event)
 end
 

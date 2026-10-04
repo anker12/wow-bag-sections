@@ -81,3 +81,7 @@ mention BagSections.
 | T73 | Settings → Section name tooltips off, hover a section name | No tooltip. |
 | T74 | Profiles → Share profile → pick one, Ctrl+C, then Profiles → Import profile..., Ctrl+V, Accept | Chat says it was imported as "name (2)"; loading it gives the same sections and rows. |
 | T75 | Import some random text, or a code with a few characters deleted | Chat says it isn't a valid code or is damaged; nothing is saved. |
+| T76 | Character → Currency tab, tick "Show on Backpack" for one currency, open the bags | The currency shows left of the gold, amount then icon. Hovering it shows the currency tooltip. |
+| T77 | Track several currencies (or set Columns to 6) so they don't fit between the free slots and the gold | They move to their own line above the gold, right-aligned, wrapping onto more lines as needed. Nothing overlaps and nothing runs past the window edge; the window grows to fit. |
+| T78 | Untick "Show on Backpack" with the bags open, and earn or spend some of a tracked currency | The footer updates straight away. |
+| T79 | Settings → Section name size, Gold and currency size, Free slots size | Each changes only its own text, in every layout. Big section names get taller headers; in Compact, names stay clear of the items. None of the three is in the gear menu. |

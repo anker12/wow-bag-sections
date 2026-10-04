@@ -24,6 +24,7 @@ read_globals = {
 	"ClearCursor", "CursorHasItem", "GetMouseFoci", "GetMoney", "GetMoneyString", "GetKeyRingSize",
 	"InCombatLockdown", "GetTime", "PixelUtil", "GetCursorPosition", "CreateColor", "unpack", "NineSliceUtil", "OKAY", "CreateSettingsButtonInitializer", "CreateSettingsListSectionHeaderInitializer", "ColorPickerFrame", "NORMAL_FONT_COLOR", "IsAltKeyDown", "PlaySound", "hooksecurefunc", "strtrim", "tinsert", "bit",
 	"ACCEPT", "CANCEL", "YES", "NO", "NUM_BAG_SLOTS",
+	"CreateFont", "C_CurrencyInfo", "BreakUpLargeNumbers", "AbbreviateNumbers", "EventRegistry",
 }
 
 files["tests/**"] = { std = "lua51" }

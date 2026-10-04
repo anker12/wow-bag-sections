@@ -24,6 +24,10 @@ ns.DEFAULTS = {
 	backgroundStyle = "dark", -- "dark" | "blizzard"
 	blizzardBorder = true, -- Blizzard's bronze frame border around the window
 	sectionTooltips = true, -- tooltips when hovering section names
+	-- Font sizes (Settings only, not the gear menu)
+	sectionFontSize = 12, -- section names; compact layout names are 2 smaller
+	moneyFontSize = 12, -- gold and tracked currencies
+	slotsFontSize = 10, -- free slots (x / y)
 	-- Saved section lists: name -> { sections = { { name, color, below, collapsed, auto } } }
 	profiles = {},
 }
@@ -137,6 +141,11 @@ local function OnAddonLoaded()
 	end
 	events:RegisterEvent("BAG_UPDATE_COOLDOWN")
 	events:RegisterEvent("PLAYER_MONEY")
+	events:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+	-- Ticking or unticking "Show on Backpack" in the Currency tab.
+	if EventRegistry then
+		EventRegistry:RegisterCallback("TokenFrame.OnTokenWatchChanged", function() ns.Frame.UpdateFooter() end, events)
+	end
 	events:RegisterEvent("PLAYER_REGEN_ENABLED")
 	events:RegisterEvent("PLAYER_LOGIN")
 end
@@ -157,8 +166,8 @@ events:SetScript("OnEvent", function(_, event, arg1)
 		if ns.Frame.IsShown() then
 			ns.ItemButtons.UpdateCooldowns()
 		end
-	elseif event == "PLAYER_MONEY" then
-		ns.Frame.UpdateMoney()
+	elseif event == "PLAYER_MONEY" or event == "CURRENCY_DISPLAY_UPDATE" then
+		ns.Frame.UpdateFooter()
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		ns.Sorter.OnCombatEnded()
 	end
