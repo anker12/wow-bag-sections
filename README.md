@@ -133,6 +133,17 @@ Bags  [search........]  [sort] [⚙] [x]
 ├─────────────────────┘ ▢            │
 ```
 
+### Bank, from anywhere
+
+**Right-click the "Bags" title** (or type `/bs bank`) to look at your bank wherever you
+are. Every time you visit a bank, BagSections remembers what's in it: your character's bank
+for that character, and the account bank for all your characters. The bank window shows
+that copy, one block per bank tab, with free slots and how long ago it was updated ("Live"
+while you're at the bank). Hover an item for its tooltip, or Shift-click to link it in
+chat. Items can only be moved while you're actually at the bank. Right-click the title
+again, or click the close button, to close it. It opens next to the bags, and you can drag
+it anywhere.
+
 ### Rest position
 
 Settings → **Rest position** sets where *new* sections go, including the Quest Items
@@ -144,7 +155,8 @@ Existing sections stay where they are. Move any section with *Move above/below R
 right-click menu.
 
 Slash commands: `/bs` (open/close), `/bs sort`, `/bs new <name>`,
-`/bs add <section>` (adds the item under the mouse), `/bs config`.
+`/bs add <section>` (adds the item under the mouse), `/bs bank` (view the bank),
+`/bs config`.
 
 ## How it works
 

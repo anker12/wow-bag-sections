@@ -871,6 +871,25 @@ local function CreateTitleBar()
 	main.Title = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", PADDING, main.buttonRowY)
 	main.Title:SetText(L.BAGS)
+	-- Right-click the title to look at the bank from anywhere. Dragging it still moves
+	-- the window, as the rest of the title row does.
+	main.TitleButton = CreateFrame("Button", nil, main.Chrome)
+	main.TitleButton:SetAllPoints(main.Title)
+	main.TitleButton:RegisterForClicks("RightButtonUp")
+	main.TitleButton:RegisterForDrag("LeftButton")
+	main.TitleButton:SetScript("OnClick", function() ns.BankFrame.Toggle() end)
+	main.TitleButton:SetScript("OnDragStart", function() main:StartMoving() end)
+	main.TitleButton:SetScript("OnDragStop", function()
+		main:StopMovingOrSizing()
+		SavePosition()
+	end)
+	main.TitleButton:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip_SetTitle(GameTooltip, L.BAGS)
+		GameTooltip_AddInstructionLine(GameTooltip, L.VIEW_BANK_HINT)
+		GameTooltip:Show()
+	end)
+	main.TitleButton:SetScript("OnLeave", GameTooltip_Hide)
 
 	main.MenuButton = CreateFrame("Button", nil, main.Chrome)
 	main.MenuButton:SetSize(20, 20)
@@ -912,6 +931,57 @@ local function CreateTitleBar()
 	main.SearchBox:SetHeight(20)
 	main.SearchBox:SetPoint("LEFT", main.Title, "RIGHT", 14, 0)
 	main.SearchBox:SetPoint("RIGHT", main.SortButton, "LEFT", -8, 0)
+end
+
+-- Background and border for a window (the bags, and the bank viewer). The look follows the
+-- appearance settings; see Frame.StyleWindow.
+function Frame.CreateWindowArt(window)
+	window:SetBackdrop({
+		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile = true, tileSize = 16, edgeSize = 16,
+		insets = { left = 4, right = 4, top = 4, bottom = 4 },
+	})
+	-- Optional Blizzard look: the bronze Forever frame border and Blizzard's panel
+	-- background.
+	window.BlizzardBackground = CreateFrame("Frame", nil, window, "FlatPanelBackgroundTemplate")
+	window.BlizzardBackground:SetPoint("TOPLEFT", 2, -2)
+	window.BlizzardBackground:SetPoint("BOTTOMRIGHT", -2, 2)
+	window.BlizzardBackground:SetFrameLevel(window:GetFrameLevel())
+	window.BlizzardBorder = CreateFrame("Frame", nil, window, "NineSlicePanelTemplate")
+	NineSliceUtil.ApplyLayoutByName(window.BlizzardBorder, "ButtonFrameTemplateNoPortrait")
+
+	-- Title row and footer sit on their own layer above the border art, which Blizzard
+	-- draws very high up (frame level 500) and would otherwise cover them. The close button
+	-- stays a direct child of the window so it hides the window, and is already above it.
+	window.Chrome = CreateFrame("Frame", nil, window)
+	window.Chrome:SetAllPoints()
+	window.Chrome:SetFrameLevel(window.BlizzardBorder:GetFrameLevel() + 5)
+end
+
+-- Background style and opacity, and which border to use, from Settings.
+function Frame.StyleWindow(window)
+	local alpha = ns.db.backgroundAlpha or 0.94
+	if ns.db.backgroundStyle == "blizzard" then
+		window.BlizzardBackground:Show()
+		window.BlizzardBackground:SetAlpha(alpha)
+		window:SetBackdropColor(0, 0, 0, 0)
+	else
+		window.BlizzardBackground:Hide()
+		window:SetBackdropColor(0.05, 0.05, 0.07, alpha)
+	end
+	local blizzardBorder = ns.db.blizzardBorder ~= false
+	window.BlizzardBorder:SetShown(blizzardBorder)
+	window:SetBackdropBorderColor(0.5, 0.5, 0.5, blizzardBorder and 0 or 1)
+end
+
+function Frame.GetFont(key)
+	return fonts[key]
+end
+
+-- Height of a section header, which follows the section name size.
+function Frame.HeaderHeight()
+	return headerHeight
 end
 
 -- Our own copies of Blizzard's fonts, so their size can follow the settings without
@@ -997,27 +1067,7 @@ function Frame.Init()
 		self:StopMovingOrSizing()
 		SavePosition()
 	end)
-	main:SetBackdrop({
-		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-		tile = true, tileSize = 16, edgeSize = 16,
-		insets = { left = 4, right = 4, top = 4, bottom = 4 },
-	})
-	-- Optional Blizzard look: the bronze Forever frame border and Blizzard's panel
-	-- background (see Frame.ApplyAppearance).
-	main.BlizzardBackground = CreateFrame("Frame", nil, main, "FlatPanelBackgroundTemplate")
-	main.BlizzardBackground:SetPoint("TOPLEFT", 2, -2)
-	main.BlizzardBackground:SetPoint("BOTTOMRIGHT", -2, 2)
-	main.BlizzardBackground:SetFrameLevel(main:GetFrameLevel())
-	main.BlizzardBorder = CreateFrame("Frame", nil, main, "NineSlicePanelTemplate")
-	NineSliceUtil.ApplyLayoutByName(main.BlizzardBorder, "ButtonFrameTemplateNoPortrait")
-
-	-- Title row and footer sit on their own layer above the border art, which Blizzard
-	-- draws very high up (frame level 500) and would otherwise cover them. The close button
-	-- stays a direct child of the window so it hides the window, and is already above it.
-	main.Chrome = CreateFrame("Frame", nil, main)
-	main.Chrome:SetAllPoints()
-	main.Chrome:SetFrameLevel(main.BlizzardBorder:GetFrameLevel() + 5)
+	Frame.CreateWindowArt(main)
 	main:SetScript("OnShow", function()
 		PlaySound(SOUNDKIT.IG_BACKPACK_OPEN)
 		ns.Hooks.OnWindowShownChanged()
@@ -1115,7 +1165,7 @@ function Frame.SidePadding()
 	return ns.db.blizzardBorder ~= false and PADDING + BLIZZARD_BORDER_EXTRA or PADDING
 end
 
--- Background style and opacity, and which border to use, from Settings.
+-- Appearance settings, for the bag window and the bank viewer.
 function Frame.ApplyAppearance()
 	if not main then
 		return
@@ -1125,18 +1175,8 @@ function Frame.ApplyAppearance()
 	main.RearrangeBar:SetPoint("TOPLEFT", pad, -TITLE_HEIGHT + 2)
 	main.RearrangeBar:SetPoint("TOPRIGHT", -pad, -TITLE_HEIGHT + 2)
 	ns.RequestRefresh()
-	local alpha = ns.db.backgroundAlpha or 0.94
-	if ns.db.backgroundStyle == "blizzard" then
-		main.BlizzardBackground:Show()
-		main.BlizzardBackground:SetAlpha(alpha)
-		main:SetBackdropColor(0, 0, 0, 0)
-	else
-		main.BlizzardBackground:Hide()
-		main:SetBackdropColor(0.05, 0.05, 0.07, alpha)
-	end
-	local blizzardBorder = ns.db.blizzardBorder ~= false
-	main.BlizzardBorder:SetShown(blizzardBorder)
-	main:SetBackdropBorderColor(0.5, 0.5, 0.5, blizzardBorder and 0 or 1)
+	Frame.StyleWindow(main)
+	ns.BankFrame.ApplyAppearance()
 end
 
 function Frame.ApplyScale()
@@ -1175,6 +1215,7 @@ function Frame.ApplyFonts()
 	headerHeight = math.max(MIN_HEADER_HEIGHT, sizes.section + 8)
 	nameHeight = math.max(MIN_NAME_HEIGHT, sizes.sectionSmall + 2)
 	ns.RequestRefresh()
+	ns.BankFrame.Refresh()
 end
 
 -- Gold, tracked currencies and free slots, and the window height that depends on them.

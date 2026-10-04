@@ -89,3 +89,10 @@ mention BagSections.
 | T81 | Close the bags with the X, then press B | The bags open with one press. B again closes them. |
 | T82 | Open the bags with B and press Escape, then B again | Escape closes them; B opens them. |
 | T83 | Open and close the bags with B many times, in and out of combat, and via the backpack button | No Lua errors. |
+| T84 | Fresh install, right-click the "Bags" title before visiting a bank | A Bank window opens next to the bags saying to visit a bank first. Right-click the title again: it closes. Hovering the title shows "Right-click: view bank". |
+| T85 | Drag the window by its "Bags" title | The window still moves, and left-click on the title does nothing else. |
+| T86 | Visit a banker, then right-click the title | The Bank window shows every character bank tab (and account bank tabs, marked "Account: …") with the same items as Blizzard's bank. The footer says "Live". |
+| T87 | At the bank, move items between bank and bags, buy a bank tab, rename a tab | The Bank window follows each change. |
+| T88 | Leave the bank, fly somewhere, `/reload`, then `/bs bank` | Same contents as when you left. The footer says "Updated … ago". Tooltips work; Shift-click links an item in chat. |
+| T89 | Log in to another character on the same account | Its own character bank (or the visit hint), and the same account bank tabs. |
+| T90 | Change Columns, Section name size, background and border settings with the Bank window open | It follows them, like the bags. |
