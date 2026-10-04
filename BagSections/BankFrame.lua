@@ -37,7 +37,10 @@ local function PlaceWindow()
 end
 
 local function CreateButton(index)
-	local button = CreateFrame("ItemButton", nil, content, "ItemButtonTemplate")
+	-- The plain ItemButton widget already has an icon, count, quality border and highlight.
+	-- (Forever has no ItemButtonTemplate, and the bag slot template would try to use the
+	-- live item in that bank slot when clicked.)
+	local button = CreateFrame("ItemButton", nil, content)
 	button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
 	button.ItemSlotBackground = button:CreateTexture(nil, "BACKGROUND", "ItemSlotBackgroundCombinedBagsTemplate", -6)
 	button.ItemSlotBackground:SetAllPoints(button)
@@ -126,8 +129,8 @@ function BankFrame.Refresh()
 	local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
 	local pad = ns.Frame.SidePadding()
 
-	local contentHeight = DrawTabs(snapshots, columns)
 	window.Empty:SetShown(#snapshots == 0)
+	local contentHeight = DrawTabs(snapshots, columns)
 	if #snapshots == 0 then
 		contentHeight = 40
 	end

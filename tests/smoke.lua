@@ -7,7 +7,16 @@ local realPrint = print
 
 -- Mock frames: any unknown method is a no-op returning nil.
 local frames = {}
+-- Templates that exist in WoW: Forever (checked against Blizzard's Forever UI source).
+-- CreateFrame fails in game for any other, so it fails here too.
+local KNOWN_TEMPLATES = {
+	BackdropTemplate = true, BagSearchBoxTemplate = true, ContainerFrameItemButtonTemplate = true,
+	FlatPanelBackgroundTemplate = true, NineSlicePanelTemplate = true, UIPanelCloseButton = true,
+}
 local function NewFrame(frameType, name, parent, template)
+	for t in tostring(template or ""):gmatch("[^,%s]+") do
+		if not KNOWN_TEMPLATES[t] then error("CreateFrame(): Couldn't find inherited node '" .. t .. "'", 2) end
+	end
 	local frame = { _type = frameType, _name = name, _parent = parent, _template = template, _shown = true, _scripts = {}, _attrs = {}, _level = 1 }
 	if frameType == "Frame" and parent == nil then frame._shown = true end
 	local methods = {
@@ -788,7 +797,7 @@ for _, frame in ipairs(frames) do if frame._name == "BagSectionsBankFrame" then 
 local function BankButtons()
 	local list = {}
 	for _, frame in ipairs(frames) do
-		if frame._template == "ItemButtonTemplate" and frame._shown then table.insert(list, frame) end
+		if frame._type == "ItemButton" and frame._template == nil and frame._shown then table.insert(list, frame) end
 	end
 	return list
 end
