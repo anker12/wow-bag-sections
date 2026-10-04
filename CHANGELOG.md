@@ -5,6 +5,12 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-04
+
+### Fixed
+- The bank window showed a Lua error ("Couldn't find inherited node 'ItemButtonTemplate'")
+  and only the "visit a bank" hint instead of your bank.
+
 ## [1.2.0] - 2026-10-04
 
 ### Added
