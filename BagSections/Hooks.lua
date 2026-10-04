@@ -1,10 +1,10 @@
--- Shows this window instead of Blizzard's bags, without replacing any Blizzard function.
+-- Shows this window instead of Blizzard's bags, without replacing or calling into any of
+-- Blizzard's bag code.
 --
 -- Blizzard's bag frames keep working exactly as normal (B, the backpack button, merchants,
 -- the bank and Escape all open and close them, and Blizzard keeps track of what opened them),
--- but they're moved into a hidden parent so they're never seen. This window simply shows
--- whenever Blizzard considers the bags open (IsAnyBagOpen, which checks IsShown, not
--- visibility).
+-- but they're moved into a hidden parent so they're never seen. This window opens and
+-- closes along with them (IsAnyBagOpen, which checks IsShown, not visibility).
 --
 -- Replacing Blizzard's global bag functions (as older bag addons do) "taints" whatever
 -- Blizzard code calls them. The bank calls OpenAllBags when it opens, so a replaced
@@ -57,34 +57,48 @@ local function TuckAll()
 	end
 end
 
--- Match this window to Blizzard's open/closed state, once per frame.
-local syncQueued = false
-local function Sync()
-	syncQueued = false
-	if IsAnyBagOpen() then
+-- The window normally shows exactly when Blizzard considers its bags open. `flipped` is
+-- set when they differ because of something done in this window (its close button, /bs):
+-- the window is closed while Blizzard's hidden bags are still open, or the other way
+-- round. Closing Blizzard's bags from addon code would run Blizzard's bag code "tainted",
+-- which later blocked right-clicking consumables, so instead the next B press simply
+-- toggles what's on screen.
+local flipped, wasOpen = false, false
+
+local function Apply()
+	TuckAll()
+	local open = IsAnyBagOpen()
+	wasOpen = open
+	if open ~= flipped then
 		Frame.Show()
 	else
 		Frame.Hide()
 	end
 end
 
-local function QueueSync()
-	if not syncQueued then
-		syncQueued = true
-		C_Timer.After(0, Sync)
+-- B, the backpack button and bag buttons: toggle what's on screen.
+local function OnToggle()
+	Apply()
+end
+
+-- Merchants, the bank, mail and so on open and close the bags on purpose: follow them.
+local function OnOpenOrClose()
+	flipped = false
+	Apply()
+end
+
+-- Anything else that opens or closes Blizzard's bags (Escape, its close button) doesn't
+-- always go through a function that can be hooked, so check every frame for changes.
+local function Watch()
+	if IsAnyBagOpen() ~= wasOpen then
+		OnOpenOrClose()
 	end
 end
 
--- This window was closed (close button, Escape): close Blizzard's hidden bag frames too, so
--- the next B press opens the bags again instead of closing them.
-function Hooks.OnWindowHidden()
-	if not installed then
-		return
-	end
-	for _, frame in ipairs(BlizzardBagFrames()) do
-		if frame:IsShown() and IsHandledFrame(frame) then
-			frame:Hide()
-		end
+-- Called when the window is shown or hidden, by anything.
+function Hooks.OnWindowShownChanged()
+	if installed then
+		flipped = Frame.IsShown() ~= IsAnyBagOpen()
 	end
 end
 
@@ -100,30 +114,23 @@ function Hooks.Install()
 
 	hiddenParent = CreateFrame("Frame")
 	hiddenParent:Hide()
-
-	-- OnShow/OnHide scripts never fire for frames inside a hidden parent (they only fire
-	-- when a frame becomes visible), so hook the Show/Hide calls themselves. hooksecurefunc
-	-- runs after Blizzard's own code and doesn't taint it.
-	for _, frame in ipairs(BlizzardBagFrames()) do
-		hooksecurefunc(frame, "Show", function(self)
-			Tuck(self)
-			QueueSync()
-		end)
-		hooksecurefunc(frame, "Hide", QueueSync)
-		hooksecurefunc(frame, "SetShown", function(self)
-			Tuck(self)
-			QueueSync()
-		end)
-	end
 	TuckAll()
 
-	-- Belt and braces: whatever opens or closes the bags, re-check afterwards.
-	for _, name in ipairs({ "ToggleAllBags", "ToggleBackpack", "OpenBackpack", "OpenAllBags",
-			"CloseAllBags", "CloseBackpack", "ToggleBag", "OpenBag", "CloseBag" }) do
+	-- Only global functions are hooked: hooksecurefunc runs after Blizzard's code and
+	-- separately from it. Nothing of Blizzard's bag code is called, replaced or hooked by
+	-- frame method, so it never runs tainted.
+	for _, name in ipairs({ "ToggleAllBags", "ToggleBackpack", "ToggleBag" }) do
 		if _G[name] then
-			hooksecurefunc(name, QueueSync)
+			hooksecurefunc(name, OnToggle)
 		end
 	end
+	for _, name in ipairs({ "OpenAllBags", "CloseAllBags" }) do
+		if _G[name] then
+			hooksecurefunc(name, OnOpenOrClose)
+		end
+	end
+	local watcher = CreateFrame("Frame")
+	watcher:SetScript("OnUpdate", Watch)
 
 	-- Blizzard re-parents its bag frames when a full-screen panel opens or closes.
 	if ContainerFrame_SetFullScreenFrame then
