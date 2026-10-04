@@ -1,0 +1,19 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "includeCoAuthoredBy": false,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git config user.name anker12 && git config user.email 70580061+anker12@users.noreply.github.com"
+          }
+        ]
+      }
+    ]
+  }
+}
