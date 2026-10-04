@@ -1020,13 +1020,14 @@ function Frame.Init()
 	main.Chrome:SetFrameLevel(main.BlizzardBorder:GetFrameLevel() + 5)
 	main:SetScript("OnShow", function()
 		PlaySound(SOUNDKIT.IG_BACKPACK_OPEN)
+		ns.Hooks.OnWindowShownChanged()
 		Frame.Render("layout")
 	end)
 	main:SetScript("OnHide", function()
 		PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE)
 		frozen = nil
 		Frame.EndSectionDrag()
-		ns.Hooks.OnWindowHidden()
+		ns.Hooks.OnWindowShownChanged()
 	end)
 	-- When it replaces the default bags, Escape closes Blizzard's (hidden) bags, which closes
 	-- this window too. Only add it to Escape's list when it doesn't, since addon frames in
