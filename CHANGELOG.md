@@ -5,6 +5,13 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-04
+
+### Added
+- Semi-compact section spacing: a slider in Options > AddOns > BagSections for the space
+  between sections in the Semi-compact layout. The default looks the same as before, and
+  the smallest setting still keeps items clear of the section names below them.
+
 ## [1.2.1] - 2026-10-04
 
 ### Fixed

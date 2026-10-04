@@ -677,6 +677,28 @@ check(semiRest._point[4] == 0 and semiRest._w == 406, "Rest stays full width")
 local hsButton = ns.ItemButtons.Get(0, 1)
 check(hsButton._point[4] >= a._point[4] and hsButton._point[4] < b._point[4], "items sit inside their section's column")
 
+-- Section spacing setting: rows are that far apart, sections side by side twice that, and
+-- never closer than the minimum.
+local function Gaps()
+	local sa, sb, sd = HeaderFor("SemiA"), HeaderFor("SemiB"), HeaderFor("SemiD")
+	return sb._point[4] - (sa._point[4] + sa._w), sa._point[5] - sd._point[5]
+end
+local function Near(x, y) return math.abs(x - y) <= 0.5 end
+check(BagSectionsDB.semiSpacing == 6, "section spacing default")
+local baseColumnGap, baseRowDistance = Gaps()
+check(Near(baseColumnGap, 12), "default: 12 between sections side by side, as before")
+BagSectionsDB.semiSpacing = 20
+ns.RequestRefresh()
+local columnGap, rowDistance = Gaps()
+check(Near(columnGap, 40), "wider spacing side by side")
+check(rowDistance - baseRowDistance == 14, "rows move apart by the extra spacing")
+BagSectionsDB.semiSpacing = 0
+ns.RequestRefresh()
+columnGap, rowDistance = Gaps()
+check(Near(columnGap, 8) and rowDistance - baseRowDistance == -2, "spacing never goes below the minimum")
+BagSectionsDB.semiSpacing = 6
+ns.RequestRefresh()
+
 
 -- Rearranging: locked by default, so dragging a name does nothing.
 local function Drag(hdr, x, y)

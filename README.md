@@ -106,7 +106,8 @@ Switch layouts from the gear menu (Layout) or in Settings.
   bar to lock again. The layout is locked by default and after every `/reload`, so moving
   the window never moves sections by accident. A row can hold at most as many sections as
   fit at one slot wide each (8 at 10 columns). *Reset rows* in the Layout menu goes back to
-  that 3-per-row starting point. Your arrangement also sets the section order used by the other
+  that 3-per-row starting point. Settings → **Semi-compact section spacing** sets the space
+  between rows of sections (sections side by side get twice that). Your arrangement also sets the section order used by the other
   layouts, and profiles save it. Reagents and Keyring stay full width at the bottom.
 * **Compact:** works like Blizzard's combined bag. All sections run through one grid with
   no gaps: each section starts in the slot right after the previous one ends and wraps onto

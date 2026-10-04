@@ -405,7 +405,18 @@ end
 -- Semi-compact layout: like the default, but your sections sit side by side, a number per
 -- row (AUTO_PER_ROW until the player arranges rows), each growing downwards. Rest,
 -- Reagents and Keyring stay full width.
-local SEMI_GAP = 12 -- space between sections on the same row
+-- Space between rows of sections comes from the "Semi-compact section spacing" setting;
+-- sections side by side get twice that. Never less than SEMI_MIN_SPACING, which keeps a
+-- row's items clear of the section names below and drop highlights from touching.
+local SEMI_MIN_SPACING = 4
+
+local function SemiRowGap()
+	return math.max(SEMI_MIN_SPACING, ns.db.semiSpacing or ns.DEFAULTS.semiSpacing)
+end
+
+local function SemiColumnGap()
+	return SemiRowGap() * 2
+end
 -- Sections per row in the automatic arrangement (before the player drags anything, or
 -- after Reset rows).
 local AUTO_PER_ROW = 3
@@ -413,7 +424,8 @@ local AUTO_PER_ROW = 3
 -- The most sections that fit side by side with each at least one slot wide.
 function Frame.MaxSectionsPerRow(columns)
 	local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
-	return math.max(1, math.floor((gridWidth + SEMI_GAP) / (BUTTON_SIZE + SEMI_GAP)))
+	local gap = SemiColumnGap()
+	return math.max(1, math.floor((gridWidth + gap) / (BUTTON_SIZE + gap)))
 end
 
 -- Where each drawn row sits, for dragging sections around: { y, height, dataRow, boxes =
@@ -431,16 +443,17 @@ local function RenderSemiCompact(groups, columns, gridWidth, used)
 		indexOf[group.key] = index
 	end
 
+	local rowGap, columnGap = SemiRowGap(), SemiColumnGap()
 	local y = 0
 	rowGeometry = {}
 	local function DrawRow(entries, dataRow)
 		local count = #entries
-		local boxWidth = (gridWidth - (count - 1) * SEMI_GAP) / count
+		local boxWidth = (gridWidth - (count - 1) * columnGap) / count
 		local boxColumns = math.max(1, math.floor((boxWidth + SPACING) / CELL))
 		local geometry = { y = y, dataRow = dataRow, boxes = {} }
 		local rowHeight = 0
 		for i, key in ipairs(entries) do
-			local x = math.floor((i - 1) * (boxWidth + SEMI_GAP) + 0.5)
+			local x = math.floor((i - 1) * (boxWidth + columnGap) + 0.5)
 			local width = count == 1 and gridWidth or boxWidth
 			local columnsHere = count == 1 and columns or boxColumns
 			rowHeight = math.max(rowHeight, DrawGroup(indexOf[key], byKey[key], x, y, width, columnsHere, gridWidth, used))
@@ -448,7 +461,7 @@ local function RenderSemiCompact(groups, columns, gridWidth, used)
 		end
 		geometry.height = rowHeight
 		table.insert(rowGeometry, geometry)
-		y = y + rowHeight + GROUP_GAP
+		y = y + rowHeight + rowGap
 	end
 
 	for dataRow, row in ipairs(rows) do
@@ -471,10 +484,10 @@ local function RenderSemiCompact(groups, columns, gridWidth, used)
 	-- Reagents and Keyring: full width at the bottom.
 	for index, group in ipairs(groups) do
 		if group.kind == "reagent" or group.kind == "keyring" then
-			y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + GROUP_GAP
+			y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + rowGap
 		end
 	end
-	return y - GROUP_GAP
+	return y - rowGap
 end
 
 local function CursorInContent()
@@ -494,11 +507,12 @@ local function FindSectionDropTarget(key)
 	local rows = ns.Rows.Get(ns.charDB, math.min(AUTO_PER_ROW, maxPerRow))
 	local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
 	local cx, cy = CursorInContent()
+	local rowGap, columnGap = SemiRowGap(), SemiColumnGap()
 
 	for i, row in ipairs(rowGeometry) do
 		if cy < row.y + 10 then
 			-- Above this row, or in the gap before it: start a new row here.
-			return { newRow = row.dataRow }, { x = 0, y = row.y - GROUP_GAP / 2 - 1, width = gridWidth, height = 2 }
+			return { newRow = row.dataRow }, { x = 0, y = row.y - rowGap / 2 - 1, width = gridWidth, height = 2 }
 		end
 		if cy <= row.y + row.height then
 			-- Inside the row: join it at the nearest gap between sections.
@@ -512,13 +526,13 @@ local function FindSectionDropTarget(key)
 			local before, lineX
 			for _, box in ipairs(row.boxes) do
 				if cx < box.x + box.width / 2 then
-					before, lineX = box.key, box.x - SEMI_GAP / 2
+					before, lineX = box.key, box.x - columnGap / 2
 					break
 				end
 			end
 			if not before then
 				local last = row.boxes[#row.boxes]
-				lineX = last.x + last.width + SEMI_GAP / 2
+				lineX = last.x + last.width + columnGap / 2
 				local nextRow = rowGeometry[i + 1]
 				if nextRow and nextRow.dataRow == row.dataRow then
 					before = nextRow.boxes[1].key -- the row wraps onto another line
@@ -528,7 +542,7 @@ local function FindSectionDropTarget(key)
 		end
 	end
 	local last = rowGeometry[#rowGeometry]
-	return { newRow = #rows + 1 }, { x = 0, y = last.y + last.height + GROUP_GAP / 2 - 1, width = gridWidth, height = 2 }
+	return { newRow = #rows + 1 }, { x = 0, y = last.y + last.height + rowGap / 2 - 1, width = gridWidth, height = 2 }
 end
 
 local function UpdateSectionDrag()
