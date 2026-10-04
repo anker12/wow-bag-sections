@@ -85,3 +85,7 @@ mention BagSections.
 | T77 | Track several currencies (or set Columns to 6) so they don't fit between the free slots and the gold | They move to their own line above the gold, right-aligned, wrapping onto more lines as needed. Nothing overlaps and nothing runs past the window edge; the window grows to fit. |
 | T78 | Untick "Show on Backpack" with the bags open, and earn or spend some of a tracked currency | The footer updates straight away. |
 | T79 | Settings → Section name size, Gold and currency size, Free slots size | Each changes only its own text, in every layout. Big section names get taller headers; in Compact, names stay clear of the items. None of the three is in the gear menu. |
+| T80 | `/console taintLog 1`, `/reload`. Open the bags with B, close them with the window's X, fight something, then right-click food or a potion in Rest | It's used. No "blocked from an action" popup and no Lua error, and `Logs\taint.log` has no BagSections lines. |
+| T81 | Close the bags with the X, then press B | The bags open with one press. B again closes them. |
+| T82 | Open the bags with B and press Escape, then B again | Escape closes them; B opens them. |
+| T83 | Open and close the bags with B many times, in and out of combat, and via the backpack button | No Lua errors. |

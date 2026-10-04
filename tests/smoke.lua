@@ -328,12 +328,36 @@ check(ns.Frame.IsShown(), "other frame doesn't close bags")
 _G.CloseAllBags(merchant)
 check(not ns.Frame.IsShown(), "opener closes bags")
 
--- Closing the window itself also closes Blizzard's hidden bags, so B opens them next time.
+-- Blizzard's bag code is never run from addon code (that left it "tainted" and blocked
+-- right-clicking consumables): its bag frame's methods aren't hooked, and closing the
+-- window leaves Blizzard's hidden bags alone. B still toggles what's on screen.
+local function RunOnUpdates()
+	for _, frame in ipairs(frames) do
+		if frame._scripts.OnUpdate then frame._scripts.OnUpdate(frame, 0) end
+	end
+end
+check(rawget(ContainerFrameCombinedBags, "_methodHooks") == nil, "Blizzard's bag frame methods aren't hooked")
 _G.ToggleAllBags()
+check(ns.Frame.IsShown(), "B opens")
 ns.Frame.Hide()
-check(not ContainerFrameCombinedBags:IsShown(), "closing the window closes Blizzard's bags")
+check(ContainerFrameCombinedBags:IsShown(), "closing the window doesn't run Blizzard's bag code")
+RunOnUpdates()
+check(not ns.Frame.IsShown(), "and it stays closed")
 _G.ToggleAllBags()
-check(ns.Frame.IsShown(), "next B press opens again")
+check(ns.Frame.IsShown(), "next B press opens the window again")
+_G.ToggleAllBags()
+check(not ns.Frame.IsShown(), "and the one after closes it")
+-- Escape closes Blizzard's bags without going through a hookable function.
+ContainerFrameCombinedBags:Hide()
+RunOnUpdates()
+check(not ns.Frame.IsShown(), "window stays closed when Blizzard's bags close")
+_G.ToggleAllBags()
+check(ns.Frame.IsShown(), "back in step: B opens")
+ContainerFrameCombinedBags:Hide()
+RunOnUpdates()
+check(not ns.Frame.IsShown(), "Escape closes the window")
+_G.ToggleAllBags()
+check(ns.Frame.IsShown(), "B opens again")
 
 -- Item buttons get their bag from a parent frame, not from a value written on the button.
 local probe = ns.ItemButtons.Get(1, 2)
@@ -425,7 +449,8 @@ check(FindGroupFrame("section"), "drop targets shown while dragging")
 cursor = nil -- the drag ends somewhere the addon doesn't hear about
 local watcher
 for _, frame in ipairs(frames) do
-	if frame._scripts.OnUpdate and frame._shown then watcher = frame end
+	local parent = rawget(frame, "_parent")
+	if frame._scripts.OnUpdate and frame._shown and parent and parent._name == "BagSectionsFrame" then watcher = frame end
 end
 check(watcher, "drop-target watcher runs while dragging")
 watcher._scripts.OnUpdate(watcher)
