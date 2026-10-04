@@ -157,3 +157,17 @@ luacheck .
 ```
 
 Both test files run on plain Lua 5.1 and need no other libraries. CI runs them on every push.
+
+## Releasing
+
+1. Move the `Unreleased` notes in [CHANGELOG.md](CHANGELOG.md) under a new version heading
+   with today's date.
+2. Set `## Version:` in `BagSections/BagSections.toc` to the same version.
+3. Commit, then tag and push: `git tag v1.0.1 && git push origin main v1.0.1`.
+4. Build the zip from the tag:
+   ```
+   git archive --format=zip --output=BagSections-1.0.1.zip v1.0.1 BagSections/
+   ```
+   It contains just the `BagSections/` folder, without tests, docs or uncommitted files.
+5. Upload the zip to CurseForge and paste that version's changelog section into the
+   changelog box.
