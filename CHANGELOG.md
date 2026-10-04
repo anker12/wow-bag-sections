@@ -5,6 +5,15 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-04
+
+### Added
+- Tracked currencies show at the bottom of the bags, next to your gold. Tick "Show on
+  Backpack" for a currency in the Currency tab to track it. If they don't fit next to the
+  gold, they move to their own line above it instead of overlapping.
+- Text size settings for section names, gold and currencies, and the free slots count, in
+  Options > AddOns > BagSections.
+
 ## [1.0.0] - 2026-10-04
 
 First public release.

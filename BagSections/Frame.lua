@@ -13,10 +13,16 @@ local PADDING = 10
 -- which sit just outside the slots) clear of it.
 local BLIZZARD_BORDER_EXTRA = 6
 local SPACING = 4
-local HEADER_HEIGHT = 20
+local MIN_HEADER_HEIGHT = 20
 local GROUP_GAP = 6
 local TITLE_HEIGHT = 30
-local FOOTER_HEIGHT = 22
+-- Footer: free slots on the left, gold on the right, tracked currencies left of the gold
+-- (or on lines of their own above it when they don't fit).
+local FOOTER_BOTTOM = 8 -- space below the footer's bottom line
+local FOOTER_LINE_GAP = 4 -- space between footer lines
+local MIN_FOOTER_LINE = 14
+local CURRENCY_GAP = 10 -- space between currencies, and between them and the gold
+local MAX_CURRENCIES = 20 -- safety cap when reading tracked currencies
 local REARRANGE_BAR_HEIGHT = 22
 local BUTTON_SIZE = ItemButtons.SIZE
 local CELL = BUTTON_SIZE + SPACING
@@ -27,7 +33,9 @@ local CELL = BUTTON_SIZE + SPACING
 local COMPACT_GAP = 10 -- space between slots, in every direction
 local COMPACT_CELL = BUTTON_SIZE + COMPACT_GAP
 local OUTLINE_PADDING = 3 -- space between a section's items and its outline, on every side
-local NAME_HEIGHT = 12 -- height of a section's name label on its outline
+local MIN_NAME_HEIGHT = 12 -- height of a section's name label on its outline
+-- Compact layout names use a font this much smaller than section headers.
+local COMPACT_NAME_SHRINK = 2
 local NAME_RAISE = 3 -- names sit this far above their outline, clear of the item icons
 local LINE = 1 -- outline thickness
 -- Outline opacity comes from the "Outline opacity" setting (ns.db.outlineAlpha).
@@ -46,6 +54,11 @@ local DROP_GLOW_SIZE = 8 -- how far the drop highlight's glow reaches in from th
 local DROP_GLOW_ALPHA = 0.35
 
 local main, content, dropWatcher
+-- Font sizes come from Settings (see Frame.ApplyFonts); heights follow the font size.
+local fonts = {}
+local headerHeight, nameHeight = MIN_HEADER_HEIGHT, MIN_NAME_HEIGHT
+local currencies = {}
+local bodyHeight -- window height without the footer, from the last render
 local headers, overlays = {}, {}
 local labels, placeholders, lineTextures = {}, {}, {}
 local lineFrame, measure, dividerLine
@@ -231,8 +244,9 @@ end
 
 local function CreateHeader(index)
 	local header = CreateFrame("Button", nil, content)
-	header:SetHeight(HEADER_HEIGHT)
-	header.Text = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	header:SetHeight(headerHeight)
+	header.Text = header:CreateFontString(nil, "OVERLAY")
+	header.Text:SetFontObject(fonts.section)
 	header.Text:SetPoint("LEFT", 2, 0)
 	header.Text:SetJustifyH("LEFT")
 	header.Line = header:CreateTexture(nil, "ARTWORK")
@@ -350,14 +364,14 @@ local function DrawGroup(index, group, x, y, width, columns, gridWidth, used)
 	local top = y
 	local header = SetupHeader(index, group)
 	header:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
-	header:SetSize(width, HEADER_HEIGHT)
+	header:SetSize(width, headerHeight)
 	-- Narrower than the window (semi-compact): shorten long names, full name on hover.
 	header.Text:SetWidth(0)
 	if width < gridWidth then
 		header.Text:SetWidth(math.min(header.Text:GetStringWidth() or 0, width - 20))
 	end
 	header.showTitleInTooltip = width < gridWidth
-	y = y + HEADER_HEIGHT + 2
+	y = y + headerHeight + 2
 
 	if not group.collapsed then
 		for i, slot in ipairs(group.slots) do
@@ -565,11 +579,12 @@ end
 
 local function CreateLabel(index)
 	local label = CreateFrame("Button", nil, content)
-	label:SetHeight(NAME_HEIGHT)
+	label:SetHeight(nameHeight)
 	label.Background = label:CreateTexture(nil, "BACKGROUND")
 	label.Background:SetAllPoints()
 	label.Background:SetColorTexture(0.05, 0.05, 0.07, 1)
-	label.Text = label:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	label.Text = label:CreateFontString(nil, "OVERLAY")
+	label.Text:SetFontObject(fonts.sectionSmall)
 	label.Text:SetPoint("LEFT", 4, 0)
 	label.Text:SetJustifyH("LEFT")
 	label.Text:SetWordWrap(false)
@@ -672,7 +687,7 @@ local function RenderFlow(groups, columns, used, top, counters)
 			-- The name is centred on the top outline; leave room above it, clear of the
 			-- outline of whatever sits in the row above.
 			local above = r == 0 and 1 or (P + LINE + 2)
-			gap = math.max(gap, P + NAME_RAISE + NAME_HEIGHT / 2 + above)
+			gap = math.max(gap, P + NAME_RAISE + nameHeight / 2 + above)
 		end
 		rowTop[r] = y + gap
 		y = rowTop[r] + BUTTON_SIZE
@@ -739,6 +754,7 @@ local function RenderFlow(groups, columns, used, top, counters)
 				local labelIndex = counters.labels
 				local label = labels[labelIndex] or CreateLabel(labelIndex)
 				label.group = group
+				label:SetHeight(nameHeight)
 				label.Text:SetText(CompactTitle(group))
 				label.Text:SetTextColor(c.r, c.g, c.b)
 				label.Text:SetWidth(0)
@@ -898,14 +914,76 @@ local function CreateTitleBar()
 	main.SearchBox:SetPoint("RIGHT", main.SortButton, "LEFT", -8, 0)
 end
 
+-- Our own copies of Blizzard's fonts, so their size can follow the settings without
+-- changing Blizzard's.
+local FONT_BASES = {
+	section = "GameFontNormal", -- section headers
+	sectionSmall = "GameFontNormalSmall", -- compact layout names
+	money = "GameFontHighlight", -- gold and currencies
+	slots = "GameFontHighlightSmall", -- free slots
+}
+
+local function CreateFonts()
+	for key, base in pairs(FONT_BASES) do
+		local font = CreateFont("BagSectionsFont_" .. key)
+		font:CopyFontObject(base)
+		fonts[key] = font
+	end
+end
+
 local function CreateFooter()
-	main.Money = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	main.Money:SetPoint("BOTTOMRIGHT", -PADDING, 8)
-	main.FreeSlots = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	main.FreeSlots:SetPoint("BOTTOMLEFT", PADDING, 8)
+	main.Money = main.Chrome:CreateFontString(nil, "OVERLAY")
+	main.Money:SetFontObject(fonts.money)
+	main.FreeSlots = main.Chrome:CreateFontString(nil, "OVERLAY")
+	main.FreeSlots:SetFontObject(fonts.slots)
+end
+
+-- One tracked currency in the footer: its amount, then its icon, like Blizzard's bags.
+local function CreateCurrency(index)
+	local currency = CreateFrame("Frame", nil, main.Chrome)
+	currency.Count = currency:CreateFontString(nil, "OVERLAY")
+	currency.Count:SetFontObject(fonts.money)
+	currency.Count:SetPoint("LEFT")
+	currency.Icon = currency:CreateTexture(nil, "ARTWORK")
+	currency.Icon:SetPoint("RIGHT")
+	currency:EnableMouse(true)
+	currency:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetBackpackToken(self.index)
+		GameTooltip:Show()
+	end)
+	currency:SetScript("OnLeave", GameTooltip_Hide)
+	currencies[index] = currency
+	return currency
+end
+
+-- Currencies ticked "Show on Backpack" in the Currency tab, in Blizzard's order.
+local function ReadCurrencies()
+	local list = {}
+	if not (C_CurrencyInfo and C_CurrencyInfo.GetBackpackCurrencyInfo) then
+		return list
+	end
+	for index = 1, MAX_CURRENCIES do
+		local info = C_CurrencyInfo.GetBackpackCurrencyInfo(index)
+		if not info then
+			break
+		end
+		table.insert(list, { index = index, icon = info.iconFileID, quantity = info.quantity })
+	end
+	return list
+end
+
+-- Same number format as Blizzard's bags: 12,345, or 123K once that gets too long.
+local function FormatQuantity(quantity)
+	local text = BreakUpLargeNumbers and BreakUpLargeNumbers(quantity) or tostring(quantity)
+	if #text > 5 and AbbreviateNumbers then
+		text = AbbreviateNumbers(quantity)
+	end
+	return text
 end
 
 function Frame.Init()
+	CreateFonts()
 	main = CreateFrame("Frame", "BagSectionsFrame", UIParent, "BackdropTemplate")
 	main:Hide()
 	main:SetFrameStrata("MEDIUM")
@@ -983,7 +1061,8 @@ function Frame.Init()
 	dividerLine = lineFrame:CreateTexture(nil, "ARTWORK")
 	dividerLine:SetColorTexture(1, 1, 1, 0.15)
 	dividerLine:Hide()
-	measure = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	measure = content:CreateFontString(nil, "OVERLAY")
+	measure:SetFontObject(fonts.sectionSmall)
 	measure:Hide()
 
 	-- Rearranging: blue line where a dragged section will land, its name following the
@@ -997,7 +1076,8 @@ function Frame.Init()
 	dragGhost:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
 	dragGhost:SetBackdropColor(0.05, 0.05, 0.07, 0.9)
 	dragGhost:SetBackdropBorderColor(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 1)
-	dragGhost.Text = dragGhost:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	dragGhost.Text = dragGhost:CreateFontString(nil, "OVERLAY")
+	dragGhost.Text:SetFontObject(fonts.section)
 	dragGhost.Text:SetPoint("CENTER")
 	dragGhost:Hide()
 	dragGhost:SetScript("OnUpdate", function()
@@ -1024,6 +1104,7 @@ function Frame.Init()
 	CreateTitleBar()
 	CreateFooter()
 	RestorePosition()
+	Frame.ApplyFonts()
 	Frame.ApplyScale()
 	Frame.ApplyAppearance()
 end
@@ -1040,8 +1121,6 @@ function Frame.ApplyAppearance()
 	end
 	local pad = Frame.SidePadding()
 	main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", pad, main.buttonRowY)
-	main.Money:SetPoint("BOTTOMRIGHT", -pad, 8)
-	main.FreeSlots:SetPoint("BOTTOMLEFT", pad, 8)
 	main.RearrangeBar:SetPoint("TOPLEFT", pad, -TITLE_HEIGHT + 2)
 	main.RearrangeBar:SetPoint("TOPRIGHT", -pad, -TITLE_HEIGHT + 2)
 	ns.RequestRefresh()
@@ -1079,10 +1158,76 @@ function Frame.Toggle()
 	main:SetShown(not main:IsShown())
 end
 
-function Frame.UpdateMoney()
-	if main then
-		main.Money:SetText(GetMoneyString(GetMoney(), true))
+-- Font sizes from Settings.
+function Frame.ApplyFonts()
+	local sectionSize = ns.db.sectionFontSize or ns.DEFAULTS.sectionFontSize
+	local sizes = {
+		section = sectionSize,
+		sectionSmall = sectionSize - COMPACT_NAME_SHRINK,
+		money = ns.db.moneyFontSize or ns.DEFAULTS.moneyFontSize,
+		slots = ns.db.slotsFontSize or ns.DEFAULTS.slotsFontSize,
+	}
+	for key, base in pairs(FONT_BASES) do
+		local path, _, flags = _G[base]:GetFont()
+		fonts[key]:SetFont(path, sizes[key], flags or "")
 	end
+	headerHeight = math.max(MIN_HEADER_HEIGHT, sizes.section + 8)
+	nameHeight = math.max(MIN_NAME_HEIGHT, sizes.sectionSmall + 2)
+	ns.RequestRefresh()
+end
+
+-- Gold, tracked currencies and free slots, and the window height that depends on them.
+-- Currencies go left of the gold when they fit between it and the free slots; otherwise
+-- they get lines of their own above it, wrapping so they never run past the window edge.
+function Frame.UpdateFooter()
+	if not (main and main:IsShown() and bodyHeight) then
+		return
+	end
+	main.Money:SetText(GetMoneyString(GetMoney(), true))
+
+	local moneySize = ns.db.moneyFontSize or ns.DEFAULTS.moneyFontSize
+	local slotsSize = ns.db.slotsFontSize or ns.DEFAULTS.slotsFontSize
+	local lineHeight = math.max(MIN_FOOTER_LINE, moneySize + 2, slotsSize + 2)
+	local pad = Frame.SidePadding()
+	local innerWidth = (main:GetWidth() or 0) - pad * 2
+
+	local list = ReadCurrencies()
+	local widths = {}
+	for i, info in ipairs(list) do
+		local currency = currencies[i] or CreateCurrency(i)
+		currency.index = info.index
+		currency.Icon:SetTexture(info.icon)
+		currency.Icon:SetSize(moneySize, moneySize)
+		currency.Count:SetText(FormatQuantity(info.quantity))
+		widths[i] = (currency.Count:GetStringWidth() or 0) + 2 + moneySize
+		currency:SetSize(widths[i], lineHeight)
+	end
+	for i = #list + 1, #currencies do
+		currencies[i]:Hide()
+	end
+
+	local moneyWidth = main.Money:GetStringWidth() or 0
+	local inlineWidth = innerWidth - moneyWidth - (main.FreeSlots:GetStringWidth() or 0) - CURRENCY_GAP * 2
+	local footer = ns.Layout.FooterCurrencies(widths, inlineWidth, innerWidth, CURRENCY_GAP)
+
+	local function LineY(line)
+		return FOOTER_BOTTOM + line * (lineHeight + FOOTER_LINE_GAP) + lineHeight / 2
+	end
+	main.Money:ClearAllPoints()
+	main.Money:SetPoint("RIGHT", main.Chrome, "BOTTOMRIGHT", -pad, LineY(0))
+	main.FreeSlots:ClearAllPoints()
+	main.FreeSlots:SetPoint("LEFT", main.Chrome, "BOTTOMLEFT", pad, LineY(0))
+	for i, place in ipairs(footer.places) do
+		local right = pad + place.right + (place.line == 0 and moneyWidth + CURRENCY_GAP or 0)
+		local currency = currencies[i]
+		currency:ClearAllPoints()
+		currency:SetPoint("RIGHT", main.Chrome, "BOTTOMRIGHT", -right, LineY(place.line))
+		currency:Show()
+	end
+
+	local lines = 1 + footer.extraLines
+	local footerHeight = FOOTER_BOTTOM + lines * lineHeight + (lines - 1) * FOOTER_LINE_GAP
+	main:SetHeight(bodyHeight + footerHeight + 6)
 end
 
 -- Redraw: rescan bags, then place everything.
@@ -1151,7 +1296,8 @@ function Frame.Render(mode)
 	content:ClearAllPoints()
 	local pad = Frame.SidePadding()
 	content:SetPoint("TOPLEFT", pad, -(TITLE_HEIGHT + barHeight))
-	main:SetSize(gridWidth + pad * 2, TITLE_HEIGHT + barHeight + contentHeight + FOOTER_HEIGHT + 6)
+	bodyHeight = TITLE_HEIGHT + barHeight + contentHeight
+	main:SetWidth(gridWidth + pad * 2)
 
 	local bagSlots = {}
 	for _, slot in ipairs(slots) do
@@ -1160,7 +1306,7 @@ function Frame.Render(mode)
 		end
 	end
 	main.FreeSlots:SetText(L.FREE_SLOTS:format(ns.Layout.CountFree(bagSlots)))
-	Frame.UpdateMoney()
+	Frame.UpdateFooter()
 	ItemButtons.UpdateShown()
 end
 

@@ -221,3 +221,39 @@ function Layout.CountFree(slots)
 	end
 	return free, total
 end
+
+-- Places tracked currencies in the footer, right to left. They sit on the same line as the
+-- gold when they fit in the space between free slots and gold (`inlineWidth`); otherwise
+-- they get lines of their own above it, each at most `fullWidth` wide, wrapping as needed.
+-- widths: width of each currency, first one rightmost. Returns
+--   { extraLines = n, places = { { line, right } } }
+-- where line 0 is the gold's line and `right` is the distance of the currency's right
+-- edge from the right end of its line (on line 0, from the left end of the gold).
+function Layout.FooterCurrencies(widths, inlineWidth, fullWidth, gap)
+	if #widths == 0 then
+		return { extraLines = 0, places = {} }
+	end
+	local total = 0
+	for i, width in ipairs(widths) do
+		total = total + width + (i > 1 and gap or 0)
+	end
+	local places = {}
+	if total <= inlineWidth then
+		local right = 0
+		for i, width in ipairs(widths) do
+			places[i] = { line = 0, right = right }
+			right = right + width + gap
+		end
+		return { extraLines = 0, places = places }
+	end
+
+	local line, right = 1, 0
+	for i, width in ipairs(widths) do
+		if right > 0 and right + width > fullWidth then
+			line, right = line + 1, 0
+		end
+		places[i] = { line = line, right = right }
+		right = right + width + gap
+	end
+	return { extraLines = line, places = places }
+end

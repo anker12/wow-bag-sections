@@ -2,7 +2,7 @@
 ## Title: BagSections
 ## Notes: One combined bag window with your own named sections, each sorted separately.
 ## Author: anker12
-## Version: 1.0.0
+## Version: 1.1.0
 ## SavedVariables: BagSectionsDB
 ## SavedVariablesPerCharacter: BagSectionsCharDB
 ## IconTexture: Interface\Icons\INV_Misc_Bag_08
