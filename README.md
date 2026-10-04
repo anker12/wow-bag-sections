@@ -145,8 +145,7 @@ sorting just runs Blizzard's normal sort, and every section ends up sorted on it
 is simple and can't break halfway through. The downside: sections only exist in this
 window, not in Blizzard's default bags.
 
-[SPEC.md](SPEC.md) has the research and full design. [TESTING.md](TESTING.md) is the in-game
-test checklist.
+[TESTING.md](TESTING.md) is the in-game test checklist.
 
 ## Development
 
