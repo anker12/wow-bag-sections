@@ -12,6 +12,14 @@ section into CurseForge's changelog box when uploading.
   bank is remembered on every visit, your character's bank per character and the account
   bank for all characters. Shows each bank tab, free slots, and when it was last updated.
 
+## [1.1.1] - 2026-10-04
+
+### Fixed
+- "BagSections has been blocked from an action" when right-clicking consumables, and a
+  Lua error from Blizzard's bag code when pressing B. BagSections no longer runs any of
+  Blizzard's bag code itself; closing the window with its X now leaves Blizzard's hidden
+  bags alone, and B still opens the bags again in one press.
+
 ## [1.1.0] - 2026-10-04
 
 ### Added
