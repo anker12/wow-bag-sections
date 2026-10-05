@@ -6,6 +6,7 @@ ns.L = L
 
 L.ADDON_NAME = "BagSections"
 L.BAGS = "Bags"
+L.BAGS_PREVIEW = "Bags (preview)"
 L.REST = "Rest"
 L.REAGENTS = "Reagents"
 L.KEYRING = "Keyring"

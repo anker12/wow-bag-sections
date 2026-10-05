@@ -56,6 +56,7 @@ local function NewFrame(frameType, name, parent, template)
 		-- Roughly 6 pixels per character, so text has a width to lay out.
 		GetStringWidth = function(self) return #(self._text or "") * 6 end,
 		SetFontObject = function(self, font) self._font = font end,
+		SetFrameStrata = function(self, strata) self._strata = strata end,
 		GetLeft = function() return 0 end,
 		GetTop = function() return 0 end,
 		GetEffectiveScale = function() return 1 end,
@@ -192,6 +193,10 @@ _G.C_ActionBar = { ShouldShowKeyring = function() return false end }
 _G.ItemLocation = { CreateFromBagAndSlot = function(_, bag, slot) return MakeLocation(bag, slot) end }
 _G.CreateFrame = NewFrame
 _G.UIParent = NewFrame("Frame", "UIParent")
+-- Blizzard's Settings panel; _G._settingsPage is the category it's showing.
+_G.SettingsPanel = NewFrame("Frame", "SettingsPanel", _G.UIParent)
+_G.SettingsPanel._shown = false
+_G.SettingsPanel.GetCurrentCategory = function() return _G._settingsPage end
 _G.GameTooltip = NewFrame("GameTooltip", "GameTooltip")
 _G.UIErrorsFrame = NewFrame("Frame")
 _G.RED_FONT_COLOR = { GetRGBA = function() return 1, 0, 0, 1 end }
@@ -266,7 +271,9 @@ _G.TooltipDataProcessor = { AddTooltipPostCall = function(_, fn) _G._tooltipPost
 local function MockSetting() return { SetValueChangedCallback = function() end } end
 _G.Settings = {
 	VarType = { Boolean = "boolean", Number = "number" },
-	RegisterVerticalLayoutCategory = function() return { GetID = function() return 1 end }, { AddInitializer = function(_, init) _G._settingsButtons = _G._settingsButtons or {}; table.insert(_G._settingsButtons, init) end } end,
+	RegisterVerticalLayoutCategory = function()
+		_G._bsCategory = { GetID = function() return 1 end }
+		return _G._bsCategory, { AddInitializer = function(_, init) _G._settingsButtons = _G._settingsButtons or {}; table.insert(_G._settingsButtons, init) end } end,
 	RegisterAddOnSetting = MockSetting,
 	RegisterProxySetting = MockSetting,
 	CreateSliderOptions = function() return { SetLabelFormatter = function() end } end,
@@ -868,6 +875,48 @@ local bankFont = rawget(bankWindow, "FreeSlots")._font
 check(bankFont == _G.BagSectionsFont_slots, "bank footer uses the free slots font")
 SlashCmdList.BAGSECTIONS("bank")
 check(not bankWindow:IsShown(), "/bs bank closes it again")
+
+-- Settings preview: Blizzard closes the bags while its Settings panel is open, so on
+-- BagSections' settings page the window stays open above the panel to show changes.
+local function OpenSettings(page)
+	_G._settingsPage = page
+	SettingsPanel:Show()
+	RunOnUpdates()
+end
+local function CloseSettings()
+	SettingsPanel:Hide()
+	RunOnUpdates()
+end
+local mainTitle = rawget(mainFrame, "Title")
+if ns.Frame.IsShown() then _G.ToggleAllBags() end
+check(not ns.Frame.IsShown(), "bags closed before opening settings")
+OpenSettings({}) -- another addon's or Blizzard's page
+check(not ns.Frame.IsShown(), "no preview on other settings pages")
+OpenSettings(_G._bsCategory)
+check(ns.Frame.IsShown() and ns.Frame.IsPreviewing(), "preview opens on BagSections' page")
+check(mainFrame._strata == "DIALOG", "preview shows above the settings panel")
+check(mainTitle._text == "Bags (preview)", "title says it's a preview")
+BagSectionsDB.columns = 12
+ns.RequestRefresh()
+check(HeaderForKind("rest")._w > 406, "preview follows a setting change straight away")
+BagSectionsDB.columns = 10
+ns.RequestRefresh()
+RunOnUpdates() -- Blizzard's bags are closed: the bag watcher must not close the preview
+check(ns.Frame.IsShown(), "preview stays open while on the page")
+_G.ToggleAllBags() -- B is refused while the panel is open; nothing changes
+check(ns.Frame.IsShown(), "preview survives a B press")
+OpenSettings({})
+check(not ns.Frame.IsShown() and not ns.Frame.IsPreviewing(), "leaving the page closes the preview it opened")
+check(mainFrame._strata == "MEDIUM" and mainTitle._text == "Bags", "back to normal")
+OpenSettings(_G._bsCategory)
+CloseSettings()
+check(not ns.Frame.IsShown(), "closing settings closes the preview")
+-- Bags that were open before settings stay open afterwards.
+_G.ToggleAllBags()
+check(ns.Frame.IsShown(), "bags open")
+OpenSettings(_G._bsCategory)
+CloseSettings()
+check(ns.Frame.IsShown(), "bags that were already open stay open")
 
 -- Share and import a profile code.
 ns.Menu.PromptSaveProfile()

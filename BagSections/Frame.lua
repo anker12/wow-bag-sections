@@ -59,6 +59,7 @@ local fonts = {}
 local headerHeight, nameHeight = MIN_HEADER_HEIGHT, MIN_NAME_HEIGHT
 local currencies = {}
 local bodyHeight -- window height without the footer, from the last render
+local previewing, previewOpened = false, false -- settings preview, see Frame.SetPreview
 local headers, overlays = {}, {}
 local labels, placeholders, lineTextures = {}, {}, {}
 local lineFrame, measure, dividerLine
@@ -1206,8 +1207,42 @@ function Frame.Show()
 	main:Show()
 end
 
+-- While previewing, only the preview decides when the window closes (the bags' own close
+-- button still works).
 function Frame.Hide()
+	if previewing then
+		previewOpened = true
+		return
+	end
 	main:Hide()
+end
+
+-- Settings preview: Blizzard closes the bags while its Settings panel is open, so while
+-- BagSections' settings page is showing, the window stays open on its own, above the
+-- panel, to show each change as it's made. Afterwards it closes again if the preview
+-- opened it.
+function Frame.SetPreview(on)
+	if not main or on == previewing then
+		return
+	end
+	previewing = on
+	if on then
+		previewOpened = not main:IsShown()
+		main:SetFrameStrata("DIALOG")
+		main.Title:SetText(L.BAGS_PREVIEW)
+		main:Show()
+	else
+		main:SetFrameStrata("MEDIUM")
+		main.Title:SetText(L.BAGS)
+		if previewOpened then
+			main:Hide()
+		end
+		previewOpened = false
+	end
+end
+
+function Frame.IsPreviewing()
+	return previewing
 end
 
 function Frame.Toggle()

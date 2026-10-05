@@ -12,6 +12,9 @@ section into CurseForge's changelog box when uploading.
   between rows of sections and between sections side by side. The defaults look the same
   as before, and the smallest settings still keep items clear of the section names below
   them.
+- Live preview in Settings: while BagSections' settings page is open, the bags stay open
+  above it (titled "Bags (preview)"), so you can see each change as you make it. Blizzard
+  normally closes the bags while its Settings panel is open.
 
 ## [1.2.1] - 2026-10-04
 

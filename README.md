@@ -73,6 +73,10 @@ rows, never your items.
 
 ### Appearance
 
+While BagSections' page in Settings is open, the bags stay open above it as a live
+preview ("Bags (preview)"), so every change shows straight away. They close again when you
+leave the page, unless they were already open.
+
 In Settings:
 * **Background:** *Dark* (plain dark) or *Blizzard* (Blizzard's own panel background).
   **Background opacity** sets how see-through it is.

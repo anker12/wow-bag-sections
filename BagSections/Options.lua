@@ -108,6 +108,16 @@ function Options.Init()
 	end
 
 	Settings.RegisterAddOnCategory(category)
+
+	-- Show the bags as a live preview while this settings page is open (see
+	-- Frame.SetPreview). Only reads the panel's state; nothing of Blizzard's is hooked.
+	if SettingsPanel then
+		local watcher = CreateFrame("Frame")
+		watcher:SetScript("OnUpdate", function()
+			local onOurPage = SettingsPanel:IsShown() and SettingsPanel:GetCurrentCategory() == category
+			ns.Frame.SetPreview(onOurPage and true or false)
+		end)
+	end
 end
 
 function Options.Open()
