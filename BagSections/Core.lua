@@ -11,7 +11,9 @@ ns.DEFAULTS = {
 	-- Rest, "top" puts them below it. Existing sections keep their place.
 	restPosition = "bottom",
 	columns = 10,
-	semiSpacing = 6, -- semi-compact: space between rows of sections (twice that side by side)
+	-- Semi-compact: space between rows of sections, and between sections side by side.
+	semiRowSpacing = 6,
+	semiColumnSpacing = 12,
 	scale = 1,
 	-- On by default so a newly created (still empty) section shows up straight away.
 	showEmptySections = true,

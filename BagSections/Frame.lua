@@ -405,17 +405,18 @@ end
 -- Semi-compact layout: like the default, but your sections sit side by side, a number per
 -- row (AUTO_PER_ROW until the player arranges rows), each growing downwards. Rest,
 -- Reagents and Keyring stay full width.
--- Space between rows of sections comes from the "Semi-compact section spacing" setting;
--- sections side by side get twice that. Never less than SEMI_MIN_SPACING, which keeps a
--- row's items clear of the section names below and drop highlights from touching.
-local SEMI_MIN_SPACING = 4
+-- Space between rows of sections, and between sections side by side, from Settings.
+-- Never below these minimums: they keep a row's items clear of the section names below,
+-- and the drop highlights of neighbouring sections (3 px past each side) from touching.
+local SEMI_MIN_ROW_GAP = 4
+local SEMI_MIN_COLUMN_GAP = 6
 
 local function SemiRowGap()
-	return math.max(SEMI_MIN_SPACING, ns.db.semiSpacing or ns.DEFAULTS.semiSpacing)
+	return math.max(SEMI_MIN_ROW_GAP, ns.db.semiRowSpacing or ns.DEFAULTS.semiRowSpacing)
 end
 
 local function SemiColumnGap()
-	return SemiRowGap() * 2
+	return math.max(SEMI_MIN_COLUMN_GAP, ns.db.semiColumnSpacing or ns.DEFAULTS.semiColumnSpacing)
 end
 -- Sections per row in the automatic arrangement (before the player drags anything, or
 -- after Reset rows).
