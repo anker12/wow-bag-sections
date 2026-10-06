@@ -7,8 +7,12 @@
 local _, ns = ...
 local L = ns.L
 
-local TAB_BUTTON_SIZE = 37 -- the bank's bag slots in the footer: item buttons...
-local TAB_BUTTON_SCALE = 0.8 -- ...shown smaller, like Blizzard's (0.75)
+-- The bank's bag slots in the footer: item buttons at Blizzard's bank sizes
+-- (BankItemButtonBagTemplate: scale 0.75, one every 50 units), with the slot frame art
+-- sized to sit around the button instead of the item button's default 64x64.
+local TAB_BUTTON_SCALE = 0.75
+local TAB_STEP = 50 -- from one slot to the next, in the buttons' own units
+local TAB_FRAME_SIZE = 46 -- the slot frame art
 local TAB_ROW_GAP = 6
 local BUY_BUTTON_WIDTH = 100
 
@@ -202,6 +206,10 @@ local function CreateBagSlotButton(main, index)
 	button.Background:SetAllPoints()
 	button.Background:SetAtlas("bank-frame-bag-slot-bg")
 	button:SetNormalAtlas("bank-frame-bag-slotframe")
+	local frameArt = button:GetNormalTexture()
+	frameArt:ClearAllPoints()
+	frameArt:SetPoint("CENTER")
+	frameArt:SetSize(TAB_FRAME_SIZE, TAB_FRAME_SIZE)
 	button.Lock = button:CreateTexture(nil, "ARTWORK", nil, 1)
 	button.Lock:SetAllPoints()
 	button.Lock:SetAtlas("bankslot-icon-lock")
@@ -244,10 +252,12 @@ local function FooterExtra(main, pad, bottom)
 	end
 	local innerWidth = (main:GetWidth() or 0) - pad * 2
 	local info = BagSlots()
-	local slotSize = TAB_BUTTON_SIZE * TAB_BUTTON_SCALE
+	-- On screen: how far apart the slots are, and the height their frames need.
+	local step = TAB_STEP * TAB_BUTTON_SCALE
+	local slotSize = TAB_FRAME_SIZE * TAB_BUTTON_SCALE
 	local labelWidth = (slotsLabel:GetStringWidth() or 0) + 8
 	local count = math.max(info.max - 1, 0)
-	local slotsWidth = labelWidth + count * (slotSize + 4)
+	local slotsWidth = labelWidth + count * step
 
 	local price = NextSlotPrice()
 	if price then
@@ -259,7 +269,7 @@ local function FooterExtra(main, pad, bottom)
 	end
 	local buyWidth = price and ((buyCost:GetStringWidth() or 0) + 8 + BUY_BUTTON_WIDTH) or 0
 	local twoLines = price and slotsWidth + 12 + buyWidth > innerWidth
-	local rowHeight = slotSize
+	local rowHeight = slotSize + 6
 	local slotsBottom = bottom
 
 	slotsLabel:SetShown(count > 0)
@@ -276,8 +286,10 @@ local function FooterExtra(main, pad, bottom)
 		button.Lock:SetShown(not button.bought)
 		button:ClearAllPoints()
 		-- Points are in the button's own (scaled) units.
-		local x = (pad + labelWidth + (index - 2) * (slotSize + 4)) / TAB_BUTTON_SCALE
-		button:SetPoint("BOTTOMLEFT", main.Chrome, "BOTTOMLEFT", x, slotsBottom / TAB_BUTTON_SCALE)
+		-- Centred in its step, in the button's own (scaled) units.
+		local centreX = pad + labelWidth + (index - 2) * step + step / 2
+		local centreY = slotsBottom + rowHeight / 2
+		button:SetPoint("CENTER", main.Chrome, "BOTTOMLEFT", centreX / TAB_BUTTON_SCALE, centreY / TAB_BUTTON_SCALE)
 		button:Show()
 	end
 	for index, button in pairs(tabButtons) do

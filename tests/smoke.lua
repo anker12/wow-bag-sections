@@ -68,6 +68,7 @@ local function NewFrame(frameType, name, parent, template)
 		CreateTexture = function() return NewFrame("Texture") end,
 		CreateMaskTexture = function() return NewFrame("MaskTexture") end,
 		GetHighlightTexture = function(self) self._hl = self._hl or NewFrame("Texture"); return self._hl end,
+		GetNormalTexture = function(self) self._normal = self._normal or NewFrame("Texture"); return self._normal end,
 		SetText = function(self, text) self._text = text end,
 		GetText = function(self) return self._text end,
 		SetAttribute = function(self, key, value) self._attrs[key] = value; if self.OnAttributeChanged then self:OnAttributeChanged(key, value) end end,
@@ -957,6 +958,9 @@ end
 local setupPopup = _G._lastPopup -- the first-visit questions, checked below
 local bagSlots = BagSlotButtons()
 check(#bagSlots == 3, "every bank bag slot shows (slots 2 to 4)")
+local function SlotX(button) return button._point[4] * 0.75 end
+check(SlotX(bagSlots[2]) - SlotX(bagSlots[1]) == 37.5, "slots are spaced like Blizzard's bank (50 units at 0.75 scale)")
+check(rawget(bagSlots[1]:GetNormalTexture(), "_w") == 46, "the slot frame art sits around the button, not at 64x64")
 check(bagSlots[1].bought and bagSlots[1].hasBag and not bagSlots[1].Lock._shown, "a bought slot shows its bag")
 check(not bagSlots[2].bought and bagSlots[2].Lock._shown and bagSlots[3].Lock._shown, "slots not bought yet show a padlock")
 bagSlots[1]._scripts.OnClick(bagSlots[1])
