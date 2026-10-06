@@ -59,6 +59,15 @@ put it there instead. Turning the option off removes the section, unless you've 
 other items to it by hand. The option applies to all your characters; loading a profile
 keeps it as it is (the profile only decides where the section sits).
 
+### Reagents (bags)
+
+Turn on **Gather reagents from bags** in Settings, and crafting reagents in your normal bags
+(the items the reagent bag would take) are shown together as **Reagents (bags)**, right
+after the reagent bag, as their own block so you can tell them apart. Only items that
+would otherwise be in Rest move there; items you've put in a section stay in it. Drag one
+to Rest to keep that item in Rest, or back onto Reagents (bags) to undo that. Off by
+default.
+
 ### Profiles
 
 Settings → Profiles... (or the gear menu → Profiles) has *Save sections as profile...*,

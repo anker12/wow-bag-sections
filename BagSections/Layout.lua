@@ -8,10 +8,12 @@ ns.Layout = Layout
 
 -- slots: array in physical order of
 --   { bag = n, slot = n, area = "bags" | "reagent" | "keyring", item = { itemID, guid, ... } | nil }
--- opts: { showEmpty = bool, hideKeyring = bool }
+-- opts: { showEmpty = bool, hideKeyring = bool, bagReagents = bool }
 -- Returns an array of groups:
---   { key, kind = "section" | "rest" | "reagent" | "keyring", name, collapsed, color, below, slots = {...}, count }
--- Order: sections above Rest, Rest, sections below Rest, Reagents, Keyring.
+--   { key, kind = "section" | "rest" | "reagent" | "bagreagent" | "keyring", name, collapsed, color, below, slots = {...}, count }
+-- Order: sections above Rest, Rest, sections below Rest, Reagents, Reagents (bags), Keyring.
+-- With opts.bagReagents, crafting reagents in normal bags that would be in Rest go to the
+-- virtual "bagreagent" group instead, shown right after the real reagent bag.
 -- Only "bags" area items are classified into sections; empty slots always go to Rest, in
 -- physical bag order among Rest's items.
 function Layout.Build(db, slots, opts)
@@ -39,6 +41,7 @@ function Layout.Build(db, slots, opts)
 	local rest = { key = Rules.REST, kind = "rest", slots = {}, count = 0, collapsed = collapsed.rest or false }
 	local reagent = { key = "reagent", kind = "reagent", slots = {}, count = 0, collapsed = collapsed.reagent or false }
 	local keyring = { key = "keyring", kind = "keyring", slots = {}, count = 0, collapsed = collapsed.keyring or false }
+	local bagReagent = { key = "bagreagent", kind = "bagreagent", slots = {}, count = 0, collapsed = collapsed.bagreagent or false }
 
 	for _, slot in ipairs(slots) do
 		if slot.area == "reagent" then
@@ -52,8 +55,8 @@ function Layout.Build(db, slots, opts)
 			-- of them and appear right there.
 			table.insert(rest.slots, slot)
 		else
-			local sectionId = Rules.Classify(db, slot.item)
-			local group = sectionGroups[sectionId] or rest
+			local sectionId = Layout.GroupKey(db, slot.item, opts)
+			local group = sectionGroups[sectionId] or (sectionId == bagReagent.key and bagReagent) or rest
 			table.insert(group.slots, slot)
 			group.count = group.count + 1
 		end
@@ -73,10 +76,25 @@ function Layout.Build(db, slots, opts)
 	if #reagent.slots > 0 then
 		table.insert(result, reagent)
 	end
+	-- Shown when empty too while sections are (e.g. while dragging), so a reagent moved to
+	-- Rest can be dragged back.
+	if #bagReagent.slots > 0 or (opts.bagReagents and opts.showEmpty) then
+		table.insert(result, bagReagent)
+	end
 	if #keyring.slots > 0 and not opts.hideKeyring then
 		table.insert(result, keyring)
 	end
 	return result
+end
+
+-- Which group a bag item goes in: a section's id, Rules.REST or "bagreagent".
+function Layout.GroupKey(db, item, opts)
+	local sectionId = ns.Rules.Classify(db, item)
+	if sectionId == ns.Rules.REST and opts and opts.bagReagents and item.isReagent
+			and not ns.Rules.IsKeptInRest(db, item) then
+		return "bagreagent"
+	end
+	return sectionId
 end
 
 -- Compact ("flow") layout geometry. All groups run through one set of rows, like

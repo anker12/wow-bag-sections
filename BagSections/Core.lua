@@ -23,6 +23,8 @@ ns.DEFAULTS = {
 	takeOverBags = true,
 	-- Automatic Quest Items section, for every character on the account.
 	autoQuest = true,
+	-- Crafting reagents in normal bags shown together next to the reagent bag.
+	bagReagents = false,
 	-- Appearance
 	outlineAlpha = 0.7, -- compact layout section outlines
 	backgroundAlpha = 0.94,

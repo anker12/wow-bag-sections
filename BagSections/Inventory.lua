@@ -32,6 +32,12 @@ local function KeyringSize()
 	return C_Container.GetContainerNumSlots(KEYRING) or 0
 end
 
+-- Crafting reagents: the items Blizzard's reagent bag accepts. Unknown until the item's
+-- info is loaded (a redraw follows GET_ITEM_INFO_RECEIVED).
+local function IsReagent(itemID)
+	return select(17, C_Item.GetItemInfo(itemID)) == true
+end
+
 local function IsQuestClass(itemID)
 	local classID = select(6, C_Item.GetItemInfoInstant(itemID))
 	return classID == Enum.ItemClass.Questitem
@@ -52,6 +58,7 @@ function Inventory.GetItem(bag, slot)
 		equippable = C_Item.IsEquippableItem(itemID),
 		maxStack = C_Item.GetItemMaxStackSizeByID(itemID),
 		isQuest = (questInfo and (questInfo.isQuestItem or questInfo.questID ~= nil)) or IsQuestClass(itemID),
+		isReagent = IsReagent(itemID),
 	}
 end
 

@@ -165,7 +165,7 @@ function Rules.SetSectionColor(db, id, r, g, b)
 	return true
 end
 
--- key is "rest", "reagent" or "keyring".
+-- key is "rest", "reagent", "bagreagent" or "keyring".
 function Rules.ToggleBuiltinCollapsed(db, key)
 	db.collapsedBuiltin[key] = not db.collapsedBuiltin[key] or nil
 end
@@ -278,6 +278,22 @@ function Rules.Unassign(db, item)
 			db.rules.byItemID[item.itemID] = Rules.REST
 		end
 	end
+end
+
+-- Keeps an item in Rest even though an automatic group (Quest Items, Reagents (bags))
+-- would take it.
+function Rules.KeepInRest(db, item)
+	if item.guid then
+		db.rules.byGUID[item.guid] = nil
+	end
+	if item.itemID then
+		db.rules.byItemID[item.itemID] = Rules.REST
+	end
+end
+
+function Rules.IsKeptInRest(db, item)
+	return (item.guid and db.rules.byGUID[item.guid] == Rules.REST)
+		or (item.itemID and db.rules.byItemID[item.itemID] == Rules.REST) or false
 end
 
 local function HasRules(db, id)

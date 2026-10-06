@@ -45,6 +45,7 @@ local REFLOW_AFTER_SORT = 3 -- seconds the compact layout keeps updating after a
 local BUILTIN_COLORS = {
 	rest = { r = 0.65, g = 0.65, b = 0.65 },
 	reagent = { r = 0.40, g = 0.80, b = 0.45 },
+	bagreagent = { r = 0.62, g = 0.90, b = 0.66 }, -- paler than the real reagent bag
 	keyring = { r = 0.95, g = 0.80, b = 0.35 },
 }
 
@@ -102,6 +103,8 @@ local function GroupTitle(group)
 		return ("%s %s |cff999999(%d)|r"):format(marker, L.REST, #group.slots)
 	elseif group.kind == "reagent" then
 		return ("%s %s"):format(marker, L.REAGENTS)
+	elseif group.kind == "bagreagent" then
+		return ("%s %s |cff999999(%d)|r"):format(marker, L.REAGENTS_BAGS, group.count)
 	end
 	return ("%s %s"):format(marker, L.KEYRING)
 end
@@ -112,6 +115,8 @@ local function CompactTitle(group)
 		return ("%s |cff999999(%d)|r"):format(group.name, group.count)
 	elseif group.kind == "rest" then
 		return ("%s |cff999999(%d)|r"):format(L.REST, #group.slots)
+	elseif group.kind == "bagreagent" then
+		return ("%s |cff999999(%d)|r"):format(L.REAGENTS_BAGS, group.count)
 	end
 	return group.kind == "reagent" and L.REAGENTS or L.KEYRING
 end
@@ -141,7 +146,7 @@ local function ReadCursor()
 		state.bag, state.slot = bag, slot
 		if ns.Inventory.IsSectionBag(bag) then
 			state.source = "bags"
-			state.section = Rules.Classify(ns.charDB, item)
+			state.section = ns.Layout.GroupKey(ns.charDB, item, { bagReagents = ns.db.bagReagents })
 		elseif bag == Enum.BagIndex.ReagentBag or bag == Enum.BagIndex.Keyring then
 			state.source = "locked"
 		end
@@ -157,8 +162,19 @@ local function IsDropTarget(group)
 		return cursorState.section ~= group.key
 	elseif group.kind == "rest" then
 		return cursorState.source == "bags" and cursorState.section ~= Rules.REST
+	elseif group.kind == "bagreagent" then
+		return cursorState.source == "bags" and cursorState.item.isReagent and cursorState.section ~= "bagreagent"
 	end
 	return false
+end
+
+-- Dropped on Rest: out of its section, or out of Reagents (bags) for good.
+local function MoveToRest(state)
+	if state.section == "bagreagent" then
+		Rules.KeepInRest(ns.charDB, state.item)
+	else
+		Rules.Unassign(ns.charDB, state.item)
+	end
 end
 
 -- Assigns the cursor item to the group it was dropped on.
@@ -176,6 +192,9 @@ local function HandleDrop(group)
 	end
 
 	if group.kind == "rest" then
+		MoveToRest(state)
+		ClearCursor()
+	elseif group.kind == "bagreagent" then
 		Rules.Unassign(db, state.item)
 		ClearCursor()
 	elseif group.kind == "section" then
@@ -483,9 +502,9 @@ local function RenderSemiCompact(groups, columns, gridWidth, used)
 			DrawRow(chunk, dataRow)
 		end
 	end
-	-- Reagents and Keyring: full width at the bottom.
+	-- Reagents, Reagents (bags) and Keyring: full width at the bottom.
 	for index, group in ipairs(groups) do
-		if group.kind == "reagent" or group.kind == "keyring" then
+		if group.kind == "reagent" or group.kind == "bagreagent" or group.kind == "keyring" then
 			y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + rowGap
 		end
 	end
@@ -802,7 +821,7 @@ local COMPACT_DIVIDER_GAP = 10
 local function RenderCompact(groups, columns, used)
 	local bagGroups, extra = {}, {}
 	for _, group in ipairs(groups) do
-		if group.kind == "reagent" or group.kind == "keyring" then
+		if group.kind == "reagent" or group.kind == "bagreagent" or group.kind == "keyring" then
 			table.insert(extra, group)
 		else
 			table.insert(bagGroups, group)
@@ -1344,6 +1363,7 @@ function Frame.Render(mode)
 			-- Compact always shows empty sections, so dragging an item never moves anything.
 			showEmpty = compact or ns.db.showEmptySections or (cursorState ~= nil and cursorState.source ~= "locked"),
 			hideKeyring = not ns.db.showKeyring,
+			bagReagents = ns.db.bagReagents,
 		})
 		frozen = nil
 		if compact then
@@ -1414,7 +1434,12 @@ end
 -- of its section.
 function Frame.OnItemButtonDrop(button)
 	local state = cursorState -- what was on the cursor before this click
-	if not state or button.bsGroupKind ~= "rest" or state.source ~= "bags" or state.section == Rules.REST then
+	if not state or state.source ~= "bags" then
+		return
+	end
+	local kind = button.bsGroupKind
+	if not ((kind == "rest" and state.section ~= Rules.REST)
+			or (kind == "bagreagent" and state.item.isReagent and state.section ~= "bagreagent")) then
 		return
 	end
 	local now = C_Cursor.GetCursorItem()
@@ -1422,7 +1447,11 @@ function Frame.OnItemButtonDrop(button)
 	if nowItem and nowItem.guid == state.item.guid then
 		return -- still holding the same item: nothing was dropped
 	end
-	Rules.Unassign(ns.charDB, state.item)
+	if kind == "rest" then
+		MoveToRest(state)
+	else
+		Rules.Unassign(ns.charDB, state.item)
+	end
 	ns.RequestRefresh()
 end
 
