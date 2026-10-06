@@ -189,6 +189,11 @@ local function NewWindow(cfg)
 	Frame.IsOwnBag = cfg.IsOwnBag
 	Frame.isBank = cfg.isBank or false
 
+	-- Slots per row and scale have their own settings per window.
+	local function Columns()
+		return ns.db[cfg.columnsKey] or ns.DEFAULTS[cfg.columnsKey] or 10
+	end
+
 	local main, content, dropWatcher
 	local buttons -- this window's item buttons (see ItemButtons.NewSet)
 	local currencies = {}
@@ -672,7 +677,7 @@ local function NewWindow(cfg)
 		if #rowGeometry == 0 then
 			return nil
 		end
-		local columns = ns.db.columns or 10
+		local columns = Columns()
 		local maxPerRow = Frame.MaxSectionsPerRow(columns)
 		local rows = ns.Rows.Get(cfg.GetDB(), math.min(AUTO_PER_ROW, maxPerRow))
 		local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
@@ -753,7 +758,7 @@ local function NewWindow(cfg)
 		dragGhost:Hide()
 		dropLine:Hide()
 		if target then
-			local columns = ns.db.columns or 10
+			local columns = Columns()
 			local maxPerRow = Frame.MaxSectionsPerRow(columns)
 			if ns.Rows.Move(cfg.GetDB(), key, target, math.min(AUTO_PER_ROW, maxPerRow), maxPerRow) then
 				Frame.RequestRefresh()
@@ -996,7 +1001,7 @@ local function NewWindow(cfg)
 	end
 
 	local function ReuseFrozen(slots)
-		if not frozen or #slots ~= frozen.slotCount or (ns.db.columns or 10) ~= frozen.columns then
+		if not frozen or #slots ~= frozen.slotCount or Columns() ~= frozen.columns then
 			return nil
 		end
 		local fresh = {}
@@ -1026,7 +1031,7 @@ local function NewWindow(cfg)
 		for _, slot in ipairs(slots) do
 			keys[SlotKey(slot)] = true
 		end
-		frozen = { groups = groups, keys = keys, slotCount = #slots, columns = ns.db.columns or 10 }
+		frozen = { groups = groups, keys = keys, slotCount = #slots, columns = Columns() }
 	end
 
 	-- Lets the compact layout follow the bags for a few seconds, e.g. while a sort runs.
@@ -1297,7 +1302,7 @@ local function NewWindow(cfg)
 	end
 
 	function Frame.ApplyScale()
-		main:SetScale(ns.db.scale or 1)
+		main:SetScale(ns.db[cfg.scaleKey] or 1)
 	end
 
 	function Frame.RestorePosition()
@@ -1440,7 +1445,7 @@ local function NewWindow(cfg)
 			end
 		end
 
-		local columns = ns.db.columns or 10
+		local columns = Columns()
 		local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
 		content:SetWidth(gridWidth)
 
@@ -1568,6 +1573,8 @@ ns.Frame = NewWindow({
 	name = "BagSectionsFrame",
 	title = L.BAGS,
 	layoutKey = "layout",
+	columnsKey = "columns",
+	scaleKey = "scale",
 	positionKey = "frame",
 	PlaceByDefault = function(main) main:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -60, 100) end,
 	GetDB = function() return ns.charDB end,

@@ -28,6 +28,8 @@ ns.DEFAULTS = {
 	-- Bank window: replaces Blizzard's at the banker; its own layout.
 	replaceBank = true,
 	bankLayout = "default",
+	bankColumns = 15, -- half as wide again as the bags by default
+	bankScale = 1,
 	-- Appearance
 	outlineAlpha = 0.7, -- compact layout section outlines
 	backgroundAlpha = 0.94,

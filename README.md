@@ -158,7 +158,8 @@ between bank and bags, drag and drop, search, sort, and buy another tab. Closing
 the conversation with the banker.
 
 It has its own layout, separate from the bags: Default, Semi-compact or Compact, from the
-bank window's gear menu or Settings → **Bank layout**.
+bank window's gear menu or Settings → **Bank layout**. Its size is separate too: Settings →
+**Bank columns** (15 by default, half as wide again as the bags) and **Bank scale**.
 
 **Bank sections** work like your bag sections, but are kept separately: creating, renaming
 or deleting one in the bank doesn't touch the bags, and the other way round. The first time

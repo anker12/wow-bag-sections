@@ -61,6 +61,8 @@ function Options.Init()
 	end, L.OPT_BANK_LAYOUT_DESC)
 	AddSlider("columns", L.OPT_COLUMNS, L.OPT_COLUMNS_DESC, ns.DEFAULTS.columns, 6, 24, 1, nil, Refresh)
 	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, percent, function() ns.ApplyScale() end)
+	AddSlider("bankColumns", L.OPT_BANK_COLUMNS, L.OPT_BANK_COLUMNS_DESC, ns.DEFAULTS.bankColumns, 6, 30, 1, nil, Refresh)
+	AddSlider("bankScale", L.OPT_BANK_SCALE, L.OPT_BANK_SCALE_DESC, ns.DEFAULTS.bankScale, 0.6, 1.5, 0.05, percent, function() ns.ApplyScale() end)
 	AddSlider("semiRowSpacing", L.OPT_SEMI_ROW_SPACING, L.OPT_SEMI_ROW_SPACING_DESC, ns.DEFAULTS.semiRowSpacing, 4, 30, 1, nil, Refresh)
 	AddSlider("semiColumnSpacing", L.OPT_SEMI_COLUMN_SPACING, L.OPT_SEMI_COLUMN_SPACING_DESC, ns.DEFAULTS.semiColumnSpacing, 6, 40, 1, nil, Refresh)
 

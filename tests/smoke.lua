@@ -927,6 +927,13 @@ check(BankFrame:IsShown() and BankFrame:GetParent() ~= UIParent, "Blizzard's ban
 check(bankWindow:IsShown(), "the bank window opens at the banker")
 check(bankFooter() == "Live", "says it's live while at the bank")
 check(#LiveBankButtons() == 4, "live buttons for every slot of the bank tab")
+check(BagSectionsDB.bankColumns == 15 and BagSectionsDB.bankScale == 1, "bank size defaults: 15 columns")
+check(bankWindow._w > mainFrame._w * 1.4, "the bank window is about half as wide again as the bags")
+BagSectionsDB.bankColumns = 10
+ns.BankFrame.RequestRefresh()
+check(math.abs(bankWindow._w - mainFrame._w) < 1, "bank columns set separately from the bags'")
+BagSectionsDB.bankColumns = 15
+ns.BankFrame.RequestRefresh()
 check(rawget(bankWindow, "FreeSlots")._text == "3 / 4", "bank free slots (the account bank is ignored)")
 check(BagSectionsCharDB.bank and #BagSectionsCharDB.bank.tabs == 1 and BagSectionsCharDB.bank.tabs[1].bag == 6, "character bank remembered, with its bag")
 check(BagSectionsCharDB.bank.tabs[1].items[2].id == 700, "with its items in their slots")
