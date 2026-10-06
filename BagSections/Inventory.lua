@@ -37,6 +37,7 @@ end
 local function IsReagent(itemID)
 	return select(17, C_Item.GetItemInfo(itemID)) == true
 end
+Inventory.IsReagent = IsReagent
 
 local function IsQuestClass(itemID)
 	local classID = select(6, C_Item.GetItemInfoInstant(itemID))

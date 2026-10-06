@@ -87,6 +87,10 @@ function Bank.OnOpened()
 	Bank.RequestSnapshot()
 	if ns.db.replaceBank then
 		ns.BankFrame.Show()
+		-- First visit (including the first since bank sections came in): offer to set them up.
+		if not ns.charDB.bankSetupDone then
+			ns.Menu.StartBankSetup()
+		end
 	end
 	ns.BankFrame.RequestRefresh()
 end

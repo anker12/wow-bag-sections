@@ -183,6 +183,10 @@ end
 local function NewWindow(cfg)
 	local Frame = {}
 	Frame.MaxSectionsPerRow = Shared.MaxSectionsPerRow
+	-- For menus opened from this window: its sections, and which bags are its own.
+	Frame.GetDB = cfg.GetDB
+	Frame.IsOwnBag = cfg.IsOwnBag
+	Frame.isBank = cfg.isBank or false
 
 	-- Slots per row and scale have their own settings per window.
 	local function Columns()
@@ -326,7 +330,7 @@ local function NewWindow(cfg)
 	end
 
 	local function IsDropTarget(group)
-		if not cursorState or cursorState.source == "locked" then
+		if not cursorState or cursorState.source == "locked" or (cfg.AcceptsDrops and not cfg.AcceptsDrops()) then
 			return false
 		end
 		if group.kind == "section" then

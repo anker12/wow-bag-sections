@@ -12,6 +12,9 @@ section into CurseForge's changelog box when uploading.
   scale), deposit and withdraw by
   right-click, drag and drop, search and sort. Away from the bank it shows the last visit,
   as before. Only the character bank is shown.
+- Bank sections, kept separately from the bag sections. The first visit to a banker offers
+  to copy your bag sections and add an automatic Reagents section; the bank's gear menu has
+  New section, Copy sections from bags and the Reagents section switch.
 - "Gather reagents from bags" setting (off by default): crafting reagents in your normal
   bags show together as "Reagents (bags)", right after the reagent bag.
 

@@ -113,4 +113,9 @@ mention BagSections.
 | T105 | At the bank with a tab left to buy | "Buy tab" shows; clicking it asks to confirm with the price; Yes buys it and it appears in the bottom row. (If this is blocked, note it: Blizzard restricts buying tabs.) |
 | T106 | Close the bank window with its X; also press Escape at the bank; also walk away | Each ends the conversation with the banker, and the bank window closes. |
 | T107 | Settings → Replace the default bank off, /reload, talk to a banker | Blizzard's bank opens as normal. |
+| T108 | Visit a banker for the first time after updating | "Sort your bank into sections too?" Yes → "Copy your N bag sections to the bank?" (lists them) Yes → "Add a Reagents section?" Yes. The bank now has those sections (same names, colours, order) and a Reagents section with your reagents in it. Not asked again on the next visit. |
+| T109 | Bank gear menu → New section...; Copy sections from bags → one section, then All | New sections appear in the bank only; the bags don't change. Copy lists only bag sections the bank doesn't have yet. |
+| T110 | At the bank, drag a bank item onto a bank section; drag a bag item onto a bank section | The bank item joins the section. The bag item moves into the bank, into that section. |
+| T111 | Rename, recolour, collapse, delete a bank section; Alt+Right-click a bank item | Only the bank changes; the item menu lists the bank's sections. |
+| T112 | Away from the bank, `/bs bank`, then pick up a bag item | The bank shows its sections from the last visit; bank sections don't light up as drop targets. |
 | T117 | Open the bank; Settings → Bank columns and Bank scale | The bank is about half as wide again as the bags by default (15 columns). Each slider changes only the bank; Columns and Scale change only the bags. |
