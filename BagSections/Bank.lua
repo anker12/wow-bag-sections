@@ -131,7 +131,7 @@ end
 function Bank.SnapshotSlots(snapshot)
 	local slots = {}
 	for index, tab in ipairs(snapshot and snapshot.tabs or {}) do
-		local bag = tab.bag or (1000 + index) -- snapshots from before 1.4 didn't save the bag
+		local bag = tab.bag or (1000 + index) -- snapshots from before 1.3 didn't save the bag
 		for slot = 1, tab.size do
 			local cached = tab.items[slot]
 			table.insert(slots, {
