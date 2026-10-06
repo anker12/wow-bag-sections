@@ -5,31 +5,22 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
-### Changed
-- Semi-compact is now the default layout, for the bags and the bank. The old "Default"
-  layout is now called "Stacked". Your current layout choice stays as it is.
-- Semi-compact's space between rows is 4 by default (was 6). Your current setting stays as
-  it is.
-- The bank window looks more like Blizzard's: its border with the round portrait corner
-  (the banker, or a bank icon away from the bank).
-- Every bank bag slot shows along the bottom, bought or not (padlocked). Bags in bought
-  slots can be swapped by clicking or dragging, as in Blizzard's bank.
-- Hovering a bag button on the action bar glows that bag's slots in the bags, and hovering
-  a bank bag slot glows that bag's slots in the bank: the slots to empty before swapping
-  the bag, as Blizzard's bags and bank show them.
-- "Buy tab" is now "Buy slot", with the price of the next slot next to it (red if you can't
-  afford it). Clicking a padlocked slot also offers to buy it. Buying goes through
-  Blizzard's own purchase button and dialog, so it's no longer blocked.
-- The Quest Items section setting now covers the bank too: turning it on or off changes
-  both the bags and the bank. It's in Settings only, no longer in the gear menu.
+## [1.3.0] - 2026-10-06
 
 ### Added
 - The bank window replaces Blizzard's at the banker ("Replace the default bank", on by
-  default): Blizzard's look (stone background, the bank's bag slots at the bottom, buy a
-  tab), its own layout and size settings (Bank layout, Bank columns: 15 by default, Bank
-  scale), deposit and withdraw by
-  right-click, drag and drop, search and sort. Away from the bank it shows the last visit,
-  as before. Only the character bank is shown.
+  default). It looks like Blizzard's bank: its border with the banker in the round corner,
+  the stone background and the bank's bag slots along the bottom. Deposit and withdraw by
+  right-click or drag and drop; search and sort work as in the bags. Away from the bank it
+  shows your last visit, as before. Only the character bank is shown.
+- The bank has its own layout and size settings: Bank layout, Bank columns (15 by default)
+  and Bank scale.
+- Every bank bag slot shows, bought or not (padlocked). Bags in bought slots can be swapped
+  by clicking or dragging. "Buy slot" shows the price of the next slot (red if you can't
+  afford it), and clicking a padlocked slot also offers to buy it.
+- Hovering a bag button on the action bar glows that bag's slots in the bags, and hovering
+  a bank bag slot glows that bag's slots in the bank: the slots to empty before swapping
+  the bag.
 - Bank sections, kept separately from the bag sections. The first visit to a banker offers
   to copy your bag sections; the bank's gear menu has New section and Copy sections from
   bags. The bank has an automatic Reagents section, on by default (Settings → Reagents
@@ -40,28 +31,25 @@ section into CurseForge's changelog box when uploading.
   one from the other side.
 - "Gather reagents from bags" setting (on by default): crafting reagents in your normal
   bags show in the Reagents section together with the reagent bag, as one block.
+- Semi-compact spacing: two sliders in Settings for the space between rows of sections
+  (4 by default) and between sections side by side (12 by default). The smallest settings
+  still keep items clear of the section names below them.
+- Live preview in Settings: while BagSections' settings page is open, the bags stay open
+  above it (titled "Bags (preview)"), so you can see each change as you make it. Blizzard
+  normally closes the bags while its Settings panel is open.
 
 ### Changed
+- Semi-compact is now the default layout, for the bags and the bank. The old "Default"
+  layout is now called "Stacked". Your current layout choice stays as it is.
 - Settings are grouped under headings: Layout, Sections and items, Appearance, Text size,
   General and Profiles.
-- The Quest Items section is on by default, and the setting now applies to all your
-  characters (it used to be per character). Existing installs keep the setting of the
-  first character you log in with.
+- The Quest Items section is on by default and applies to all your characters (it used to
+  be per character), in the bags and the bank. Existing installs keep the setting of the
+  first character you log in with. It's in Settings only, no longer in the gear menu.
 
 ### Fixed
 - Section header lines no longer come and go (most visible in Semi-compact, and in the bank
   at its smaller scale): they're kept at least one screen pixel thick at any scale.
-
-## [1.3.0] - 2026-10-04
-
-### Added
-- Semi-compact spacing: two sliders in Options > AddOns > BagSections, for the space
-  between rows of sections and between sections side by side. The defaults look the same
-  as before, and the smallest settings still keep items clear of the section names below
-  them.
-- Live preview in Settings: while BagSections' settings page is open, the bags stay open
-  above it (titled "Bags (preview)"), so you can see each change as you make it. Blizzard
-  normally closes the bags while its Settings panel is open.
 
 ## [1.2.1] - 2026-10-04
 
