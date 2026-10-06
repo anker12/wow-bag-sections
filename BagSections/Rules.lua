@@ -13,6 +13,14 @@ Rules.KIND_GUID = "guid"
 
 -- Automatic sections fill themselves from item properties instead of explicit rules.
 Rules.AUTO_QUEST = "quest"
+Rules.AUTO_REAGENT = "reagent" -- the bank's automatic Reagents section
+
+-- Which db flag turns each automatic section on, and which items it takes.
+local AUTO_FLAG = { [Rules.AUTO_QUEST] = "autoQuest", [Rules.AUTO_REAGENT] = "autoReagent" }
+local AUTO_TAKES = {
+	[Rules.AUTO_QUEST] = function(item) return item.isQuest end,
+	[Rules.AUTO_REAGENT] = function(item) return item.isReagent end,
+}
 
 -- Outline colours handed out to new sections in turn (used by the compact layout).
 Rules.PALETTE = {
@@ -56,6 +64,7 @@ function Rules.Upgrade(db)
 		db.rows = nil
 	end
 	db.autoQuest = db.autoQuest and true or false
+	db.autoReagent = db.autoReagent and true or false
 	db.nextId = tonumber(db.nextId) or 1
 	for index, section in ipairs(db.sections) do
 		local n = tonumber(section.id and section.id:match("^s(%d+)$"))
@@ -107,8 +116,8 @@ function Rules.DeleteSection(db, id)
 	if not index then
 		return false
 	end
-	if section.auto == Rules.AUTO_QUEST then
-		db.autoQuest = false
+	if AUTO_FLAG[section.auto] then
+		db[AUTO_FLAG[section.auto]] = false
 	end
 	table.remove(db.sections, index)
 	Rules.ClearSection(db, id)
@@ -201,11 +210,10 @@ end
 
 -- The automatic section an item would go to, ignoring explicit rules.
 function Rules.AutoSection(db, item)
-	if db.autoQuest and item.isQuest then
-		for _, section in ipairs(db.sections) do
-			if section.auto == Rules.AUTO_QUEST then
-				return section.id
-			end
+	for _, section in ipairs(db.sections) do
+		local auto = section.auto
+		if auto and db[AUTO_FLAG[auto]] and AUTO_TAKES[auto](item) then
+			return section.id
 		end
 	end
 end
@@ -306,25 +314,25 @@ local function HasRules(db, id)
 	return false
 end
 
--- Turns the automatic "Quest Items" section on or off. Turning it on reuses an existing
--- quest section or creates one called `name`. Turning it off deletes that section if
--- nothing was added to it by hand; otherwise it stays as a normal section.
-function Rules.SetAutoQuest(db, enabled, name, below)
+-- Turns an automatic section (Rules.AUTO_QUEST, Rules.AUTO_REAGENT) on or off. Turning it on
+-- reuses an existing one or creates one called `name`. Turning it off deletes that section
+-- if nothing was added to it by hand; otherwise it stays as a normal section.
+function Rules.SetAuto(db, auto, enabled, name, below)
 	local existing
 	for _, section in ipairs(db.sections) do
-		if section.auto == Rules.AUTO_QUEST then
+		if section.auto == auto then
 			existing = section
 		end
 	end
 	if enabled then
-		db.autoQuest = true
+		db[AUTO_FLAG[auto]] = true
 		if not existing then
 			existing = Rules.CreateSection(db, name, below)
-			existing.auto = Rules.AUTO_QUEST
+			existing.auto = auto
 		end
 		return existing
 	end
-	db.autoQuest = false
+	db[AUTO_FLAG[auto]] = false
 	if existing then
 		if HasRules(db, existing.id) then
 			existing.auto = nil
@@ -332,6 +340,41 @@ function Rules.SetAutoQuest(db, enabled, name, below)
 			Rules.DeleteSection(db, existing.id)
 		end
 	end
+end
+
+-- Sections in `from` that `to` doesn't have yet (by name), not counting automatic ones.
+function Rules.MissingSections(from, to)
+	local have = {}
+	for _, section in ipairs(to.sections) do
+		have[section.name:lower()] = true
+	end
+	local missing = {}
+	for _, section in ipairs(from.sections) do
+		if not section.auto and not have[section.name:lower()] then
+			table.insert(missing, section)
+		end
+	end
+	return missing
+end
+
+-- Copies sections (name, colour, above/below Rest, in order) from one section list to
+-- another, e.g. the bags' to the bank's. Items stay where they are. `sections` is a list
+-- of sections from `from`, or nil for all that `to` doesn't have yet. Returns the new ones.
+function Rules.CopySections(from, to, sections)
+	local created = {}
+	for _, source in ipairs(sections or Rules.MissingSections(from, to)) do
+		local copy = Rules.CreateSection(to, source.name, source.below)
+		if source.color then
+			copy.color = { r = source.color.r, g = source.color.g, b = source.color.b }
+		end
+		table.insert(created, copy)
+	end
+	return created
+end
+
+-- The automatic "Quest Items" section.
+function Rules.SetAutoQuest(db, enabled, name, below)
+	return Rules.SetAuto(db, Rules.AUTO_QUEST, enabled, name, below)
 end
 
 -- Profiles store the section list only (names, order, colours, placement), not which

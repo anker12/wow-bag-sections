@@ -931,6 +931,53 @@ check(rawget(bankWindow, "FreeSlots")._text == "3 / 4", "bank free slots (the ac
 check(BagSectionsCharDB.bank and #BagSectionsCharDB.bank.tabs == 1 and BagSectionsCharDB.bank.tabs[1].bag == 6, "character bank remembered, with its bag")
 check(BagSectionsCharDB.bank.tabs[1].items[2].id == 700, "with its items in their slots")
 
+-- First visit: set up bank sections. Copy the bag sections, add a Reagents section.
+check(_G._lastPopup and _G._lastPopup.data.onAccept, "first visit asks about bank sections")
+check(BagSectionsCharDB.bankSetupDone, "only asked once")
+local bankDB = BagSectionsCharDB.bankSections
+local bagSectionCount = #BagSectionsCharDB.sections
+local missingBefore = #ns.Rules.MissingSections(BagSectionsCharDB, bankDB)
+_G._lastPopup.data.onAccept() -- yes, set up
+check(_G._lastPopup.data.onAccept and _G._lastPopup.data.onCancel, "then asks about copying")
+_G._lastPopup.data.onAccept() -- yes, copy
+check(#bankDB.sections == missingBefore and missingBefore > 0, "bag sections copied to the bank")
+check(#BagSectionsCharDB.sections == bagSectionCount, "the bags' sections are unchanged")
+check(bankDB.sections[1].name == ns.Rules.MissingSections(BagSectionsCharDB, { sections = {} })[1].name, "same names, same order")
+_G._lastPopup.data.onAccept() -- yes, Reagents section
+check(bankDB.autoReagent and bankDB.sections[#bankDB.sections].auto == ns.Rules.AUTO_REAGENT, "bank Reagents section added")
+check(#ns.Rules.MissingSections(BagSectionsCharDB, bankDB) == 0, "nothing left to copy")
+
+-- Bank sections are the bank's own: assigning a bank item doesn't touch the bags' rules.
+local bankSection = bankDB.sections[1]
+ns.BankFrame.RequestRefresh()
+C_Container.PickupContainerItem(6, 2) -- the Old Robe, in the bank
+Fire("CURSOR_CHANGED")
+local bankTarget = FindGroupFrame("section", bankSection.id)
+check(bankTarget, "bank sections light up for a bank item")
+bankTarget._scripts.OnReceiveDrag(bankTarget)
+check(bankDB.rules.byItemID[700] == bankSection.id or bankDB.rules.byGUID["Item-6-2-700"] == bankSection.id, "assigned in the bank")
+check(BagSectionsCharDB.rules.byItemID[700] == nil and BagSectionsCharDB.rules.byGUID["Item-6-2-700"] == nil, "the bags' rules unchanged")
+-- Dropping a bag item on a bank section puts it in the bank, in that section.
+C_Container.PickupContainerItem(0, 2) -- Mining Pick, in the bags
+Fire("CURSOR_CHANGED")
+bankTarget = FindGroupFrame("section", bankSection.id)
+bankTarget._scripts.OnReceiveDrag(bankTarget)
+check(ITEMS["0:2"] == nil and (ITEMS["6:1"] or {}).itemID == 2901, "the item moved into a free bank slot")
+check(bankDB.rules.byItemID[2901] == bankSection.id, "and into the bank section")
+ITEMS["0:2"], ITEMS["6:1"] = ITEMS["6:1"], nil -- put it back for the tests below
+ns.Rules.Unassign(bankDB, { itemID = 2901 })
+-- The bank's menus work on the bank's sections.
+ns.Menu.OpenBankMenu(bankWindow)
+local bankHeader
+for _, frame in ipairs(frames) do
+	if frame._shown and rawget(frame, "Line") and frame.group and frame.group.key == bankSection.id then bankHeader = frame end
+end
+check(bankHeader, "bank section header shown")
+bankHeader._scripts.OnClick(bankHeader, "RightButton")
+ns.Menu.PromptRename(bankSection, ns.BankFrame)
+_G._lastPopup.data.onAccept("Bank only")
+check(bankSection.name == "Bank only" and BagSectionsCharDB.sections[1].name ~= "Bank only", "renaming a bank section leaves the bags alone")
+
 -- Items moved at the bank update the snapshot.
 ITEMS["6:3"], ITEMS["6:2"] = ITEMS["6:2"], nil
 Fire("PLAYERBANKSLOTS_CHANGED")
@@ -964,6 +1011,11 @@ check(BagSectionsCharDB.bank.tabs[1].items[3], "nothing is read away from the ba
 SlashCmdList.BAGSECTIONS("bank")
 check(bankWindow:IsShown() and #CachedBankButtons() == 4 and #LiveBankButtons() == 0, "the snapshot, with its own buttons")
 check(bankFooter() == "Updated just now", "says how old the snapshot is")
+C_Container.PickupContainerItem(0, 5)
+Fire("CURSOR_CHANGED")
+check(FindGroupFrame("section", bankSection.id) == nil, "away from the bank, bank sections don't take drops")
+ClearCursor()
+Fire("CURSOR_CHANGED")
 local robe
 for _, button in ipairs(CachedBankButtons()) do if button.link then robe = button end end
 robe._scripts.OnClick(robe)

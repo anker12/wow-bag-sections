@@ -238,7 +238,13 @@ window = ns.Frame.NewWindow({
 		if ns.Bank.IsOpen() then
 			return ns.Inventory.ScanBank()
 		end
-		return ns.Bank.SnapshotSlots(ns.charDB.bank)
+		local slots = ns.Bank.SnapshotSlots(ns.charDB.bank)
+		for _, slot in ipairs(slots) do
+			if slot.item then
+				slot.item.isReagent = ns.Inventory.IsReagent(slot.item.itemID)
+			end
+		end
+		return slots
 	end,
 	BuildOptions = function() return {} end,
 	IsOwnBag = function(bag) return ns.Inventory.IsBankBag(bag) end,
@@ -249,6 +255,10 @@ window = ns.Frame.NewWindow({
 		end
 	end,
 	fullMessage = L.BANK_FULL,
+	isBank = true,
+	-- Items can only be moved into the bank while at it.
+	AcceptsDrops = function() return ns.Bank.IsOpen() end,
+	noSectionsHint = true,
 	CreateButtons = CreateButtons,
 	OpenMenu = function(owner) ns.Menu.OpenBankMenu(owner) end,
 	Sort = Sort,

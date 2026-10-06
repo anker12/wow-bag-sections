@@ -160,6 +160,15 @@ the conversation with the banker.
 It has its own layout, separate from the bags: Default, Semi-compact or Compact, from the
 bank window's gear menu or Settings → **Bank layout**.
 
+**Bank sections** work like your bag sections, but are kept separately: creating, renaming
+or deleting one in the bank doesn't touch the bags, and the other way round. The first time
+you visit a banker, BagSections asks whether to set them up: copy your bag sections to the
+bank, and add an automatic **Reagents** section that collects crafting reagents. Later, the
+bank window's gear menu has **New section...**, **Copy sections from bags** (one, or all
+that the bank doesn't have yet), the **Reagents section** switch and **Set up bank
+sections...** to go through the questions again. Drag an item from your bags onto a bank
+section to put it in the bank, in that section.
+
 **Right-click the "Bags" title** (or type `/bs bank`) to look at your bank from anywhere.
 Every visit to a bank is remembered (per character), so away from the bank the window shows
 that copy, with how long ago it was updated ("Live" while you're at the bank). Hover an

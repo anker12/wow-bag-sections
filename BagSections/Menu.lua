@@ -51,6 +51,11 @@ StaticPopupDialogs["BAGSECTIONS_CONFIRM"] = {
 	OnAccept = function(_, data)
 		data.onAccept()
 	end,
+	OnCancel = function(_, data)
+		if data and data.onCancel then
+			data.onCancel()
+		end
+	end,
 }
 
 StaticPopupDialogs["BAGSECTIONS_DELETE_SECTION"] = {
@@ -61,15 +66,21 @@ StaticPopupDialogs["BAGSECTIONS_DELETE_SECTION"] = {
 	whileDead = 1,
 	hideOnEscape = 1,
 	OnAccept = function(_, data)
-		Rules.DeleteSection(ns.charDB, data.id)
+		Rules.DeleteSection(data.db, data.id)
 		Changed()
 	end,
 }
 
-function Menu.PromptNewSection(onCreated)
+-- The window a menu was opened from (the bags unless given), and its section data.
+local function DB(window)
+	return (window or ns.Frame).GetDB()
+end
+
+function Menu.PromptNewSection(onCreated, window)
+	local db = DB(window)
 	StaticPopup_Show("BAGSECTIONS_SECTION_NAME", L.NEW_SECTION_PROMPT, nil, {
 		onAccept = function(name)
-			local section = Rules.CreateSection(ns.charDB, name, ns.NewSectionsBelowRest())
+			local section = Rules.CreateSection(db, name, ns.NewSectionsBelowRest())
 			Changed()
 			if onCreated then
 				onCreated(section)
@@ -78,67 +89,72 @@ function Menu.PromptNewSection(onCreated)
 	})
 end
 
-function Menu.PromptRename(section)
+function Menu.PromptRename(section, window)
+	local db = DB(window)
 	StaticPopup_Show("BAGSECTIONS_SECTION_NAME", L.RENAME_SECTION_PROMPT:format(section.name), nil, {
 		name = section.name,
 		onAccept = function(name)
-			Rules.RenameSection(ns.charDB, section.id, name)
+			Rules.RenameSection(db, section.id, name)
 			Changed()
 		end,
 	})
 end
 
-function Menu.DeleteSection(section, itemCount)
+function Menu.DeleteSection(section, itemCount, window)
+	local db = DB(window)
 	if itemCount and itemCount > 0 then
-		StaticPopup_Show("BAGSECTIONS_DELETE_SECTION", L.DELETE_SECTION_CONFIRM:format(section.name), nil, { id = section.id })
+		StaticPopup_Show("BAGSECTIONS_DELETE_SECTION", L.DELETE_SECTION_CONFIRM:format(section.name), nil, { id = section.id, db = db })
 	else
-		Rules.DeleteSection(ns.charDB, section.id)
+		Rules.DeleteSection(db, section.id)
 		Changed()
 	end
 end
 
 -- Right-click on a section header.
-function Menu.OpenSectionMenu(owner, group)
-	local section = Rules.GetSection(ns.charDB, group.key)
+function Menu.OpenSectionMenu(owner, group, window)
+	window = window or ns.Frame
+	local db = window.GetDB()
+	local section = Rules.GetSection(db, group.key)
 	if not section then
 		return
 	end
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(section.name)
-		root:CreateButton(L.RENAME_SECTION, function() Menu.PromptRename(section) end)
+		root:CreateButton(L.RENAME_SECTION, function() Menu.PromptRename(section, window) end)
 		root:CreateButton(section.collapsed and L.EXPAND or L.COLLAPSE, function()
 			section.collapsed = not section.collapsed
 			Changed()
 		end)
-		if ns.db.layout == "semicompact" then
+		if ns.db[window.isBank and "bankLayout" or "layout"] == "semicompact" then
 			-- Semi-compact places sections by dragging them (see Rearrange sections).
-			root:CreateButton(L.REARRANGE_UNLOCK, function() ns.Frame.SetRearranging(true) end)
+			root:CreateButton(L.REARRANGE_UNLOCK, function() window.SetRearranging(true) end)
 		else
 			root:CreateButton(L.MOVE_UP, function()
-				Rules.MoveSection(ns.charDB, section.id, -1)
+				Rules.MoveSection(db, section.id, -1)
 				Changed()
 			end)
 			root:CreateButton(L.MOVE_DOWN, function()
-				Rules.MoveSection(ns.charDB, section.id, 1)
+				Rules.MoveSection(db, section.id, 1)
 				Changed()
 			end)
 			root:CreateButton(section.below and L.MOVE_ABOVE_REST or L.MOVE_BELOW_REST, function()
-				Rules.SetSectionBelow(ns.charDB, section.id, not section.below)
+				Rules.SetSectionBelow(db, section.id, not section.below)
 				Changed()
 			end)
 		end
-		root:CreateButton(L.COLOUR, function() Menu.PickColour(section) end)
+		root:CreateButton(L.COLOUR, function() Menu.PickColour(section, window) end)
 		root:CreateDivider()
 		root:CreateButton(L.CLEAR_SECTION, function()
-			Rules.ClearSection(ns.charDB, section.id)
+			Rules.ClearSection(db, section.id)
 			Changed()
 		end)
-		root:CreateButton(L.DELETE_SECTION, function() Menu.DeleteSection(section, group.count) end)
+		root:CreateButton(L.DELETE_SECTION, function() Menu.DeleteSection(section, group.count, window) end)
 	end)
 end
 
 -- Opens Blizzard's colour picker for a section's outline colour (compact layout).
-function Menu.PickColour(section)
+function Menu.PickColour(section, window)
+	local db = DB(window)
 	local c = section.color or Rules.PALETTE[1]
 	local id = section.id
 	ColorPickerFrame:SetupColorPickerAndShow({
@@ -146,11 +162,11 @@ function Menu.PickColour(section)
 		hasOpacity = false,
 		swatchFunc = function()
 			local r, g, b = ColorPickerFrame:GetColorRGB()
-			Rules.SetSectionColor(ns.charDB, id, r, g, b)
+			Rules.SetSectionColor(db, id, r, g, b)
 			Changed()
 		end,
 		cancelFunc = function(previous)
-			Rules.SetSectionColor(ns.charDB, id, previous.r, previous.g, previous.b)
+			Rules.SetSectionColor(db, id, previous.r, previous.g, previous.b)
 			Changed()
 		end,
 	})
@@ -366,35 +382,130 @@ function Menu.OpenMainMenu(owner)
 	end)
 end
 
+-- Bank sections: separate from the bags'; these copy and set them up.
+
+function Menu.CopyBagSections(sections)
+	local created = Rules.CopySections(ns.charDB, ns.charDB.bankSections, sections)
+	if #created > 0 then
+		ns.Print(L.BANK_COPIED:format(#created))
+	end
+	Changed()
+	return created
+end
+
+function Menu.SetBankReagents(enabled)
+	Rules.SetAuto(ns.charDB.bankSections, Rules.AUTO_REAGENT, enabled, L.REAGENTS, ns.NewSectionsBelowRest())
+	Changed()
+end
+
+-- First visit to a banker (and "Set up bank sections..." in the bank's gear menu): asks
+-- whether to use sections in the bank, then whether to copy the bag sections and add a
+-- Reagents section. Each question is its own small Yes/No dialog.
+function Menu.StartBankSetup()
+	ns.charDB.bankSetupDone = true
+	local function Ask(text, onYes, onNo)
+		-- Next frame, so the previous dialog has finished closing.
+		C_Timer.After(0, function()
+			StaticPopup_Show("BAGSECTIONS_CONFIRM", text, nil, { onAccept = onYes, onCancel = onNo })
+		end)
+	end
+	local function AskReagents()
+		if ns.charDB.bankSections.autoReagent then
+			return
+		end
+		Ask(L.BANK_SETUP_REAGENTS, function() Menu.SetBankReagents(true) end)
+	end
+	local function AskCopy()
+		local missing = Rules.MissingSections(ns.charDB, ns.charDB.bankSections)
+		if #missing == 0 then
+			AskReagents()
+			return
+		end
+		local names = {}
+		for i, section in ipairs(missing) do
+			if i > 4 then
+				names[#names + 1] = "..."
+				break
+			end
+			names[#names + 1] = section.name
+		end
+		Ask(L.BANK_SETUP_COPY:format(#missing, table.concat(names, ", ")), function()
+			Menu.CopyBagSections(missing)
+			AskReagents()
+		end, AskReagents)
+	end
+	Ask(L.BANK_SETUP_INTRO, AskCopy)
+end
+
 -- Options button in the bank window's title bar.
 function Menu.OpenBankMenu(owner)
+	local bank = ns.BankFrame
+	local db = ns.charDB.bankSections
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(L.BANK)
+		root:CreateButton(L.NEW_SECTION, function() Menu.PromptNewSection(nil, bank) end)
+		local copy = root:CreateButton(L.BANK_COPY_SECTIONS)
+		local missing = Rules.MissingSections(ns.charDB, db)
+		for _, section in ipairs(missing) do
+			copy:CreateButton(section.name, function() Menu.CopyBagSections({ section }) end)
+		end
+		if #missing > 1 then
+			copy:CreateDivider()
+			copy:CreateButton(L.BANK_COPY_ALL:format(#missing), function() Menu.CopyBagSections(missing) end)
+		end
+		copy:SetEnabled(#missing > 0)
+		root:CreateCheckbox(L.BANK_REAGENT_SECTION, function()
+			return db.autoReagent
+		end, function()
+			Menu.SetBankReagents(not db.autoReagent)
+		end)
+		root:CreateCheckbox(L.SHOW_EMPTY, function()
+			return ns.db.showEmptySections
+		end, function()
+			ns.db.showEmptySections = not ns.db.showEmptySections
+			Changed()
+		end)
 		local function IsLayout(name) return (ns.db.bankLayout or "default") == name end
+		if IsLayout("semicompact") then
+			root:CreateCheckbox(L.REARRANGE, function()
+				return bank.IsRearranging()
+			end, function()
+				bank.SetRearranging(not bank.IsRearranging())
+			end)
+		end
 		local function SetLayout(name)
 			ns.db.bankLayout = name
-			ns.BankFrame.RequestRefresh()
+			Changed()
 		end
 		local layout = root:CreateButton(L.LAYOUT)
 		layout:CreateRadio(L.LAYOUT_DEFAULT, function() return IsLayout("default") end, function() SetLayout("default") end)
 		layout:CreateRadio(L.LAYOUT_SEMICOMPACT, function() return IsLayout("semicompact") end, function() SetLayout("semicompact") end)
 		layout:CreateRadio(L.LAYOUT_COMPACT, function() return IsLayout("compact") end, function() SetLayout("compact") end)
+		if IsLayout("semicompact") then
+			layout:CreateDivider()
+			layout:CreateButton(L.RESET_ROWS, function()
+				ns.Rows.Reset(db)
+				Changed()
+			end)
+		end
 		root:CreateDivider()
+		root:CreateButton(L.BANK_SETUP_AGAIN, function() Menu.StartBankSetup() end)
 		root:CreateButton(L.SETTINGS, function() ns.Options.Open() end)
 	end)
 end
 
 -- Alt+Right-click on an item.
-function Menu.OpenItemMenu(button)
+function Menu.OpenItemMenu(button, window)
+	window = window or ns.Frame
 	local bag, slot = button:GetBagID(), button:GetID()
-	if not ns.Inventory.IsSectionBag(bag) then
+	if not window.IsOwnBag(bag) then
 		return
 	end
 	local item = ns.Inventory.GetItem(bag, slot)
 	if not item then
 		return
 	end
-	local db = ns.charDB
+	local db = window.GetDB()
 	local current = Rules.Classify(db, item)
 	local matched = Rules.MatchedKind(db, item)
 
@@ -418,7 +529,7 @@ function Menu.OpenItemMenu(button)
 			Menu.PromptNewSection(function(section)
 				Rules.Assign(db, item, section.id, Rules.DefaultKind(item, ns.db))
 				Changed()
-			end)
+			end, window)
 		end)
 
 		if current ~= Rules.REST then
