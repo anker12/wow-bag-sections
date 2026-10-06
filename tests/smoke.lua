@@ -342,6 +342,12 @@ Fire("PLAYER_LOGIN")
 check(type(BagSectionsDB) == "table" and type(BagSectionsCharDB) == "table", "saved variables initialized")
 check(not ns.Frame.IsShown(), "window starts hidden")
 
+-- The Quest Items section is on by default, for the whole account.
+check(BagSectionsDB.autoQuest == true and BagSectionsCharDB.autoQuest == true, "Quest Items on by default")
+check(#BagSectionsCharDB.sections == 1 and BagSectionsCharDB.sections[1].auto == ns.Rules.AUTO_QUEST, "new characters start with a Quest Items section")
+ns.SetAutoQuest(false)
+check(BagSectionsDB.autoQuest == false and #BagSectionsCharDB.sections == 0, "turning it off removes the empty section")
+
 -- No Blizzard bag function is replaced: the window follows Blizzard's own bag state.
 check(ContainerFrameCombinedBags:GetParent() ~= UIParent, "Blizzard's bag frame is tucked out of sight")
 _G.ToggleAllBags()
@@ -600,7 +606,7 @@ db.sections[1].collapsed = false
 ns.Menu.SetLayout("default")
 check(CountShown(IsLabel) == 0, "no compact names in default layout")
 
--- Quest Items section: off by default, then catches the quest item automatically.
+-- Quest Items section: turned off above, then catches the quest item automatically.
 groups = ns.Layout.Build(db, ns.Inventory.Scan())
 local function GroupOf(bag, slot)
 	for _, group in ipairs(groups) do
@@ -610,7 +616,9 @@ local function GroupOf(bag, slot)
 	end
 end
 check(GroupOf(1, 3).kind == "rest", "quest item in Rest while option is off")
-ns.Rules.SetAutoQuest(db, true, ns.L.QUEST_ITEMS)
+ns.Menu.OpenMainMenu(NewFrame("Button")) -- the gear menu toggle reads the account setting
+ns.SetAutoQuest(true)
+check(BagSectionsDB.autoQuest and db.autoQuest, "turned on for the account and this character")
 groups = ns.Layout.Build(db, ns.Inventory.Scan())
 check(GroupOf(1, 3).name == "Quest Items", "quest item goes to Quest Items section")
 
@@ -929,6 +937,17 @@ check(imported == "Shared (2)" and BagSectionsDB.profiles[imported], "import sav
 check(#BagSectionsDB.profiles[imported].sections == #BagSectionsDB.profiles.Shared.sections, "imported profile matches")
 check(ns.Menu.ImportCode("nonsense") == nil, "bad code rejected")
 ns.Menu.OpenProfileMenu(anyHeader)
+
+-- Loading a profile without a Quest Items section keeps one while the account setting is on.
+BagSectionsDB.profiles.NoQuest = { sections = { { name = "Only" } } }
+_G._lastPopup = nil
+ns.Menu.LoadProfile("NoQuest")
+if _G._lastPopup and _G._lastPopup.which == "BAGSECTIONS_CONFIRM" then _G._lastPopup.data.onAccept() end
+local hasQuest = false
+for _, s in ipairs(BagSectionsCharDB.sections) do
+	if s.auto == ns.Rules.AUTO_QUEST then hasQuest = true end
+end
+check(hasQuest and BagSectionsCharDB.autoQuest, "Quest Items follows the account setting after loading a profile")
 
 -- Every event handler runs without error.
 for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY", "CURRENCY_DISPLAY_UPDATE", "BANK_TABS_CHANGED", "BANK_TAB_SETTINGS_UPDATED", "INVENTORY_SEARCH_UPDATE", "GET_ITEM_INFO_RECEIVED", "MERCHANT_SHOW" }) do

@@ -190,6 +190,8 @@ function Menu.LoadProfile(name)
 	end
 	local function Load()
 		Rules.ApplyProfile(ns.charDB, profile)
+		-- The profile places the Quest Items section; whether it exists is account wide.
+		ns.SyncAutoQuest()
 		ns.Print(L.PROFILE_LOADED:format(name))
 		Changed()
 	end
@@ -329,10 +331,9 @@ function Menu.OpenMainMenu(owner)
 			Changed()
 		end)
 		root:CreateCheckbox(L.QUEST_SECTION, function()
-			return ns.charDB.autoQuest
+			return ns.db.autoQuest
 		end, function()
-			Rules.SetAutoQuest(ns.charDB, not ns.charDB.autoQuest, L.QUEST_ITEMS, ns.NewSectionsBelowRest())
-			Changed()
+			ns.SetAutoQuest(not ns.db.autoQuest)
 		end)
 		root:CreateCheckbox(L.SHOW_KEYRING, function()
 			return ns.db.showKeyring
