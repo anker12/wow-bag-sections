@@ -1,223 +1,288 @@
--- Read-only bank window: shows the last bank snapshot (see Bank.lua) from anywhere.
--- Opened by right-clicking the bag window's title, or /bs bank. Items can't be moved from
--- here; hovering shows the tooltip and Shift-click links an item in chat, like the bags.
+-- The bank window: the same window as the bags (layouts, drag and drop, rearranging), with
+-- its own layout setting, the bank's stone background and the bank's bag slots at the
+-- bottom like Blizzard's bank. At the banker it replaces Blizzard's bank and works like
+-- it (deposit and withdraw by right-click, drag and drop, sort, buy tabs). Anywhere else
+-- it shows the last snapshot (see Bank.lua), read only.
 
 local _, ns = ...
 local L = ns.L
 
-local BankFrame = {}
-ns.BankFrame = BankFrame
+local TAB_BUTTON_SIZE = 30 -- the bank's bag slots in the footer
+local TAB_ROW_GAP = 6
 
-local SPACING = 4
-local TITLE_HEIGHT = 30
-local FOOTER_HEIGHT = 22
-local GROUP_GAP = 6
-local BUTTON_SIZE = ns.ItemButtons.SIZE
-local CELL = BUTTON_SIZE + SPACING
+local window -- set below
+local tabButtons = {}
+local bankBackground, buyTab, tabDivider
 
-local window, content
-local buttons, headers = {}, {}
-
-local function SavePosition()
-	local point, _, relativePoint, x, y = window:GetPoint(1)
-	ns.db.bankFrame = { point = point, relativePoint = relativePoint, x = x, y = y }
-end
-
--- Until it has been moved, the bank window opens just left of the bags.
-local function PlaceWindow()
-	local pos = ns.db.bankFrame
-	window:ClearAllPoints()
-	if pos then
-		window:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y)
-	elseif BagSectionsFrame and BagSectionsFrame:IsShown() then
-		window:SetPoint("TOPRIGHT", BagSectionsFrame, "TOPLEFT", -12, 0)
-	else
-		window:SetPoint("CENTER", UIParent, "CENTER")
+-- Snapshot slots get plain item buttons that only show the saved item: there's no live
+-- item behind them to click or drag. (Forever has no ItemButtonTemplate; the plain
+-- ItemButton widget already has an icon, count, quality border and highlight.)
+local function CachedButtons(content)
+	local pool = {}
+	local set = {}
+	local function Create()
+		local button = CreateFrame("ItemButton", nil, content)
+		button:SetSize(ns.ItemButtons.SIZE, ns.ItemButtons.SIZE)
+		button:SetFrameLevel(content:GetFrameLevel() + 2)
+		button.ItemSlotBackground = button:CreateTexture(nil, "BACKGROUND", "ItemSlotBackgroundCombinedBagsTemplate", -6)
+		button.ItemSlotBackground:SetAllPoints(button)
+		button:SetScript("OnEnter", function(self)
+			if self.link then
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+				GameTooltip:SetHyperlink(self.link)
+				GameTooltip:Show()
+			end
+		end)
+		button:SetScript("OnLeave", GameTooltip_Hide)
+		button:SetScript("OnClick", function(self)
+			if self.link then
+				HandleModifiedItemClick(self.link)
+			end
+		end)
+		return button
 	end
+	function set.ForSlot(slot)
+		local key = slot.bag * 1000 + slot.slot
+		local button = pool[key]
+		if not button then
+			button = Create()
+			pool[key] = button
+		end
+		local item = slot.cached or nil
+		button.link = item and item.link
+		button:SetItemButtonTexture(item and item.icon)
+		SetItemButtonQuality(button, item and item.quality, item and item.link)
+		SetItemButtonCount(button, item and item.count or 0)
+		return button
+	end
+	function set.HideExcept(keep)
+		for _, button in pairs(pool) do
+			if not keep[button] then
+				button:Hide()
+			end
+		end
+	end
+	return set
 end
 
-local function CreateButton(index)
-	-- The plain ItemButton widget already has an icon, count, quality border and highlight.
-	-- (Forever has no ItemButtonTemplate, and the bag slot template would try to use the
-	-- live item in that bank slot when clicked.)
-	local button = CreateFrame("ItemButton", nil, content)
-	button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-	button.ItemSlotBackground = button:CreateTexture(nil, "BACKGROUND", "ItemSlotBackgroundCombinedBagsTemplate", -6)
-	button.ItemSlotBackground:SetAllPoints(button)
-	button:SetScript("OnEnter", function(self)
-		if self.link then
-			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetHyperlink(self.link)
-			GameTooltip:Show()
+-- Live item buttons at the bank, snapshot buttons anywhere else.
+local function CreateButtons(content, win)
+	local live = ns.ItemButtons.NewSet(content, win)
+	local cached = CachedButtons(content)
+	return {
+		ForSlot = function(slot)
+			if slot.cached ~= nil then
+				return cached.ForSlot(slot)
+			end
+			return live.ForSlot(slot)
+		end,
+		HideExcept = function(keep)
+			live.HideExcept(keep)
+			cached.HideExcept(keep)
+		end,
+		UpdateShown = live.UpdateShown,
+		UpdateCooldowns = live.UpdateCooldowns,
+		Precreate = live.Precreate,
+	}
+end
+
+-- The bank's stone background, like Blizzard's bank. Opacity and border follow Settings.
+local function Style(main)
+	ns.Frame.StyleWindow(main)
+	if not bankBackground then
+		bankBackground = main.BlizzardBackground:CreateTexture(nil, "BACKGROUND", nil, 1)
+		bankBackground:SetPoint("TOPLEFT", main, "TOPLEFT", 3, -3)
+		bankBackground:SetPoint("BOTTOMRIGHT", main, "BOTTOMRIGHT", -3, 3)
+		bankBackground:SetAtlas("bank-frame-background")
+		bankBackground:SetHorizTile(true)
+		bankBackground:SetVertTile(true)
+	end
+	main.BlizzardBackground:Show()
+	main.BlizzardBackground:SetAlpha(ns.db.backgroundAlpha or 0.94)
+	main:SetBackdropColor(0, 0, 0, 0)
+end
+
+-- Tabs to show as bag slots: live at the bank, else from the snapshot.
+local function CurrentTabs()
+	if ns.Bank.IsOpen() then
+		local tabs = {}
+		for _, tab in ipairs(ns.Inventory.BankTabs()) do
+			table.insert(tabs, { bag = tab.ID, name = tab.name, icon = tab.icon, size = C_Container.GetContainerNumSlots(tab.ID) or 0 })
 		end
+		return tabs
+	end
+	return ns.charDB.bank and ns.charDB.bank.tabs or {}
+end
+
+local function CreateTabButton(main, index)
+	local button = CreateFrame("Button", nil, main.Chrome)
+	button:SetSize(TAB_BUTTON_SIZE, TAB_BUTTON_SIZE)
+	button.Background = button:CreateTexture(nil, "BACKGROUND")
+	button.Background:SetAllPoints()
+	button.Background:SetAtlas("bank-frame-bag-slot-bg")
+	button.Icon = button:CreateTexture(nil, "ARTWORK")
+	button.Icon:SetPoint("TOPLEFT", 3, -3)
+	button.Icon:SetPoint("BOTTOMRIGHT", -3, 3)
+	button.Frame = button:CreateTexture(nil, "OVERLAY")
+	button.Frame:SetAllPoints()
+	button.Frame:SetAtlas("bank-frame-bag-slotframe")
+	button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+	button:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip_SetTitle(GameTooltip, self.tabName)
+		GameTooltip_AddNormalLine(GameTooltip, L.BANK_TAB_SLOTS:format(self.size or 0))
+		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", GameTooltip_Hide)
-	button:SetScript("OnClick", function(self)
-		if self.link then
-			HandleModifiedItemClick(self.link)
-		end
-	end)
-	buttons[index] = button
+	tabButtons[index] = button
 	return button
 end
 
-local function CreateHeader(index)
-	local header = content:CreateFontString(nil, "OVERLAY")
-	header:SetFontObject(ns.Frame.GetFont("section"))
-	header:SetJustifyH("LEFT")
-	headers[index] = header
-	return header
+local function CanBuyTab()
+	return ns.Bank.IsOpen() and C_Bank.CanPurchaseBankTab and C_Bank.CanPurchaseBankTab(Enum.BankType.Character)
+		and C_Bank.FetchNextPurchasableBankTabData and C_Bank.FetchNextPurchasableBankTabData(Enum.BankType.Character)
 end
 
--- Title of one bank tab: the account bank's tabs say which bank they're in.
-local function TabTitle(kind, tab, index)
-	local name = (tab.name and tab.name ~= "") and tab.name or L.BANK_TAB:format(index)
-	if kind == "account" then
-		return L.ACCOUNT_BANK_TAB:format(name)
-	end
-	return name
-end
+StaticPopupDialogs["BAGSECTIONS_BUY_BANK_TAB"] = {
+	text = "%s",
+	button1 = YES,
+	button2 = NO,
+	timeout = 0,
+	whileDead = 1,
+	hideOnEscape = 1,
+	OnAccept = function()
+		C_Bank.PurchaseBankTab(Enum.BankType.Character)
+	end,
+}
 
--- Draws every tab of every snapshot, one block each like the default layout.
--- Returns the content height.
-local function DrawTabs(snapshots, columns)
-	local y, buttonIndex, headerIndex = 0, 0, 0
-	local headerHeight = ns.Frame.HeaderHeight()
-	for _, snapshot in ipairs(snapshots) do
-		for tabIndex, tab in ipairs(snapshot.data.tabs) do
-			headerIndex = headerIndex + 1
-			local header = headers[headerIndex] or CreateHeader(headerIndex)
-			header:ClearAllPoints()
-			header:SetPoint("LEFT", content, "TOPLEFT", 2, -(y + headerHeight / 2))
-			header:SetText(TabTitle(snapshot.kind, tab, tabIndex))
-			header:Show()
-			y = y + headerHeight + 2
-
-			for slot = 1, tab.size do
-				buttonIndex = buttonIndex + 1
-				local button = buttons[buttonIndex] or CreateButton(buttonIndex)
-				local item = tab.items[slot]
-				local column = (slot - 1) % columns
-				local row = math.floor((slot - 1) / columns)
-				button:ClearAllPoints()
-				button:SetPoint("TOPLEFT", content, "TOPLEFT", column * CELL, -(y + row * CELL))
-				button.link = item and item.link
-				button:SetItemButtonTexture(item and item.icon)
-				SetItemButtonQuality(button, item and item.quality, item and item.link)
-				SetItemButtonCount(button, item and item.count or 0)
-				button:Show()
+-- The bank's bag slots along the bottom, like Blizzard's bank, and a button to buy the
+-- next tab while at the bank. Returns the height used.
+local function FooterExtra(main, pad, bottom)
+	if not buyTab then
+		buyTab = CreateFrame("Button", nil, main.Chrome, "UIPanelButtonTemplate")
+		buyTab:SetSize(110, 22)
+		buyTab:SetText(L.BANK_BUY_TAB)
+		buyTab:SetScript("OnClick", function()
+			local data = CanBuyTab()
+			if data then
+				StaticPopup_Show("BAGSECTIONS_BUY_BANK_TAB", L.BANK_BUY_TAB_CONFIRM:format(GetMoneyString(data.tabCost or 0, true)))
 			end
-			y = y + math.ceil(tab.size / columns) * CELL + GROUP_GAP
-		end
+		end)
+		tabDivider = main.Chrome:CreateTexture(nil, "ARTWORK")
+		tabDivider:SetColorTexture(1, 1, 1, 0.12)
+		tabDivider:SetHeight(1)
 	end
-	for i = buttonIndex + 1, #buttons do
-		buttons[i]:Hide()
+	local tabs = CurrentTabs()
+	for index, tab in ipairs(tabs) do
+		local button = tabButtons[index] or CreateTabButton(main, index)
+		button.tabName = (tab.name and tab.name ~= "") and tab.name or L.BANK_TAB:format(index)
+		button.size = tab.size
+		button.Icon:SetTexture(tab.icon)
+		button:ClearAllPoints()
+		button:SetPoint("BOTTOMLEFT", main.Chrome, "BOTTOMLEFT", pad + (index - 1) * (TAB_BUTTON_SIZE + 4), bottom)
+		button:Show()
 	end
-	for i = headerIndex + 1, #headers do
-		headers[i]:Hide()
+	for index = #tabs + 1, #tabButtons do
+		tabButtons[index]:Hide()
 	end
-	return math.max(y - GROUP_GAP, 0)
+	buyTab:SetShown(CanBuyTab() and true or false)
+	buyTab:ClearAllPoints()
+	buyTab:SetPoint("BOTTOMRIGHT", main.Chrome, "BOTTOMRIGHT", -pad, bottom + (TAB_BUTTON_SIZE - 22) / 2)
+	local height = TAB_BUTTON_SIZE + TAB_ROW_GAP
+	tabDivider:ClearAllPoints()
+	tabDivider:SetPoint("BOTTOMLEFT", main.Chrome, "BOTTOMLEFT", pad, bottom + height - TAB_ROW_GAP / 2)
+	tabDivider:SetPoint("BOTTOMRIGHT", main.Chrome, "BOTTOMRIGHT", -pad, bottom + height - TAB_ROW_GAP / 2)
+	return height
 end
 
--- Redraws the window from the latest snapshot.
-function BankFrame.Refresh()
-	if not (window and window:IsShown()) then
+-- Right side of the footer: "Live" at the bank, else how old the snapshot is.
+local function FooterRightText()
+	if ns.Bank.IsOpen() then
+		return L.BANK_LIVE
+	end
+	local snapshot = ns.charDB.bank
+	if not snapshot then
+		return L.BANK_EMPTY
+	end
+	return L.BANK_UPDATED:format(ns.Bank.FormatAge(math.max(time() - (snapshot.updated or 0), 0), L))
+end
+
+local function Sort()
+	if not ns.Bank.IsOpen() then
 		return
 	end
-	local snapshots = ns.Bank.GetSnapshots(ns.charDB, ns.db)
-	local columns = ns.db.columns or 10
-	local gridWidth = columns * BUTTON_SIZE + (columns - 1) * SPACING
-	local pad = ns.Frame.SidePadding()
-
-	window.Empty:SetShown(#snapshots == 0)
-	local contentHeight = DrawTabs(snapshots, columns)
-	if #snapshots == 0 then
-		contentHeight = 40
+	PlaySound(SOUNDKIT.UI_BAG_SORTING_01)
+	window.AllowReflow()
+	if C_Container.SortBank then
+		C_Container.SortBank(Enum.BankType.Character)
+	elseif C_Container.SortBankBags then
+		C_Container.SortBankBags()
 	end
-	content:SetSize(gridWidth, math.max(contentHeight, 1))
-	content:ClearAllPoints()
-	content:SetPoint("TOPLEFT", pad, -TITLE_HEIGHT)
-	window:SetSize(gridWidth + pad * 2, TITLE_HEIGHT + contentHeight + FOOTER_HEIGHT + 6)
+end
 
-	window.Title:SetPoint("LEFT", window.Chrome, "TOPLEFT", pad, window.buttonRowY)
-	window.FreeSlots:SetPoint("BOTTOMLEFT", pad, 8)
-	window.Updated:SetPoint("BOTTOMRIGHT", -pad, 8)
-	if #snapshots == 0 then
-		window.FreeSlots:SetText("")
+window = ns.Frame.NewWindow({
+	name = "BagSectionsBankFrame",
+	title = L.BANK,
+	layoutKey = "bankLayout",
+	positionKey = "bankFrame",
+	-- Until it's moved: next to the bags if they're open, else where Blizzard's bank opens.
+	PlaceByDefault = function(main)
+		if BagSectionsFrame and BagSectionsFrame:IsShown() then
+			main:SetPoint("TOPRIGHT", BagSectionsFrame, "TOPLEFT", -12, 0)
+		else
+			main:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 60, -120)
+		end
+	end,
+	GetDB = function() return ns.charDB.bankSections end,
+	Scan = function()
+		if ns.Bank.IsOpen() then
+			return ns.Inventory.ScanBank()
+		end
+		return ns.Bank.SnapshotSlots(ns.charDB.bank)
+	end,
+	BuildOptions = function() return {} end,
+	IsOwnBag = function(bag) return ns.Inventory.IsBankBag(bag) end,
+	IsLockedBag = function() return false end,
+	FindFreeSlotFor = function()
+		if ns.Bank.IsOpen() then
+			return ns.Inventory.FindFreeBankSlot()
+		end
+	end,
+	fullMessage = L.BANK_FULL,
+	CreateButtons = CreateButtons,
+	OpenMenu = function(owner) ns.Menu.OpenBankMenu(owner) end,
+	Sort = Sort,
+	sortTitle = L.SORT_BANK,
+	sortDesc = L.SORT_BANK_DESC,
+	-- Closing the window at the bank ends the banker conversation, like Blizzard's bank.
+	OnHide = function()
+		if ns.Bank.IsOpen() and C_Bank.CloseBankFrame then
+			C_Bank.CloseBankFrame()
+		end
+	end,
+	Style = Style,
+	FooterRightText = FooterRightText,
+	FooterExtra = FooterExtra,
+})
+ns.BankFrame = window
+
+-- Right-click on the bags' title, or /bs bank.
+function window.Toggle()
+	if window.IsShown() then
+		window.Hide()
 	else
-		window.FreeSlots:SetText(L.FREE_SLOTS:format(ns.Bank.CountFree(snapshots)))
-	end
-
-	-- How old the snapshot is: "Live" while at the bank, else when the character's bank
-	-- was last seen.
-	local updated = snapshots[1] and snapshots[1].data.updated
-	if ns.Bank.IsOpen() then
-		window.Updated:SetText(L.BANK_LIVE)
-	elseif updated then
-		window.Updated:SetText(L.BANK_UPDATED:format(ns.Bank.FormatAge(math.max(time() - updated, 0), L)))
-	else
-		window.Updated:SetText("")
+		window.Show()
 	end
 end
 
-function BankFrame.ApplyAppearance()
-	if window then
-		ns.Frame.StyleWindow(window)
-		BankFrame.Refresh()
+-- Until it's been moved, it opens next to the bags each time.
+local showWindow = window.Show
+function window.Show()
+	if not ns.db.bankFrame then
+		window.RestorePosition()
 	end
+	showWindow()
 end
 
-function BankFrame.Init()
-	window = CreateFrame("Frame", "BagSectionsBankFrame", UIParent, "BackdropTemplate")
-	window:Hide()
-	window:SetFrameStrata("MEDIUM")
-	window:SetToplevel(true)
-	window:SetClampedToScreen(true)
-	window:SetMovable(true)
-	window:EnableMouse(true)
-	window:RegisterForDrag("LeftButton")
-	window:SetScript("OnDragStart", window.StartMoving)
-	window:SetScript("OnDragStop", function(self)
-		self:StopMovingOrSizing()
-		SavePosition()
-	end)
-	ns.Frame.CreateWindowArt(window)
-	window:SetScript("OnShow", function()
-		PlaySound(SOUNDKIT.IG_BACKPACK_OPEN)
-		BankFrame.Refresh()
-	end)
-	window:SetScript("OnHide", function()
-		PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE)
-	end)
-
-	window.CloseButton = CreateFrame("Button", nil, window, "UIPanelCloseButton")
-	window.CloseButton:SetPoint("TOPRIGHT", 1, 1)
-	window.buttonRowY = 1 - (window.CloseButton:GetHeight() or 24) / 2
-	window.Title = window.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	window.Title:SetText(L.BANK)
-
-	content = CreateFrame("Frame", nil, window)
-	window.Empty = window.Chrome:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-	window.Empty:SetPoint("TOPLEFT", content, "TOPLEFT", 2, -12)
-	window.Empty:SetText(L.BANK_EMPTY)
-
-	window.FreeSlots = window.Chrome:CreateFontString(nil, "OVERLAY")
-	window.FreeSlots:SetFontObject(ns.Frame.GetFont("slots"))
-	window.Updated = window.Chrome:CreateFontString(nil, "OVERLAY")
-	window.Updated:SetFontObject(ns.Frame.GetFont("slots"))
-
-	BankFrame.ApplyAppearance()
-end
-
-function BankFrame.IsShown()
-	return window and window:IsShown()
-end
-
-function BankFrame.Toggle()
-	if window:IsShown() then
-		window:Hide()
-	else
-		PlaceWindow()
-		window:Show()
-	end
-end
+-- Kept for callers from before the bank window shared the bags' code.
+window.Refresh = window.RequestRefresh

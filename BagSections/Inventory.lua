@@ -104,6 +104,41 @@ function Inventory.Scan()
 	return slots
 end
 
+-- Character bank tabs are bags of their own (CharacterBankTab_1 .. 9).
+local FIRST_BANK_TAB = Enum.BagIndex.CharacterBankTab_1
+local LAST_BANK_TAB = Enum.BagIndex.CharacterBankTab_9 or (FIRST_BANK_TAB and FIRST_BANK_TAB + 8)
+
+function Inventory.IsBankBag(bag)
+	return FIRST_BANK_TAB ~= nil and bag >= FIRST_BANK_TAB and bag <= LAST_BANK_TAB
+end
+
+-- The character bank's purchased tabs: { { ID = bag, name, icon } }. Only answers while the
+-- bank is open.
+function Inventory.BankTabs()
+	if not (C_Bank and C_Bank.FetchPurchasedBankTabData and Enum.BankType) then
+		return {}
+	end
+	return C_Bank.FetchPurchasedBankTabData(Enum.BankType.Character) or {}
+end
+
+-- The character bank's slots, live (while at the bank), in tab order.
+function Inventory.ScanBank()
+	local slots = {}
+	for _, tab in ipairs(Inventory.BankTabs()) do
+		AddBag(slots, tab.ID, "bank", C_Container.GetContainerNumSlots(tab.ID) or 0)
+	end
+	return slots
+end
+
+function Inventory.FindFreeBankSlot()
+	for _, tab in ipairs(Inventory.BankTabs()) do
+		local freeSlots = C_Container.GetContainerFreeSlots(tab.ID)
+		if freeSlots and freeSlots[1] then
+			return tab.ID, freeSlots[1]
+		end
+	end
+end
+
 -- Finds an empty slot in the section bags that can hold the given item.
 function Inventory.FindFreeSlotFor(itemID)
 	local itemFamily = C_Item.GetItemFamily(itemID) or 0

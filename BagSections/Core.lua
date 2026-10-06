@@ -25,6 +25,9 @@ ns.DEFAULTS = {
 	autoQuest = true,
 	-- Crafting reagents in normal bags shown together next to the reagent bag.
 	bagReagents = false,
+	-- Bank window: replaces Blizzard's at the banker; its own layout.
+	replaceBank = true,
+	bankLayout = "default",
 	-- Appearance
 	outlineAlpha = 0.7, -- compact layout section outlines
 	backgroundAlpha = 0.94,
@@ -114,10 +117,14 @@ local function OnAddonLoaded()
 	BagSectionsDB = ApplyDefaults(existingInstall and BagSectionsDB or {}, ns.DEFAULTS)
 	ns.db = BagSectionsDB
 	ns.charDB = BagSectionsCharDB
+	-- The bank's sections and item rules live apart from the bags'.
+	BagSectionsCharDB.bankSections = Rules.Upgrade(BagSectionsCharDB.bankSections)
+	BagSectionsCharDB.bankSections.autoQuest = false
 	ns.SyncAutoQuest()
 
 	ns.Frame.Init()
 	ns.BankFrame.Init()
+	ns.Bank.Init()
 	ns.Options.Init()
 	if ns.db.takeOverBags then
 		ns.Hooks.Install()
@@ -167,6 +174,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
 		ns.Bank.OnClosed()
 	elseif BANK_EVENTS[event] then
 		ns.Bank.RequestSnapshot()
+		ns.BankFrame.RequestRefresh("items")
 	elseif FULL_REFRESH_EVENTS[event] then
 		ns.RequestRefresh(FULL_REFRESH_EVENTS[event])
 		if event == "BAG_UPDATE_DELAYED" then

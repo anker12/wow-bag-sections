@@ -1,8 +1,9 @@
--- Remembers what is in the bank, so it can be looked at from anywhere.
+-- Remembers what is in the character's bank, so it can be looked at from anywhere, and
+-- lets the bank window take over from Blizzard's while at a banker.
 -- The game only answers questions about bank slots while the bank is open, so every visit
--- takes a snapshot: the character's bank per character, the account bank account wide.
+-- takes a snapshot, saved per character. (Forever has no account bank in use; it's ignored.)
 -- Snapshot shape:
---   { updated = time(), tabs = { { name, icon, size, items = { [slot] = item } } } }
+--   { updated = time(), tabs = { { bag, name, icon, size, items = { [slot] = item } } } }
 --   item = { id, count, quality, icon, link }
 
 local _, ns = ...
@@ -13,14 +14,14 @@ ns.Bank = Bank
 local isOpen = false
 local snapshotQueued = false
 
--- Reads one bank type (character or account). Returns nil when it can't be read right now,
--- so an earlier snapshot is kept instead of being replaced by an empty one.
-local function Read(bankType)
-	if C_Bank.CanViewBank and not C_Bank.CanViewBank(bankType) then
+-- Returns nil when the bank can't be read right now, so an earlier snapshot is kept instead
+-- of being replaced by an empty one.
+local function Read()
+	if C_Bank.CanViewBank and not C_Bank.CanViewBank(Enum.BankType.Character) then
 		return nil
 	end
 	local tabs, totalSize = {}, 0
-	for index, tab in ipairs(C_Bank.FetchPurchasedBankTabData(bankType) or {}) do
+	for index, tab in ipairs(ns.Inventory.BankTabs()) do
 		local size = C_Container.GetContainerNumSlots(tab.ID) or 0
 		local items = {}
 		for slot = 1, size do
@@ -35,7 +36,7 @@ local function Read(bankType)
 				}
 			end
 		end
-		tabs[index] = { name = tab.name, icon = tab.icon, size = size, items = items }
+		tabs[index] = { bag = tab.ID, name = tab.name, icon = tab.icon, size = size, items = items }
 		totalSize = totalSize + size
 	end
 	if #tabs > 0 and totalSize == 0 then
@@ -49,11 +50,7 @@ local function Snapshot()
 	if not (isOpen and C_Bank and Enum.BankType) then
 		return
 	end
-	ns.charDB.bank = Read(Enum.BankType.Character) or ns.charDB.bank
-	if Enum.BankType.Account then
-		ns.db.accountBank = Read(Enum.BankType.Account) or ns.db.accountBank
-	end
-	ns.BankFrame.Refresh()
+	ns.charDB.bank = Read() or ns.charDB.bank
 end
 
 -- Snapshots are batched like redraws: many events in one frame cause one snapshot.
@@ -64,48 +61,65 @@ function Bank.RequestSnapshot()
 	end
 end
 
+-- Blizzard's bank window stays open while at the banker, so its deposit and withdraw code
+-- keeps working (right-click in the bags puts items in the bank), but inside a frame scaled
+-- down to nothing, so it's never seen. It's moved there after Blizzard shows it: a
+-- hooksecurefunc runs after Blizzard's code and separately from it.
+local tiny
+local function HideBlizzardBank(panel)
+	if panel == BankFrame and ns.db.replaceBank then
+		if not tiny then
+			tiny = CreateFrame("Frame", nil, UIParent)
+			tiny:SetScale(0.001)
+		end
+		BankFrame:SetParent(tiny)
+	end
+end
+
+function Bank.Init()
+	if ShowUIPanel then
+		hooksecurefunc("ShowUIPanel", HideBlizzardBank)
+	end
+end
+
 function Bank.OnOpened()
 	isOpen = true
 	Bank.RequestSnapshot()
+	if ns.db.replaceBank then
+		ns.BankFrame.Show()
+	end
+	ns.BankFrame.RequestRefresh()
 end
 
 function Bank.OnClosed()
+	Snapshot()
 	isOpen = false
-	ns.BankFrame.Refresh()
+	ns.BankFrame.Hide()
 end
 
--- True while the player is at the bank, so the viewer shows what's there right now.
+-- True while the player is at the bank, so the bank window shows what's there right now.
 function Bank.IsOpen()
 	return isOpen
 end
 
--- The snapshots to show: the character's bank, then the account bank.
--- Returns a list of { kind = "character" | "account", data = snapshot }.
-function Bank.GetSnapshots(charDB, db)
-	local list = {}
-	if charDB.bank then
-		table.insert(list, { kind = "character", data = charDB.bank })
-	end
-	if db.accountBank then
-		table.insert(list, { kind = "account", data = db.accountBank })
-	end
-	return list
-end
-
--- Free and total slots across snapshots.
-function Bank.CountFree(snapshots)
-	local free, total = 0, 0
-	for _, snapshot in ipairs(snapshots) do
-		for _, tab in ipairs(snapshot.data.tabs) do
-			total = total + tab.size
-			for slot = 1, tab.size do
-				if not tab.items[slot] then
-					free = free + 1
-				end
-			end
+-- The last snapshot as slots, like Inventory.ScanBank's, with the saved item details in
+-- slot.cached. Items carry their itemID, so item rules still sort them into sections.
+function Bank.SnapshotSlots(snapshot)
+	local slots = {}
+	for index, tab in ipairs(snapshot and snapshot.tabs or {}) do
+		local bag = tab.bag or (1000 + index) -- snapshots from before 1.4 didn't save the bag
+		for slot = 1, tab.size do
+			local cached = tab.items[slot]
+			table.insert(slots, {
+				bag = bag,
+				slot = slot,
+				area = "bank",
+				cached = cached or false,
+				item = cached and { itemID = cached.id } or nil,
+			})
 		end
 	end
-	return free, total
+	return slots
 end
 
 -- "just now", "5 min ago", "3 h ago", "2 days ago".

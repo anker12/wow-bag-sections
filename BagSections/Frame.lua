@@ -1197,6 +1197,7 @@ local function NewWindow(cfg)
 			frozen = nil
 			Frame.EndSectionDrag()
 			if cfg.OnShownChanged then cfg.OnShownChanged() end
+			if cfg.OnHide then cfg.OnHide() end
 		end)
 		if cfg.closeOnEscape and cfg.closeOnEscape() then
 			tinsert(UISpecialFrames, main:GetName())
@@ -1292,6 +1293,10 @@ local function NewWindow(cfg)
 
 	function Frame.ApplyScale()
 		main:SetScale(ns.db.scale or 1)
+	end
+
+	function Frame.RestorePosition()
+		RestorePosition()
 	end
 
 	function Frame.IsShown()
@@ -1455,7 +1460,7 @@ local function NewWindow(cfg)
 		buttons.HideExcept(used)
 		dropWatcher:SetShown(cursorState ~= nil)
 
-		if #cfg.GetDB().sections == 0 and not cursorState and not compact then
+		if cfg.noSectionsHint and #cfg.GetDB().sections == 0 and not cursorState and not compact then
 			-- Hint next to Rest when no sections exist yet.
 			headers[1].Text:SetText(GroupTitle(groups[1]) .. "   |cff777777" .. L.NO_SECTIONS .. " - " .. L.NEW_SECTION .. "|r")
 		end
@@ -1569,6 +1574,7 @@ ns.Frame = NewWindow({
 	IsLockedBag = function(bag) return bag == Enum.BagIndex.ReagentBag or bag == Enum.BagIndex.Keyring end,
 	FindFreeSlotFor = function(itemID) return ns.Inventory.FindFreeSlotFor(itemID) end,
 	fullMessage = L.BAGS_FULL,
+	noSectionsHint = true,
 	CreateButtons = function(content) return ns.ItemButtons.SetParent(content) end,
 	OpenMenu = function(owner) ns.Menu.OpenMainMenu(owner) end,
 	Sort = function(mouseButton)
