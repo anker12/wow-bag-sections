@@ -120,6 +120,8 @@ local function OnAddonLoaded()
 	-- The bank's sections and item rules live apart from the bags'.
 	BagSectionsCharDB.bankSections = Rules.Upgrade(BagSectionsCharDB.bankSections)
 	BagSectionsCharDB.bankSections.autoQuest = false
+	-- Sections with the same name in bags and bank share their items (see Rules.Link).
+	Rules.LinkByName(BagSectionsCharDB, BagSectionsCharDB.bankSections)
 	ns.SyncAutoQuest()
 
 	ns.Frame.Init()
@@ -237,7 +239,7 @@ SlashCmdList.BAGSECTIONS = function(input)
 			ns.Print(L.NO_ITEM_UNDER_MOUSE)
 			return
 		end
-		Rules.Assign(ns.charDB, item, section.id, Rules.MatchedKind(ns.charDB, item) or Rules.DefaultKind(item, ns.db))
+		Rules.AssignLinked(ns.charDB, ns.charDB.bankSections, item, section.id, Rules.MatchedKind(ns.charDB, item) or Rules.DefaultKind(item, ns.db))
 		ns.Print(L.ADDED_TO:format(C_Item.GetItemNameByID(item.itemID) or item.itemID, section.name))
 		ns.RequestRefresh()
 	elseif command == "bank" then

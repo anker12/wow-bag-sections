@@ -342,7 +342,73 @@ function Rules.SetAuto(db, auto, enabled, name, below)
 	end
 end
 
--- Sections in `from` that `to` doesn't have yet (by name), not counting automatic ones.
+-- Linked sections: a bag section and a bank section copied from one another share a
+-- `link` id, and share their items: an item put in one is in the other too, so it lands in
+-- the matching section when it moves between bags and bank. Names, colours and order stay
+-- separate. The bags' and the bank's section lists are passed around as a pair (`db` and
+-- its `partner`) because saved data can't point from one to the other.
+
+function Rules.FindByLink(db, link)
+	if not link then
+		return nil
+	end
+	for _, section in ipairs(db.sections) do
+		if section.link == link then
+			return section
+		end
+	end
+end
+
+-- The partner of a section in the other list, if it's linked.
+function Rules.LinkedSection(db, sectionId, partner)
+	local section = Rules.GetSection(db, sectionId)
+	return section and Rules.FindByLink(partner, section.link)
+end
+
+-- Rules of `from` pointing at `fromSection` are added to `to` for `toSection`, unless `to`
+-- already has its own rule for that item.
+local function CopyRules(from, fromSection, to, toSection)
+	for _, kind in ipairs({ "byItemID", "byGUID" }) do
+		for key, target in pairs(from.rules[kind]) do
+			if target == fromSection.id and to.rules[kind][key] == nil then
+				to.rules[kind][key] = toSection.id
+			end
+		end
+	end
+end
+
+-- Links two sections (a in list `a`, b in list `b`) and merges their items, so sections
+-- made before linking existed keep everything assigned to them on either side.
+function Rules.Link(a, sectionA, b, sectionB)
+	local link = sectionA.link or sectionB.link
+	if not link then
+		local n = math.max(a.nextLink or 1, b.nextLink or 1)
+		link = "l" .. n
+		a.nextLink, b.nextLink = n + 1, n + 1
+	end
+	sectionA.link, sectionB.link = link, link
+	CopyRules(a, sectionA, b, sectionB)
+	CopyRules(b, sectionB, a, sectionA)
+	return link
+end
+
+-- Links unlinked sections with the same name on both sides (e.g. after loading a profile).
+function Rules.LinkByName(a, b)
+	for _, sectionA in ipairs(a.sections) do
+		if not sectionA.auto and not Rules.FindByLink(b, sectionA.link) then
+			for _, sectionB in ipairs(b.sections) do
+				if not sectionB.auto and not Rules.FindByLink(a, sectionB.link)
+						and sectionB.name:lower() == sectionA.name:lower() then
+					Rules.Link(a, sectionA, b, sectionB)
+					break
+				end
+			end
+		end
+	end
+end
+
+-- Sections in `from` that `to` doesn't have a partner for yet (linked, or the same name),
+-- not counting automatic ones.
 function Rules.MissingSections(from, to)
 	local have = {}
 	for _, section in ipairs(to.sections) do
@@ -350,7 +416,7 @@ function Rules.MissingSections(from, to)
 	end
 	local missing = {}
 	for _, section in ipairs(from.sections) do
-		if not section.auto and not have[section.name:lower()] then
+		if not section.auto and not have[section.name:lower()] and not Rules.FindByLink(to, section.link) then
 			table.insert(missing, section)
 		end
 	end
@@ -358,8 +424,9 @@ function Rules.MissingSections(from, to)
 end
 
 -- Copies sections (name, colour, above/below Rest, in order) from one section list to
--- another, e.g. the bags' to the bank's. Items stay where they are. `sections` is a list
--- of sections from `from`, or nil for all that `to` doesn't have yet. Returns the new ones.
+-- another, e.g. the bags' to the bank's, linked to the originals so items follow. Items
+-- stay where they are. `sections` is a list of sections from `from`, or nil for all that
+-- `to` doesn't have yet. Returns the new ones.
 function Rules.CopySections(from, to, sections)
 	local created = {}
 	for _, source in ipairs(sections or Rules.MissingSections(from, to)) do
@@ -367,9 +434,29 @@ function Rules.CopySections(from, to, sections)
 		if source.color then
 			copy.color = { r = source.color.r, g = source.color.g, b = source.color.b }
 		end
+		Rules.Link(from, source, to, copy)
 		table.insert(created, copy)
 	end
 	return created
+end
+
+-- Assign / Unassign that keep linked sections in step. `partner` may be nil.
+function Rules.AssignLinked(db, partner, item, sectionId, kind)
+	local ok = Rules.Assign(db, item, sectionId, kind)
+	local other = ok and partner and Rules.LinkedSection(db, sectionId, partner)
+	if other then
+		Rules.Assign(partner, item, other.id, kind)
+	end
+	return ok
+end
+
+function Rules.UnassignLinked(db, partner, item)
+	local current = Rules.Classify(db, item)
+	local other = partner and Rules.LinkedSection(db, current, partner)
+	Rules.Unassign(db, item)
+	if other and Rules.Classify(partner, item) == other.id then
+		Rules.Unassign(partner, item)
+	end
 end
 
 -- The automatic "Quest Items" section.

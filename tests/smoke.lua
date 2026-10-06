@@ -947,8 +947,10 @@ _G._lastPopup.data.onAccept() -- yes, Reagents section
 check(bankDB.autoReagent and bankDB.sections[#bankDB.sections].auto == ns.Rules.AUTO_REAGENT, "bank Reagents section added")
 check(#ns.Rules.MissingSections(BagSectionsCharDB, bankDB) == 0, "nothing left to copy")
 
--- Bank sections are the bank's own: assigning a bank item doesn't touch the bags' rules.
+-- Copied sections are linked to the bag section they came from: they share items.
 local bankSection = bankDB.sections[1]
+local bagPartner = ns.Rules.FindByLink(BagSectionsCharDB, bankSection.link)
+check(bankSection.link and bagPartner and bagPartner.name == bankSection.name, "copies are linked to their bag section")
 ns.BankFrame.RequestRefresh()
 C_Container.PickupContainerItem(6, 2) -- the Old Robe, in the bank
 Fire("CURSOR_CHANGED")
@@ -956,7 +958,20 @@ local bankTarget = FindGroupFrame("section", bankSection.id)
 check(bankTarget, "bank sections light up for a bank item")
 bankTarget._scripts.OnReceiveDrag(bankTarget)
 check(bankDB.rules.byItemID[700] == bankSection.id or bankDB.rules.byGUID["Item-6-2-700"] == bankSection.id, "assigned in the bank")
-check(BagSectionsCharDB.rules.byItemID[700] == nil and BagSectionsCharDB.rules.byGUID["Item-6-2-700"] == nil, "the bags' rules unchanged")
+check(ns.Rules.Classify(BagSectionsCharDB, { itemID = 700, guid = "Item-6-2-700" }) == bagPartner.id, "and in the linked bag section, so it lands there when withdrawn")
+-- An item filed in the bags is already in the matching bank section when deposited.
+ns.Rules.AssignLinked(BagSectionsCharDB, bankDB, { itemID = 300 }, bagPartner.id, ns.Rules.KIND_ITEMID)
+check(ns.Rules.Classify(bankDB, { itemID = 300 }) == bankSection.id, "bag assignment carries over to the bank")
+ns.Rules.UnassignLinked(bankDB, BagSectionsCharDB, { itemID = 300 })
+check(ns.Rules.Classify(BagSectionsCharDB, { itemID = 300 }) == ns.Rules.REST, "removing it in the bank removes it in the bags too")
+-- A section made only in the bank stays the bank's own.
+ns.Menu.PromptNewSection(nil, ns.BankFrame)
+_G._lastPopup.data.onAccept("Bank only")
+local bankOnly = bankDB.sections[#bankDB.sections]
+check(bankOnly.name == "Bank only" and not bankOnly.link, "a new empty bank section isn't linked")
+ns.Rules.AssignLinked(bankDB, BagSectionsCharDB, { itemID = 800 }, bankOnly.id, ns.Rules.KIND_ITEMID)
+check(BagSectionsCharDB.rules.byItemID[800] == nil, "its items don't touch the bags")
+ns.Rules.DeleteSection(bankDB, bankOnly.id)
 -- Dropping a bag item on a bank section puts it in the bank, in that section.
 C_Container.PickupContainerItem(0, 2) -- Mining Pick, in the bags
 Fire("CURSOR_CHANGED")
@@ -975,8 +990,16 @@ end
 check(bankHeader, "bank section header shown")
 bankHeader._scripts.OnClick(bankHeader, "RightButton")
 ns.Menu.PromptRename(bankSection, ns.BankFrame)
-_G._lastPopup.data.onAccept("Bank only")
-check(bankSection.name == "Bank only" and BagSectionsCharDB.sections[1].name ~= "Bank only", "renaming a bank section leaves the bags alone")
+_G._lastPopup.data.onAccept("Renamed in bank")
+check(bankSection.name == "Renamed in bank" and bagPartner.name ~= "Renamed in bank", "renaming a bank section leaves the bags alone")
+check(ns.Rules.FindByLink(BagSectionsCharDB, bankSection.link) == bagPartner, "and keeps the link")
+-- "New section" offers the other side's sections that have no partner yet.
+local fresh = ns.Rules.CreateSection(BagSectionsCharDB, "Fresh")
+ns.Menu.OpenBankMenu(bankWindow)
+check(#ns.Rules.MissingSections(BagSectionsCharDB, bankDB) == 1, "the bags have one section the bank doesn't")
+ns.Rules.CopySections(BagSectionsCharDB, bankDB, { fresh })
+check(fresh.link and ns.Rules.FindByLink(bankDB, fresh.link), "picking it creates a linked bank section")
+ns.Menu.OpenMainMenu(NewFrame("Button"))
 
 -- Items moved at the bank update the snapshot.
 ITEMS["6:3"], ITEMS["6:2"] = ITEMS["6:2"], nil

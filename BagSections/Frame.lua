@@ -185,6 +185,7 @@ local function NewWindow(cfg)
 	Frame.MaxSectionsPerRow = Shared.MaxSectionsPerRow
 	-- For menus opened from this window: its sections, and which bags are its own.
 	Frame.GetDB = cfg.GetDB
+	Frame.GetPartnerDB = cfg.GetPartnerDB
 	Frame.IsOwnBag = cfg.IsOwnBag
 	Frame.isBank = cfg.isBank or false
 
@@ -343,7 +344,7 @@ local function NewWindow(cfg)
 		if state.section == "bagreagent" then
 			Rules.KeepInRest(cfg.GetDB(), state.item)
 		else
-			Rules.Unassign(cfg.GetDB(), state.item)
+			Rules.UnassignLinked(cfg.GetDB(), cfg.GetPartnerDB(), state.item)
 		end
 	end
 
@@ -365,7 +366,7 @@ local function NewWindow(cfg)
 			MoveToRest(state)
 			ClearCursor()
 		elseif group.kind == "bagreagent" then
-			Rules.Unassign(db, state.item)
+			Rules.UnassignLinked(db, cfg.GetPartnerDB(), state.item)
 			ClearCursor()
 		elseif group.kind == "section" then
 			local kind = Rules.MatchedKind(db, state.item) or Rules.DefaultKind(state.item, ns.db)
@@ -381,7 +382,7 @@ local function NewWindow(cfg)
 			else
 				ClearCursor()
 			end
-			Rules.Assign(db, state.item, group.key, kind)
+			Rules.AssignLinked(db, cfg.GetPartnerDB(), state.item, group.key, kind)
 		end
 		Frame.RequestRefresh()
 	end
@@ -1524,7 +1525,7 @@ local function NewWindow(cfg)
 		if kind == "rest" then
 			MoveToRest(state)
 		else
-			Rules.Unassign(cfg.GetDB(), state.item)
+			Rules.UnassignLinked(cfg.GetDB(), cfg.GetPartnerDB(), state.item)
 		end
 		Frame.RequestRefresh()
 	end
@@ -1570,6 +1571,7 @@ ns.Frame = NewWindow({
 	positionKey = "frame",
 	PlaceByDefault = function(main) main:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -60, 100) end,
 	GetDB = function() return ns.charDB end,
+	GetPartnerDB = function() return ns.charDB.bankSections end,
 	Scan = function() return ns.Inventory.Scan() end,
 	BuildOptions = function()
 		return { hideKeyring = not ns.db.showKeyring, bagReagents = ns.db.bagReagents }

@@ -14,6 +14,10 @@ section into CurseForge's changelog box when uploading.
 - Bank sections, kept separately from the bag sections. The first visit to a banker offers
   to copy your bag sections and add an automatic Reagents section; the bank's gear menu has
   New section, Copy sections from bags and the Reagents section switch.
+- Linked sections: a bag section and its bank copy share their items, so an item lands in
+  the matching section when it moves between bags and bank. Sections with the same name
+  are linked automatically. "New section" in either gear menu can make a linked copy of
+  one from the other side.
 - "Gather reagents from bags" setting (off by default): crafting reagents in your normal
   bags show together as "Reagents (bags)", right after the reagent bag.
 
