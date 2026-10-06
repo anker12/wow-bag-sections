@@ -8,7 +8,8 @@ section into CurseForge's changelog box when uploading.
 ### Added
 - The bank window replaces Blizzard's at the banker ("Replace the default bank", on by
   default): Blizzard's look (stone background, the bank's bag slots at the bottom, buy a
-  tab), its own layout setting (Default, Semi-compact or Compact), deposit and withdraw by
+  tab), its own layout and size settings (Bank layout, Bank columns: 15 by default, Bank
+  scale), deposit and withdraw by
   right-click, drag and drop, search and sort. Away from the bank it shows the last visit,
   as before. Only the character bank is shown.
 - Bank sections, kept separately from the bag sections. The first visit to a banker offers
