@@ -5,6 +5,13 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Changed
+- Settings are grouped under headings: Layout, Sections and items, Appearance, Text size,
+  General and Profiles.
+- The Quest Items section is on by default, and the setting now applies to all your
+  characters (it used to be per character). Existing installs keep the setting of the
+  first character you log in with.
+
 ## [1.3.0] - 2026-10-04
 
 ### Added

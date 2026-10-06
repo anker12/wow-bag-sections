@@ -21,6 +21,8 @@ ns.DEFAULTS = {
 	stackableRule = Rules.KIND_ITEMID,
 	equippableRule = Rules.KIND_GUID,
 	takeOverBags = true,
+	-- Automatic Quest Items section, for every character on the account.
+	autoQuest = true,
 	-- Appearance
 	outlineAlpha = 0.7, -- compact layout section outlines
 	backgroundAlpha = 0.94,
@@ -37,6 +39,19 @@ ns.DEFAULTS = {
 
 function ns.NewSectionsBelowRest()
 	return ns.db.restPosition == "top"
+end
+
+-- The Quest Items setting is account wide; each character's section list follows it.
+function ns.SyncAutoQuest()
+	if ns.charDB.autoQuest ~= ns.db.autoQuest then
+		Rules.SetAutoQuest(ns.charDB, ns.db.autoQuest, L.QUEST_ITEMS, ns.NewSectionsBelowRest())
+	end
+end
+
+function ns.SetAutoQuest(enabled)
+	ns.db.autoQuest = enabled and true or false
+	ns.SyncAutoQuest()
+	ns.RequestRefresh()
 end
 
 function ns.Print(...)
@@ -124,10 +139,16 @@ local BANK_EVENTS = {
 local events = CreateFrame("Frame")
 
 local function OnAddonLoaded()
-	BagSectionsDB = ApplyDefaults(type(BagSectionsDB) == "table" and BagSectionsDB or {}, ns.DEFAULTS)
+	local existingInstall = type(BagSectionsDB) == "table"
 	BagSectionsCharDB = Rules.Upgrade(BagSectionsCharDB)
+	if existingInstall and BagSectionsDB.autoQuest == nil then
+		-- Quest Items used to be a per-character setting: keep what this character had.
+		BagSectionsDB.autoQuest = BagSectionsCharDB.autoQuest
+	end
+	BagSectionsDB = ApplyDefaults(existingInstall and BagSectionsDB or {}, ns.DEFAULTS)
 	ns.db = BagSectionsDB
 	ns.charDB = BagSectionsCharDB
+	ns.SyncAutoQuest()
 
 	ns.Frame.Init()
 	ns.BankFrame.Init()

@@ -46,16 +46,18 @@ Copy the `BagSections` folder into
 * Gear you add is matched by exact item, so only that sword goes to the section. Everything
   else is matched by item type: every Hearthstone, every stack of that potion. You can change
   this for gear in the settings, or per item with Alt+Right-click.
-* Sections are saved per character.
+* Sections are saved per character. Settings (layout, sizes, appearance, Quest Items) are
+  shared by all your characters.
 
 ### Quest Items section
 
-Turn on **Quest Items section** in Settings (or the gear menu), and quest items go into
-their own "Quest Items" section automatically. That includes quest starters and items
+With **Quest Items section** on (the default; Settings or the gear menu), quest items go
+into their own "Quest Items" section automatically. That includes quest starters and items
 whose type is Quest. It's a normal section otherwise: rename it, colour it, or move it
 below Rest. Drag a quest item to Rest to keep that item out, or into another section to
 put it there instead. Turning the option off removes the section, unless you've added
-other items to it by hand. The option is per character.
+other items to it by hand. The option applies to all your characters; loading a profile
+keeps it as it is (the profile only decides where the section sits).
 
 ### Profiles
 

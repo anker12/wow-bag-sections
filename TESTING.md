@@ -99,3 +99,7 @@ mention BagSections.
 | T91 | Semi-compact, Settings → the two Semi-compact spacing sliders: drag each to the smallest, then the largest, then back to the default (6 and 12) | Each changes only its own gap. Smallest: every row's items stay clear of the section names below, and blue drop highlights of neighbouring sections don't touch. Largest side by side: rows that no longer fit wrap. The defaults look as before. Neither slider is in the gear menu. |
 | T92 | Bags closed. Esc → Options → AddOns → BagSections | The bags open above the Settings panel, titled "Bags (preview)". Moving any slider or ticking any box changes them straight away. Click another settings page: they close. Close Settings: they stay closed, and B opens them normally. |
 | T93 | Bags open, then `/bs config` | The bags stay open as the preview; after closing Settings they're still open. |
+| T94 | Options → AddOns → BagSections | Settings are grouped under Layout, Sections and items, Appearance, Text size, General and Profiles. Every setting still works (and shows in the preview). |
+| T95 | Fresh install (rename the SavedVariables), log in | A Quest Items section exists and catches quest items. |
+| T96 | Turn Quest Items off on one character, log in another | It's off there too, and its empty Quest Items section is gone. |
+| T97 | Change a text size on one character, log in another | Same size there. |
