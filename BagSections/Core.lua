@@ -153,6 +153,16 @@ local function OnAddonLoaded()
 	events:RegisterEvent("BAG_UPDATE_COOLDOWN")
 	events:RegisterEvent("PLAYER_MONEY")
 	events:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+	-- Hovering a bag button on the action bar glows that bag's slots, like Blizzard's bags.
+	if EventRegistry then
+		local owner = {}
+		EventRegistry:RegisterCallback("BagSlot.OnEnter", function(_, bagSlot)
+			if bagSlot and bagSlot.GetBagID then
+				ns.Frame.HighlightBag(bagSlot:GetBagID())
+			end
+		end, owner)
+		EventRegistry:RegisterCallback("BagSlot.OnLeave", function() ns.Frame.HighlightBag(nil) end, owner)
+	end
 	-- Ticking or unticking "Show on Backpack" in the Currency tab.
 	if EventRegistry then
 		EventRegistry:RegisterCallback("TokenFrame.OnTokenWatchChanged", function() ns.Frame.UpdateFooter() end, events)

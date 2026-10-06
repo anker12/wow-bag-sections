@@ -1508,6 +1508,21 @@ local function NewWindow(cfg)
 		end
 	end
 
+	-- Glows every slot that belongs to `bag` (nil: none), like Blizzard's bags do while a
+	-- bag button is hovered: the slots to empty before that bag can be swapped. Uses the
+	-- item button template's own BagIndicator glow.
+	function Frame.HighlightBag(bag)
+		if not buttons then
+			return
+		end
+		for _, button in buttons.Enumerate() do
+			local indicator = rawget(button, "BagIndicator")
+			if indicator then
+				indicator:SetShown(bag ~= nil and button:IsShown() and button:GetBagID() == bag)
+			end
+		end
+	end
+
 	function Frame.UpdateCooldowns()
 		if main and main:IsShown() then
 			buttons.UpdateCooldowns()

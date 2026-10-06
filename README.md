@@ -156,7 +156,7 @@ default bank**; needs `/reload`). It looks like Blizzard's bank (the stone backg
 border with the banker's portrait, the bank's bag slots along the bottom) and works like
 it: right-click items to move them between bank and bags, drag and drop, search and sort.
 Every bag slot shows along the bottom: bought ones with their bag (click or drag to swap
-it), the rest with a padlock. **Buy slot** shows the price of the next one; click it (or
+it; hovering it glows the bank slots that belong to that bag), the rest with a padlock. **Buy slot** shows the price of the next one; click it (or
 a padlocked slot) to buy it. Closing the window ends the conversation with the banker.
 
 It has its own layout, separate from the bags: Default, Semi-compact or Compact, from the

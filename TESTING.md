@@ -128,3 +128,5 @@ mention BagSections.
 | T120 | Click a bag in a bought slot, then click another bag from your bags onto that slot; drag a bag into an empty bought slot | The bags swap / go in, like in Blizzard's bank; the bank's slots update. Nothing is blocked. |
 | T121 | Bank columns at 6 | Buy slot and its price move to their own line above the bag slots instead of overlapping them. |
 | T122 | At the bank, pick up the bag in a bought bank bag slot, move it over the bank and bags, put it back (or swap it with a bag from your bags) | No Lua error; the bag moves like in Blizzard's bank; no sections light up for it. |
+| T123 | Bags open: hover each bag button on the action bar (backpack, bags, reagent bag) | That bag's slots glow in the bag window, in every layout; the glow goes when the mouse leaves. |
+| T124 | At the bank: hover a bag in a bank bag slot | That bag's slots glow in the bank window; the glow goes when the mouse leaves. |

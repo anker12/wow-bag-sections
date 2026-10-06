@@ -91,6 +91,8 @@ local function NewFrame(frameType, name, parent, template)
 		frame.GetBagID = function(self) return self.bagID or self._parent:GetID() end
 		frame.SetHasItem = function(self, has) self.hasItem = has and 1 or nil end
 		frame.HasItem = function(self) return self.hasItem end
+		frame.BagIndicator = NewFrame("Texture")
+		frame.BagIndicator._shown = false
 		frame._shown = false
 	end
 	table.insert(frames, frame)
@@ -424,6 +426,22 @@ RunOnUpdates()
 check(not ns.Frame.IsShown(), "Escape closes the window")
 _G.ToggleAllBags()
 check(ns.Frame.IsShown(), "B opens again")
+
+-- Hovering a bag button on the action bar glows that bag's slots (Blizzard's BagIndicator).
+local function Glowing()
+	local list = {}
+	for _, frame in ipairs(frames) do
+		local indicator = rawget(frame, "BagIndicator")
+		if indicator and indicator._shown then table.insert(list, frame) end
+	end
+	return list
+end
+_G._registryCallbacks["BagSlot.OnEnter"]({}, { GetBagID = function() return 1 end })
+local glowing = Glowing()
+check(#glowing == 4, "hovering bag 1's button glows its 4 slots (" .. #glowing .. ")")
+for _, button in ipairs(glowing) do check(button:GetBagID() == 1, "only bag 1's slots glow") end
+_G._registryCallbacks["BagSlot.OnLeave"]({})
+check(#Glowing() == 0, "the glow goes when the mouse leaves")
 
 -- Item buttons get their bag from a parent frame, not from a value written on the button.
 local probe = ns.ItemButtons.Get(1, 2)
@@ -964,6 +982,14 @@ check(SlotX(bagSlots[2]) - SlotX(bagSlots[1]) == 37.5, "slots are spaced like Bl
 check(rawget(bagSlots[1]:GetNormalTexture(), "_w") == 46, "the slot frame art sits around the button, not at 64x64")
 check(bagSlots[1].bought and bagSlots[1].hasBag and not bagSlots[1].Lock._shown, "a bought slot shows its bag")
 check(not bagSlots[2].bought and bagSlots[2].Lock._shown and bagSlots[3].Lock._shown, "slots not bought yet show a padlock")
+bagSlots[1]._scripts.OnEnter(bagSlots[1])
+local bankGlow = Glowing()
+check(#bankGlow == 0 or bankGlow[1]:GetBagID() == 7, "hovering a bank bag slot glows only that bag's slots")
+bagSlots[1].bagID = 6 -- the test bank's items are all in bag 6; check the glow follows the slot's bag
+bagSlots[1]._scripts.OnEnter(bagSlots[1])
+check(#Glowing() == 4, "hovering glows every slot of that bank bag")
+bagSlots[1]._scripts.OnLeave(bagSlots[1])
+check(#Glowing() == 0, "and stops when the mouse leaves")
 bagSlots[1]._scripts.OnClick(bagSlots[1])
 check(cursor and cursor.bag == -2 and cursor.slot == 2, "clicking a bought slot picks up its bag, to swap it")
 -- Blizzard's IsValid errors on the location of a bag picked up from a bank bag slot; the

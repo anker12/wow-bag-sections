@@ -87,6 +87,7 @@ local function CreateButtons(content, win)
 			cached.HideExcept(keep)
 		end,
 		UpdateShown = live.UpdateShown,
+		Enumerate = live.Enumerate,
 		UpdateCooldowns = live.UpdateCooldowns,
 		Precreate = live.Precreate,
 	}
@@ -229,6 +230,10 @@ local function CreateBagSlotButton(main, index)
 	button:SetScript("OnDragStart", PickupBagSlot)
 	button:SetScript("OnReceiveDrag", PickupBagSlot)
 	button:SetScript("OnEnter", function(self)
+		if self.bought and ns.Bank.IsOpen() then
+			-- Show which bank slots belong to this bag, like Blizzard's bank does.
+			window.HighlightBag(self.bagID)
+		end
 		if not self.bought and ns.Bank.IsOpen() and NextSlotPrice() then
 			-- The purchase button takes over this spot, and shows the tooltip.
 			ShowPurchaseProxy(self)
@@ -246,7 +251,10 @@ local function CreateBagSlotButton(main, index)
 		end
 		GameTooltip:Show()
 	end)
-	button:SetScript("OnLeave", GameTooltip_Hide)
+	button:SetScript("OnLeave", function()
+		GameTooltip_Hide()
+		window.HighlightBag(nil)
+	end)
 	tabButtons[index] = button
 	return button
 end
@@ -295,6 +303,8 @@ local function FooterExtra(main, pad, bottom)
 		local slot = info.slots[index] or {}
 		local button = tabButtons[index] or CreateBagSlotButton(main, index)
 		button.slotIndex = index
+		-- The bank bag in this slot (Blizzard's BankItemButtonBagMixin:GetExactBankTabSlot).
+		button.bagID = Enum.BagIndex.CharacterBankTab_1 + index - 1
 		button.bought = slot.bought or false
 		button.hasBag = slot.icon ~= nil
 		button.link = slot.link
