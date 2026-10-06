@@ -189,6 +189,11 @@ local function NewWindow(cfg)
 	Frame.IsOwnBag = cfg.IsOwnBag
 	Frame.isBank = cfg.isBank or false
 
+	-- Space above the items: the title row, or more for the bank's portrait corner.
+	local titleHeight = cfg.titleHeight or TITLE_HEIGHT
+	-- The title moves right to clear a portrait.
+	local titleInset = cfg.titleInset or 0
+
 	-- Slots per row and scale have their own settings per window.
 	local function Columns()
 		return ns.db[cfg.columnsKey] or ns.DEFAULTS[cfg.columnsKey] or 10
@@ -1082,7 +1087,7 @@ local function NewWindow(cfg)
 		-- options and sort buttons, inside the border's top band.
 		main.buttonRowY = 1 - (main.CloseButton:GetHeight() or 24) / 2
 		main.Title = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-		main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", PADDING, main.buttonRowY)
+		main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", PADDING + titleInset, main.buttonRowY)
 		main.Title:SetText(cfg.title)
 		-- The bags: right-click the title to look at the bank from anywhere. Dragging it
 		-- still moves the window, as the rest of the title row does.
@@ -1227,7 +1232,7 @@ local function NewWindow(cfg)
 		end)
 
 		content = CreateFrame("Frame", nil, main)
-		content:SetPoint("TOPLEFT", PADDING, -TITLE_HEIGHT)
+		content:SetPoint("TOPLEFT", PADDING, -titleHeight)
 		buttons = cfg.CreateButtons(content, Frame)
 
 		-- Compact-layout outlines draw above the item buttons: the buttons' slot art is larger
@@ -1266,8 +1271,8 @@ local function NewWindow(cfg)
 
 		main.RearrangeBar = CreateFrame("Button", nil, main.Chrome)
 		main.RearrangeBar:SetHeight(REARRANGE_BAR_HEIGHT - 4)
-		main.RearrangeBar:SetPoint("TOPLEFT", PADDING, -TITLE_HEIGHT + 2)
-		main.RearrangeBar:SetPoint("TOPRIGHT", -PADDING, -TITLE_HEIGHT + 2)
+		main.RearrangeBar:SetPoint("TOPLEFT", PADDING, -titleHeight + 2)
+		main.RearrangeBar:SetPoint("TOPRIGHT", -PADDING, -titleHeight + 2)
 		main.RearrangeBar.Background = main.RearrangeBar:CreateTexture(nil, "BACKGROUND")
 		main.RearrangeBar.Background:SetAllPoints()
 		main.RearrangeBar.Background:SetColorTexture(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 0.2)
@@ -1294,9 +1299,9 @@ local function NewWindow(cfg)
 			return
 		end
 		local pad = Shared.SidePadding()
-		main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", pad, main.buttonRowY)
-		main.RearrangeBar:SetPoint("TOPLEFT", pad, -TITLE_HEIGHT + 2)
-		main.RearrangeBar:SetPoint("TOPRIGHT", -pad, -TITLE_HEIGHT + 2)
+		main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", pad + titleInset, main.buttonRowY)
+		main.RearrangeBar:SetPoint("TOPLEFT", pad, -titleHeight + 2)
+		main.RearrangeBar:SetPoint("TOPRIGHT", -pad, -titleHeight + 2)
 		Frame.RequestRefresh()
 		cfg.Style(main)
 	end
@@ -1481,8 +1486,8 @@ local function NewWindow(cfg)
 		main.RearrangeBar:SetShown(barHeight > 0)
 		content:ClearAllPoints()
 		local pad = Shared.SidePadding()
-		content:SetPoint("TOPLEFT", pad, -(TITLE_HEIGHT + barHeight))
-		bodyHeight = TITLE_HEIGHT + barHeight + contentHeight
+		content:SetPoint("TOPLEFT", pad, -(titleHeight + barHeight))
+		bodyHeight = titleHeight + barHeight + contentHeight
 		main:SetWidth(gridWidth + pad * 2)
 
 		local bagSlots = {}

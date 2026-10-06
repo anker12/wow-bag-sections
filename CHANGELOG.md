@@ -5,6 +5,14 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Changed
+- The bank window looks more like Blizzard's: its border with the round portrait corner
+  (the banker, or a bank icon away from the bank).
+- Every bank bag slot shows along the bottom, bought or not (padlocked). Bags in bought
+  slots can be swapped by clicking or dragging, as in Blizzard's bank.
+- "Buy tab" is now "Buy slot", with the price of the next slot next to it (red if you can't
+  afford it). Clicking a padlocked slot also offers to buy it.
+
 ### Added
 - The bank window replaces Blizzard's at the banker ("Replace the default bank", on by
   default): Blizzard's look (stone background, the bank's bag slots at the bottom, buy a

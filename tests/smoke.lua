@@ -66,6 +66,7 @@ local function NewFrame(frameType, name, parent, template)
 		GetPoint = function() return "BOTTOMRIGHT", nil, "BOTTOMRIGHT", -60, 100 end,
 		CreateFontString = function() return NewFrame("FontString") end,
 		CreateTexture = function() return NewFrame("Texture") end,
+		CreateMaskTexture = function() return NewFrame("MaskTexture") end,
 		GetHighlightTexture = function(self) self._hl = self._hl or NewFrame("Texture"); return self._hl end,
 		SetText = function(self, text) self._text = text end,
 		GetText = function(self) return self._text end,
@@ -111,6 +112,8 @@ local NUM_SLOTS = { [0] = 16, [1] = 4, [2] = 0, [3] = 0, [4] = 0, [5] = 2, [-1] 
 NUM_SLOTS[6], NUM_SLOTS[15] = 4, 2
 ITEMS["6:2"] = { itemID = 700, name = "Old Robe", stack = 1 }
 ITEMS["15:1"] = { itemID = 800, name = "Shared Ore", stack = 12, maxStack = 20 }
+-- The bag in the bank's bag slot 2 (Characterbanktab is the bank's list of bag slots).
+ITEMS["-2:2"] = { itemID = 900, name = "Bank Bag", stack = 1 }
 local cursor -- { bag, slot }
 local sortCalls = 0
 
@@ -127,7 +130,7 @@ end
 
 _G.Enum = {
 	BankType = { Character = 0, Guild = 1, Account = 2 },
-	BagIndex = { Keyring = -1, Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5, CharacterBankTab_1 = 6, CharacterBankTab_9 = 14 },
+	BagIndex = { Characterbanktab = -2, Keyring = -1, Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5, CharacterBankTab_1 = 6, CharacterBankTab_9 = 14 },
 	TooltipDataType = { Item = 0 },
 	ItemClass = { Questitem = 12 },
 }
@@ -172,6 +175,8 @@ _G.C_Cursor = { GetCursorItem = function()
 end }
 _G.C_Item = {
 	DoesItemExist = function(loc) return ItemAt(loc.bag, loc.slot) ~= nil end,
+	GetItemIcon = function(loc) local i = ItemAt(loc.bag, loc.slot); return i and 1 end,
+	GetItemLink = function(loc) local i = ItemAt(loc.bag, loc.slot); return i and ("link:" .. i.name) end,
 	GetItemGUID = function(loc) return "Item-" .. loc.bag .. "-" .. loc.slot .. "-" .. ItemAt(loc.bag, loc.slot).itemID end,
 	GetItemID = function(loc) local i = ItemAt(loc.bag, loc.slot); return i and i.itemID end,
 	IsEquippableItem = function(itemID) for _, i in pairs(ITEMS) do if i.itemID == itemID then return i.equip or false end end return false end,
@@ -194,10 +199,12 @@ _G.C_Bank = {
 	CanViewBank = function() return _G._atBank end,
 	CloseBankFrame = function() _G._bankClosed = true end,
 	CanPurchaseBankTab = function() return true end,
-	FetchNextPurchasableBankTabData = function() return { tabCost = 100000 } end,
+	FetchNextPurchasableBankTabData = function() return { tabCost = 100000, canAfford = _G._canAfford ~= false } end,
+	-- Slot 1 is the bank; slot 2 is bought (the bag below), slots 3-4 aren't.
+	FetchMaxNumBankTabs = function() return 4 end,
 	PurchaseBankTab = function() end,
 	FetchPurchasedBankTabData = function(bankType)
-		if bankType == 0 then return { { ID = 6, name = "Gear", icon = 1 } } end
+		if bankType == 0 then return { { ID = 6, name = "Gear", icon = 1 }, { ID = 7, name = "", icon = 2 } } end
 		if bankType == 2 then return { { ID = 15, name = "", icon = 1 } } end
 		return {}
 	end,
@@ -898,7 +905,7 @@ for _, frame in ipairs(frames) do if frame._name == "BagSectionsBankFrame" then 
 local function CachedBankButtons()
 	local list = {}
 	for _, frame in ipairs(frames) do
-		if frame._type == "ItemButton" and frame._template == nil and frame._shown and frame:IsVisible() then table.insert(list, frame) end
+		if frame._type == "ItemButton" and frame._template == nil and not rawget(frame, "Lock") and frame._shown and frame:IsVisible() then table.insert(list, frame) end
 	end
 	return list
 end
@@ -935,7 +942,39 @@ check(math.abs(bankWindow._w - mainFrame._w) < 1, "bank columns set separately f
 BagSectionsDB.bankColumns = 15
 ns.BankFrame.RequestRefresh()
 check(rawget(bankWindow, "FreeSlots")._text == "3 / 4", "bank free slots (the account bank is ignored)")
-check(BagSectionsCharDB.bank and #BagSectionsCharDB.bank.tabs == 1 and BagSectionsCharDB.bank.tabs[1].bag == 6, "character bank remembered, with its bag")
+check(BagSectionsCharDB.bank and #BagSectionsCharDB.bank.tabs == 2 and BagSectionsCharDB.bank.tabs[1].bag == 6, "character bank remembered, with its bag")
+
+-- Bag slots along the bottom like Blizzard's bank: every slot, bought or not, the bag in a
+-- bought slot can be picked up and swapped, and the next slot's price next to Buy slot.
+local function BagSlotButtons()
+	local list = {}
+	for _, frame in ipairs(frames) do
+		if frame._type == "ItemButton" and rawget(frame, "Lock") and frame._shown then table.insert(list, frame) end
+	end
+	table.sort(list, function(x, y) return x.slotIndex < y.slotIndex end)
+	return list
+end
+local setupPopup = _G._lastPopup -- the first-visit questions, checked below
+local bagSlots = BagSlotButtons()
+check(#bagSlots == 3, "every bank bag slot shows (slots 2 to 4)")
+check(bagSlots[1].bought and bagSlots[1].hasBag and not bagSlots[1].Lock._shown, "a bought slot shows its bag")
+check(not bagSlots[2].bought and bagSlots[2].Lock._shown and bagSlots[3].Lock._shown, "slots not bought yet show a padlock")
+bagSlots[1]._scripts.OnClick(bagSlots[1])
+check(cursor and cursor.bag == -2 and cursor.slot == 2, "clicking a bought slot picks up its bag, to swap it")
+cursor = nil
+check(BagSectionsCharDB.bank.bagSlots and BagSectionsCharDB.bank.bagSlots.max == 4 and BagSectionsCharDB.bank.bagSlots.slots[2].link, "the bag slots are remembered too")
+local buyButton, costText
+for _, frame in ipairs(frames) do
+	if frame._template == "UIPanelButtonTemplate" and frame._text == "Buy slot" then buyButton = frame end
+	if frame._type == "FontString" and type(frame._text) == "string" and frame._text:find("100000", 1, true) then costText = frame end
+end
+check(buyButton and buyButton._shown, "Buy slot shows at the bank")
+check(costText and costText._shown, "with the price of the next slot next to it")
+_G._lastPopup = nil
+bagSlots[2]._scripts.OnClick(bagSlots[2])
+check(_G._lastPopup and _G._lastPopup.which == "BAGSECTIONS_BUY_BANK_TAB", "clicking a locked slot offers to buy it")
+_G._lastPopup = setupPopup
+check(rawget(rawget(bankWindow, "BlizzardBorder"), "_layout") == "PortraitFrameTemplate", "Blizzard's bank border, with the portrait corner")
 check(BagSectionsCharDB.bank.tabs[1].items[2].id == 700, "with its items in their slots")
 
 -- First visit: set up bank sections. Copy the bag sections, add a Reagents section.
@@ -1041,6 +1080,8 @@ check(BagSectionsCharDB.bank.tabs[1].items[3], "nothing is read away from the ba
 SlashCmdList.BAGSECTIONS("bank")
 check(bankWindow:IsShown() and #CachedBankButtons() == 4 and #LiveBankButtons() == 0, "the snapshot, with its own buttons")
 check(bankFooter() == "Updated just now", "says how old the snapshot is")
+check(#BagSlotButtons() == 3 and BagSlotButtons()[1].hasBag, "away from the bank, the bag slots show as they were")
+check(not buyButton._shown, "no Buy slot away from the bank")
 C_Container.PickupContainerItem(0, 5)
 Fire("CURSOR_CHANGED")
 check(FindGroupFrame("section", bankSection.id) == nil, "away from the bank, bank sections don't take drops")

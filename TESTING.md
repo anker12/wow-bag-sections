@@ -110,7 +110,7 @@ mention BagSections.
 | T102 | At the bank: right-click an item in the bags, then one in the bank; drag items both ways; Shift-click to split a stack | Right-click deposits / withdraws; drag and drop works both ways; nothing is blocked. |
 | T103 | At the bank: click the bank window's sort button; type in its search box | The bank sorts; items that don't match are dimmed. |
 | T104 | Bank gear menu → Layout → Semi-compact, then Compact | The bank changes layout; the bags keep theirs. Settings → Bank layout shows the same choice. |
-| T105 | At the bank with a tab left to buy | "Buy tab" shows; clicking it asks to confirm with the price; Yes buys it and it appears in the bottom row. (If this is blocked, note it: Blizzard restricts buying tabs.) |
+| T105 | At the bank with a bag slot left to buy | "Buy slot" shows with "Cost:" and the price next to it (red if you can't afford it); clicking it asks to confirm; Yes buys it and its padlock goes away. (If this is blocked, note it: Blizzard restricts buying slots.) |
 | T106 | Close the bank window with its X; also press Escape at the bank; also walk away | Each ends the conversation with the banker, and the bank window closes. |
 | T107 | Settings → Replace the default bank off, /reload, talk to a banker | Blizzard's bank opens as normal. |
 | T108 | Visit a banker for the first time after updating | "Sort your bank into sections too?" Yes → "Copy your N bag sections to the bank?" (lists them) Yes → "Add a Reagents section?" Yes. The bank now has those sections (same names, colours, order) and a Reagents section with your reagents in it. Not asked again on the next visit. |
@@ -123,3 +123,7 @@ mention BagSections.
 | T115 | Existing user: bag and bank sections with the same name made before this update, each with items | After /reload both have each other's items. |
 | T116 | Bags gear menu → New section | When the bank has sections the bags don't, it opens a submenu: Empty section..., then those bank sections (and All). Picking one adds a linked bag section. Same in the bank's menu, the other way round. |
 | T117 | Open the bank; Settings → Bank columns and Bank scale | The bank is about half as wide again as the bags by default (15 columns). Each slider changes only the bank; Columns and Scale change only the bags. |
+| T118 | Open the bank | Its border is Blizzard's bank border with the banker's face in the round corner, the title next to it, items below; it looks like Blizzard's bank. Away from the bank (`/bs bank`) the corner shows a bank icon. |
+| T119 | Look at the bottom row | "Bag slots:" then every bank bag slot: bought ones (with or without a bag) and the rest padlocked, the same number as Blizzard's bank. |
+| T120 | Click a bag in a bought slot, then click another bag from your bags onto that slot; drag a bag into an empty bought slot | The bags swap / go in, like in Blizzard's bank; the bank's slots update. Nothing is blocked. |
+| T121 | Bank columns at 6 | Buy slot and its price move to their own line above the bag slots instead of overlapping them. |
