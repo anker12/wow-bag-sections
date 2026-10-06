@@ -52,7 +52,7 @@ mention BagSections.
 | T44 | Drag an item from a section onto an empty Rest slot | It lands in that exact slot and leaves the section. |
 | T45 | In Rest, drag an item onto another empty Rest slot | It moves there and stays there. |
 | T46 | Fresh install: create a section | It shows up straight away, empty, ready for drops. |
-| T47 | Gear menu | The order is: New section, Show empty sections, Quest Items section, Show keyring, Rearrange sections (Semi-compact only), Layout, Profiles, then Settings. |
+| T47 | Gear menu | The order is: New section, Show empty sections, Show keyring, Rearrange sections (Semi-compact only), Layout, Profiles, then Settings. |
 | T48 | Untick Show keyring | The keyring disappears from the bags. |
 | T49 | Footer | It shows empty/total slots as `x / y`. |
 | T50 | Gear menu → Layout → Semi-compact | Your sections sit 3 per row, side by side, each growing downwards. Rest, Reagents and Keyring are full width. The window width is unchanged. |
@@ -113,7 +113,7 @@ mention BagSections.
 | T105 | At the bank with a bag slot left to buy: click "Buy slot", Yes; then hover and click a padlocked slot, Yes | "Buy slot" shows with "Cost:" and the price next to it (red if you can't afford it). Both open Blizzard's own confirm dialog with the price; Yes buys the slot and its padlock goes away. No "blocked" popup. |
 | T106 | Close the bank window with its X; also press Escape at the bank; also walk away | Each ends the conversation with the banker, and the bank window closes. |
 | T107 | Settings → Replace the default bank off, /reload, talk to a banker | Blizzard's bank opens as normal. |
-| T108 | Visit a banker for the first time after updating | "Sort your bank into sections too?" Yes → "Copy your N bag sections to the bank?" (lists them) Yes → "Add a Reagents section?" Yes. The bank now has those sections (same names, colours, order) and a Reagents section with your reagents in it. Not asked again on the next visit. |
+| T108 | Visit a banker for the first time after updating | "Sort your bank into sections too?" Yes → "Copy your N bag sections to the bank?" (lists them) Yes. No question about Reagents. The bank now has those sections (same names, colours, order) and a Reagents section with your reagents in it. Not asked again on the next visit. |
 | T109 | Bank gear menu → New section...; Copy sections from bags → one section, then All | New sections appear in the bank only; the bags don't change. Copy lists only bag sections the bank doesn't have yet. |
 | T110 | At the bank, drag a bank item onto a bank section; drag a bag item onto a bank section | The bank item joins the section. The bag item moves into the bank, into that section. |
 | T111 | Rename, recolour, collapse, delete a bank section; Alt+Right-click a bank item | Only the bank changes; the item menu lists the bank's sections. |
@@ -130,5 +130,6 @@ mention BagSections.
 | T122 | At the bank, pick up the bag in a bought bank bag slot, move it over the bank and bags, put it back (or swap it with a bag from your bags) | No Lua error; the bag moves like in Blizzard's bank; no sections light up for it. |
 | T123 | Bags open: hover each bag button on the action bar (backpack, bags, reagent bag) | That bag's slots glow in the bag window, in every layout; the glow goes when the mouse leaves. |
 | T124 | At the bank: hover a bag in a bank bag slot | That bag's slots glow in the bank window; the glow goes when the mouse leaves. |
-| T125 | Quest Items on, quest item in the bank: open the bank | The bank has a Quest Items section with the quest item in it. Turn the option off (Settings or either gear menu): the section goes from both bags and bank; on again: back in both. |
+| T125 | Quest Items on, quest item in the bank: open the bank | The bank has a Quest Items section with the quest item in it. Turn the option off in Settings: the section goes from both bags and bank; on again: back in both. |
+| T127 | Fresh install, or first login after updating | Gather reagents from bags and Reagents section in the bank are on. Neither gear menu has Quest Items or Reagents switches; Settings has Quest Items section, Gather reagents from bags and Reagents section in the bank. Turn Reagents section in the bank off: the bank's Reagents section goes, on every character. |
 | T126 | Semi-compact, bags and bank, at a scale below 1 (e.g. Bank scale 0.8): collapse and expand sections in a shared row and on their own rows | Every header keeps its line to the right of its name, in narrow boxes too; none disappear as sections move. |

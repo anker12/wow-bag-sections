@@ -207,7 +207,7 @@ function Menu.LoadProfile(name)
 	local function Load()
 		Rules.ApplyProfile(ns.charDB, profile)
 		-- The profile places the Quest Items section; whether it exists is account wide.
-		ns.SyncAutoQuest()
+		ns.SyncAutoSections()
 		-- Bank sections with the same names as the profile's are linked to them.
 		Rules.LinkByName(ns.charDB, ns.charDB.bankSections)
 		ns.Print(L.PROFILE_LOADED:format(name))
@@ -348,11 +348,6 @@ function Menu.OpenMainMenu(owner)
 			ns.db.showEmptySections = not ns.db.showEmptySections
 			Changed()
 		end)
-		root:CreateCheckbox(L.QUEST_SECTION, function()
-			return ns.db.autoQuest
-		end, function()
-			ns.SetAutoQuest(not ns.db.autoQuest)
-		end)
 		root:CreateCheckbox(L.SHOW_KEYRING, function()
 			return ns.db.showKeyring
 		end, function()
@@ -420,14 +415,9 @@ function Menu.AddNewSectionEntry(root, window)
 	end
 end
 
-function Menu.SetBankReagents(enabled)
-	Rules.SetAuto(ns.charDB.bankSections, Rules.AUTO_REAGENT, enabled, L.REAGENTS, ns.NewSectionsBelowRest())
-	Changed()
-end
-
 -- First visit to a banker (and "Set up bank sections..." in the bank's gear menu): asks
--- whether to use sections in the bank, then whether to copy the bag sections and add a
--- Reagents section. Each question is its own small Yes/No dialog.
+-- whether to use sections in the bank, then whether to copy the bag sections. Each question
+-- is its own small Yes/No dialog. (The Reagents and Quest Items sections are settings.)
 function Menu.StartBankSetup()
 	ns.charDB.bankSetupDone = true
 	local function Ask(text, onYes, onNo)
@@ -436,16 +426,9 @@ function Menu.StartBankSetup()
 			StaticPopup_Show("BAGSECTIONS_CONFIRM", text, nil, { onAccept = onYes, onCancel = onNo })
 		end)
 	end
-	local function AskReagents()
-		if ns.charDB.bankSections.autoReagent then
-			return
-		end
-		Ask(L.BANK_SETUP_REAGENTS, function() Menu.SetBankReagents(true) end)
-	end
 	local function AskCopy()
 		local missing = Rules.MissingSections(ns.charDB, ns.charDB.bankSections)
 		if #missing == 0 then
-			AskReagents()
 			return
 		end
 		local names = {}
@@ -458,8 +441,7 @@ function Menu.StartBankSetup()
 		end
 		Ask(L.BANK_SETUP_COPY:format(#missing, table.concat(names, ", ")), function()
 			Menu.CopyBagSections(missing)
-			AskReagents()
-		end, AskReagents)
+		end)
 	end
 	Ask(L.BANK_SETUP_INTRO, AskCopy)
 end
@@ -481,16 +463,6 @@ function Menu.OpenBankMenu(owner)
 			copy:CreateButton(L.BANK_COPY_ALL:format(#missing), function() Menu.CopyBagSections(missing) end)
 		end
 		copy:SetEnabled(#missing > 0)
-		root:CreateCheckbox(L.QUEST_SECTION, function()
-			return ns.db.autoQuest
-		end, function()
-			ns.SetAutoQuest(not ns.db.autoQuest)
-		end)
-		root:CreateCheckbox(L.BANK_REAGENT_SECTION, function()
-			return db.autoReagent
-		end, function()
-			Menu.SetBankReagents(not db.autoReagent)
-		end)
 		root:CreateCheckbox(L.SHOW_EMPTY, function()
 			return ns.db.showEmptySections
 		end, function()

@@ -23,8 +23,10 @@ ns.DEFAULTS = {
 	takeOverBags = true,
 	-- Automatic Quest Items section, for every character on the account.
 	autoQuest = true,
-	-- Crafting reagents in normal bags shown together next to the reagent bag.
-	bagReagents = false,
+	-- Crafting reagents in normal bags shown in the Reagents section with the reagent bag.
+	bagReagents = true,
+	-- Automatic Reagents section in the bank, for every character on the account.
+	bankReagents = true,
 	-- Bank window: replaces Blizzard's at the banker; its own layout.
 	replaceBank = true,
 	bankLayout = "default",
@@ -48,19 +50,31 @@ function ns.NewSectionsBelowRest()
 	return ns.db.restPosition == "top"
 end
 
--- The Quest Items setting is account wide and covers the bags and the bank: each
--- character's bag and bank section lists follow it.
-function ns.SyncAutoQuest()
+-- The automatic sections are account-wide settings: each character's section lists follow
+-- them. Quest Items covers the bags and the bank, Reagents the bank (the bags have the
+-- reagent bag).
+function ns.SyncAutoSections()
+	local below = ns.NewSectionsBelowRest()
 	for _, db in ipairs({ ns.charDB, ns.charDB.bankSections }) do
 		if db and db.autoQuest ~= ns.db.autoQuest then
-			Rules.SetAutoQuest(db, ns.db.autoQuest, L.QUEST_ITEMS, ns.NewSectionsBelowRest())
+			Rules.SetAutoQuest(db, ns.db.autoQuest, L.QUEST_ITEMS, below)
 		end
+	end
+	local bank = ns.charDB.bankSections
+	if bank and bank.autoReagent ~= ns.db.bankReagents then
+		Rules.SetAuto(bank, Rules.AUTO_REAGENT, ns.db.bankReagents, L.REAGENTS, below)
 	end
 end
 
 function ns.SetAutoQuest(enabled)
 	ns.db.autoQuest = enabled and true or false
-	ns.SyncAutoQuest()
+	ns.SyncAutoSections()
+	ns.RequestRefresh()
+end
+
+function ns.SetBankReagents(enabled)
+	ns.db.bankReagents = enabled and true or false
+	ns.SyncAutoSections()
 	ns.RequestRefresh()
 end
 
@@ -126,7 +140,7 @@ local function OnAddonLoaded()
 	BagSectionsCharDB.bankSections = Rules.Upgrade(BagSectionsCharDB.bankSections)
 	-- Sections with the same name in bags and bank share their items (see Rules.Link).
 	Rules.LinkByName(BagSectionsCharDB, BagSectionsCharDB.bankSections)
-	ns.SyncAutoQuest()
+	ns.SyncAutoSections()
 
 	ns.Frame.Init()
 	ns.BankFrame.Init()

@@ -286,10 +286,17 @@ _G.ColorPickerFrame = {
 	GetColorRGB = function() return 0.1, 0.2, 0.3 end,
 }
 _G.MinimalSliderWithSteppersMixin = { Label = { Right = 2 } }
+-- Records the text of every menu entry in _G._menuEntries.
 _G.MenuUtil = { CreateContextMenu = function(owner, fn)
+	_G._menuEntries = {}
 	local function Description()
 		local d = {}
-		setmetatable(d, { __index = function() return function() return Description() end end })
+		setmetatable(d, { __index = function()
+			return function(_, text)
+				if type(text) == "string" then _G._menuEntries[text] = true end
+				return Description()
+			end
+		end })
 		return d
 	end
 	fn(owner, Description())
@@ -669,11 +676,12 @@ check(BagSectionsDB.autoQuest and db.autoQuest, "turned on for the account and t
 groups = ns.Layout.Build(db, ns.Inventory.Scan())
 check(GroupOf(1, 3).name == "Quest Items", "quest item goes to Quest Items section")
 
--- Gather reagents from bags: off by default; when on, reagents in normal bags join the
--- reagent bag's Reagents group. Sections win; dragging one to Rest keeps it there; dragging back undoes it.
-groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = BagSectionsDB.bagReagents })
-check(BagSectionsDB.bagReagents == false and GroupOf(0, 7).kind == "rest", "reagents stay in Rest by default")
-BagSectionsDB.bagReagents = true
+-- Gather reagents from bags: on by default; reagents in normal bags join the reagent bag's
+-- Reagents group (off: they stay in Rest). Sections win; dragging one to Rest keeps it
+-- there; dragging back undoes it.
+check(BagSectionsDB.bagReagents == true, "gathering reagents from bags is on by default")
+groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = false })
+check(GroupOf(0, 7).kind == "rest", "off: reagents stay in Rest")
 local function Kinds()
 	local list = {}
 	for _, g in ipairs(groups) do list[#list + 1] = g.kind end
@@ -1055,22 +1063,33 @@ local function AutoSection(list, auto)
 	end
 end
 check(ns.db.autoQuest and bankDB.autoQuest and AutoSection(bankDB, ns.Rules.AUTO_QUEST), "the bank has a Quest Items section while the setting is on")
+check(ns.db.bankReagents and bankDB.autoReagent and AutoSection(bankDB, ns.Rules.AUTO_REAGENT), "and a Reagents section, on by default")
 local bagSectionCount = #BagSectionsCharDB.sections
 local missingBefore = #ns.Rules.MissingSections(BagSectionsCharDB, bankDB)
+local introPopup = _G._lastPopup
 _G._lastPopup.data.onAccept() -- yes, set up
-check(_G._lastPopup.data.onAccept and _G._lastPopup.data.onCancel, "then asks about copying")
+check(_G._lastPopup ~= introPopup and _G._lastPopup.data.onAccept, "then asks about copying")
+local copyPopup = _G._lastPopup
 _G._lastPopup.data.onAccept() -- yes, copy
+check(_G._lastPopup == copyPopup, "no question about a Reagents section: it's a setting")
 check(#OwnSections(bankDB) == missingBefore and missingBefore > 0, "bag sections copied to the bank")
 check(#BagSectionsCharDB.sections == bagSectionCount, "the bags' sections are unchanged")
 check(OwnSections(bankDB)[1].name == ns.Rules.MissingSections(BagSectionsCharDB, { sections = {} })[1].name, "same names, same order")
-_G._lastPopup.data.onAccept() -- yes, Reagents section
-check(bankDB.autoReagent and bankDB.sections[#bankDB.sections].auto == ns.Rules.AUTO_REAGENT, "bank Reagents section added")
 check(#ns.Rules.MissingSections(BagSectionsCharDB, bankDB) == 0, "nothing left to copy")
 -- Turning Quest Items off takes it out of the bags and the bank; on puts it back in both.
 ns.SetAutoQuest(false)
 check(not AutoSection(BagSectionsCharDB, ns.Rules.AUTO_QUEST) and not AutoSection(bankDB, ns.Rules.AUTO_QUEST), "Quest Items off: gone from bags and bank")
 ns.SetAutoQuest(true)
 check(AutoSection(BagSectionsCharDB, ns.Rules.AUTO_QUEST) and AutoSection(bankDB, ns.Rules.AUTO_QUEST), "Quest Items on: back in bags and bank")
+ns.SetBankReagents(false)
+check(not bankDB.autoReagent and not AutoSection(bankDB, ns.Rules.AUTO_REAGENT), "bank Reagents off: gone")
+ns.SetBankReagents(true)
+check(AutoSection(bankDB, ns.Rules.AUTO_REAGENT), "bank Reagents on: back")
+-- Both are settings only, not in the gear menus.
+ns.Menu.OpenMainMenu(UIParent)
+check(_G._menuEntries[ns.L.SHOW_EMPTY] and not _G._menuEntries[ns.L.QUEST_SECTION], "bags' gear menu: no Quest Items switch")
+ns.Menu.OpenBankMenu(bankWindow)
+check(_G._menuEntries[ns.L.SHOW_EMPTY] and not _G._menuEntries[ns.L.QUEST_SECTION] and not _G._menuEntries[ns.L.BANK_REAGENT_SECTION], "bank's gear menu: no Quest Items or Reagents switch")
 
 -- Copied sections are linked to the bag section they came from: they share items.
 local bankSection = OwnSections(bankDB)[1]

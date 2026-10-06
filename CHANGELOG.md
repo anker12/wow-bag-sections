@@ -17,7 +17,7 @@ section into CurseForge's changelog box when uploading.
   afford it). Clicking a padlocked slot also offers to buy it. Buying goes through
   Blizzard's own purchase button and dialog, so it's no longer blocked.
 - The Quest Items section setting now covers the bank too: turning it on or off changes
-  both the bags and the bank. The bank's gear menu has the switch too.
+  both the bags and the bank. It's in Settings only, no longer in the gear menu.
 
 ### Added
 - The bank window replaces Blizzard's at the banker ("Replace the default bank", on by
@@ -27,13 +27,14 @@ section into CurseForge's changelog box when uploading.
   right-click, drag and drop, search and sort. Away from the bank it shows the last visit,
   as before. Only the character bank is shown.
 - Bank sections, kept separately from the bag sections. The first visit to a banker offers
-  to copy your bag sections and add an automatic Reagents section; the bank's gear menu has
-  New section, Copy sections from bags and the Reagents section switch.
+  to copy your bag sections; the bank's gear menu has New section and Copy sections from
+  bags. The bank has an automatic Reagents section, on by default (Settings → Reagents
+  section in the bank, for all your characters).
 - Linked sections: a bag section and its bank copy share their items, so an item lands in
   the matching section when it moves between bags and bank. Sections with the same name
   are linked automatically. "New section" in either gear menu can make a linked copy of
   one from the other side.
-- "Gather reagents from bags" setting (off by default): crafting reagents in your normal
+- "Gather reagents from bags" setting (on by default): crafting reagents in your normal
   bags show in the Reagents section together with the reagent bag, as one block.
 
 ### Changed

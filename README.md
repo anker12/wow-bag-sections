@@ -46,12 +46,12 @@ Copy the `BagSections` folder into
 * Gear you add is matched by exact item, so only that sword goes to the section. Everything
   else is matched by item type: every Hearthstone, every stack of that potion. You can change
   this for gear in the settings, or per item with Alt+Right-click.
-* Sections are saved per character. Settings (layout, sizes, appearance, Quest Items) are
+* Sections are saved per character. Settings (layout, sizes, appearance, Quest Items, Reagents) are
   shared by all your characters.
 
 ### Quest Items section
 
-With **Quest Items section** on (the default; Settings or the gear menu), quest items go
+With **Quest Items section** on (the default; in Settings), quest items go
 into their own "Quest Items" section automatically. That includes quest starters and items
 whose type is Quest. It's a normal section otherwise: rename it, colour it, or move it
 below Rest. Drag a quest item to Rest to keep that item out, or into another section to
@@ -62,13 +62,13 @@ keeps it as it is (the profile only decides where the section sits).
 
 ### Gather reagents from bags
 
-Turn on **Gather reagents from bags** in Settings, and crafting reagents in your normal bags
+With **Gather reagents from bags** on (the default; in Settings), crafting reagents in your normal bags
 (the items the reagent bag would take) are shown in the **Reagents** section together with
 the reagent bag, as one block like the bank's Reagents section: the reagent bag's items,
 then the reagents from your bags, then the reagent bag's empty slots. Without a reagent bag
 they get a Reagents section of their own. Only items that would otherwise be in Rest move
 there; items you've put in a section stay in it. Drag one to Rest to keep that item in
-Rest, or back onto the Reagents header to undo that. Off by default.
+Rest, or back onto the Reagents header to undo that.
 
 ### Profiles
 
@@ -167,11 +167,12 @@ bank window's gear menu or Settings → **Bank layout**. Its size is separate to
 
 **Bank sections** work like your bag sections, but are kept separately: creating, renaming
 or deleting one in the bank doesn't touch the bags, and the other way round. The first time
-you visit a banker, BagSections asks whether to set them up: copy your bag sections to the
-bank, and add an automatic **Reagents** section that collects crafting reagents. Later, the
+you visit a banker, BagSections asks whether to copy your bag sections to the bank. The
+bank also has an automatic **Reagents** section that collects crafting reagents, on by
+default (Settings → **Reagents section in the bank**, for all your characters). Later, the
 bank window's gear menu has **New section...**, **Copy sections from bags** (one, or all
-that the bank doesn't have yet), the **Reagents section** switch and **Set up bank
-sections...** to go through the questions again. Drag an item from your bags onto a bank
+that the bank doesn't have yet) and **Set up bank sections...** to go through the
+questions again. Drag an item from your bags onto a bank
 section to put it in the bank, in that section.
 
 **Linked sections:** a bank section copied from a bag section (or the other way round) is

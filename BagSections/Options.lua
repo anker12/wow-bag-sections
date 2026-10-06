@@ -75,6 +75,11 @@ function Options.Init()
 		function(value) ns.SetAutoQuest(value) end)
 	Settings.CreateCheckbox(category, questSetting, L.OPT_QUEST_SECTION_DESC)
 	AddCheckbox("bagReagents", L.OPT_BAG_REAGENTS, L.OPT_BAG_REAGENTS_DESC, ns.DEFAULTS.bagReagents, Refresh)
+	local bankReagentSetting = Settings.RegisterProxySetting(category, "BagSections_bankReagents", Settings.VarType.Boolean,
+		L.BANK_REAGENT_SECTION, ns.DEFAULTS.bankReagents,
+		function() return ns.db.bankReagents end,
+		function(value) ns.SetBankReagents(value) end)
+	Settings.CreateCheckbox(category, bankReagentSetting, L.OPT_BANK_REAGENT_SECTION_DESC)
 	local restSetting = Settings.RegisterAddOnSetting(category, "BagSections_restPosition", "restPosition", ns.db, Settings.VarType.String, L.REST_POSITION, ns.DEFAULTS.restPosition)
 	Settings.CreateDropdown(category, restSetting, function()
 		local container = Settings.CreateControlTextContainer()
