@@ -34,7 +34,7 @@ section into CurseForge's changelog box when uploading.
   are linked automatically. "New section" in either gear menu can make a linked copy of
   one from the other side.
 - "Gather reagents from bags" setting (off by default): crafting reagents in your normal
-  bags show together as "Reagents (bags)", right after the reagent bag.
+  bags show in the Reagents section together with the reagent bag, as one block.
 
 ### Changed
 - Settings are grouped under headings: Layout, Sections and items, Appearance, Text size,

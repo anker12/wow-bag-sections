@@ -60,14 +60,15 @@ other items to it by hand. The option applies to the bags and the bank (each has
 Quest Items section) and to all your characters; loading a profile
 keeps it as it is (the profile only decides where the section sits).
 
-### Reagents (bags)
+### Gather reagents from bags
 
 Turn on **Gather reagents from bags** in Settings, and crafting reagents in your normal bags
-(the items the reagent bag would take) are shown together as **Reagents (bags)**, right
-after the reagent bag, as their own block so you can tell them apart. Only items that
-would otherwise be in Rest move there; items you've put in a section stay in it. Drag one
-to Rest to keep that item in Rest, or back onto Reagents (bags) to undo that. Off by
-default.
+(the items the reagent bag would take) are shown in the **Reagents** section together with
+the reagent bag, as one block like the bank's Reagents section: the reagent bag's items,
+then the reagents from your bags, then the reagent bag's empty slots. Without a reagent bag
+they get a Reagents section of their own. Only items that would otherwise be in Rest move
+there; items you've put in a section stay in it. Drag one to Rest to keep that item in
+Rest, or back onto the Reagents header to undo that. Off by default.
 
 ### Profiles
 

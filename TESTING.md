@@ -103,8 +103,8 @@ mention BagSections.
 | T95 | Fresh install (rename the SavedVariables), log in | A Quest Items section exists and catches quest items. |
 | T96 | Turn Quest Items off on one character, log in another | It's off there too, and its empty Quest Items section is gone. |
 | T97 | Change a text size on one character, log in another | Same size there. |
-| T98 | Put a crafting reagent (cloth, herb) in a normal bag. Settings → Gather reagents from bags on | It moves from Rest to "Reagents (bags)", a separate block right after Reagents, in all three layouts (Compact: its own paler green outline below the divider). Off again: back in Rest. |
-| T99 | Drag that reagent onto a Rest slot; then drag it onto the Reagents (bags) header | Rest: it stays in Rest. Header: it goes back to Reagents (bags). |
+| T98 | Put a crafting reagent (cloth, herb) in a normal bag. Settings → Gather reagents from bags on | It moves from Rest into the Reagents section, after the reagent bag's items and before its empty slots, as one block with one count, in all three layouts. No separate "Reagents (bags)". Off again: back in Rest. |
+| T99 | Drag that reagent onto a Rest slot; then drag it onto the Reagents header | Rest: it stays in Rest. Header: it goes back to Reagents. |
 | T100 | Add a reagent to one of your sections | It stays in the section. |
 | T101 | Talk to a banker | BagSections' bank window opens (stone background, the bank's bag slots along the bottom, "Live" in the footer); Blizzard's bank isn't visible; the bags open too. No Lua errors or "blocked" popups. |
 | T102 | At the bank: right-click an item in the bags, then one in the bank; drag items both ways; Shift-click to split a stack | Right-click deposits / withdraws; drag and drop works both ways; nothing is blocked. |

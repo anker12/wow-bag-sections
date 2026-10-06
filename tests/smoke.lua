@@ -668,8 +668,8 @@ check(BagSectionsDB.autoQuest and db.autoQuest, "turned on for the account and t
 groups = ns.Layout.Build(db, ns.Inventory.Scan())
 check(GroupOf(1, 3).name == "Quest Items", "quest item goes to Quest Items section")
 
--- Reagents (bags): off by default; when on, reagents in normal bags gather right after the
--- reagent bag. Sections win; dragging one to Rest keeps it there; dragging back undoes it.
+-- Gather reagents from bags: off by default; when on, reagents in normal bags join the
+-- reagent bag's Reagents group. Sections win; dragging one to Rest keeps it there; dragging back undoes it.
 groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = BagSectionsDB.bagReagents })
 check(BagSectionsDB.bagReagents == false and GroupOf(0, 7).kind == "rest", "reagents stay in Rest by default")
 BagSectionsDB.bagReagents = true
@@ -679,10 +679,12 @@ local function Kinds()
 	return table.concat(list, ",")
 end
 groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = true })
-check(GroupOf(0, 7).kind == "bagreagent", "a bag reagent gathers in Reagents (bags)")
-check(GroupOf(5, 1).kind == "reagent", "the real reagent bag is unchanged")
-check(Kinds():find("reagent,bagreagent", 1, true), "Reagents (bags) comes right after the reagent bag (" .. Kinds() .. ")")
+check(GroupOf(0, 7).kind == "reagent", "a bag reagent joins the Reagents group")
+check(GroupOf(5, 1).kind == "reagent", "with the reagent bag's slots")
+check(not Kinds():find("bagreagent", 1, true), "one Reagents group, not two (" .. Kinds() .. ")")
 ns.RequestRefresh()
+check(ns.ItemButtons.Get(0, 7).bsGroupKind == "bagreagent" and ns.ItemButtons.Get(5, 1).bsGroupKind == "reagent",
+	"in it, bag reagents keep their own drop behaviour and reagent bag slots theirs")
 C_Container.PickupContainerItem(0, 7)
 Fire("CURSOR_CHANGED")
 local restTarget = FindGroupFrame("rest")
@@ -692,14 +694,14 @@ groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = true })
 check(GroupOf(0, 7).kind == "rest", "dragged to Rest: stays in Rest")
 C_Container.PickupContainerItem(0, 7)
 Fire("CURSOR_CHANGED")
-local bagReagentTarget = FindGroupFrame("bagreagent")
-check(bagReagentTarget, "Reagents (bags) takes it back")
+local bagReagentTarget = FindGroupFrame("reagent")
+check(bagReagentTarget, "Reagents takes it back")
 bagReagentTarget._scripts.OnReceiveDrag(bagReagentTarget)
 groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = true })
-check(GroupOf(0, 7).kind == "bagreagent", "and it's back in Reagents (bags)")
+check(GroupOf(0, 7).kind == "reagent", "and it's back in Reagents")
 ns.Rules.Assign(db, { itemID = 500 }, db.sections[1].id, ns.Rules.KIND_ITEMID)
 groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = true })
-check(GroupOf(0, 7).kind == "section", "a section still wins over Reagents (bags)")
+check(GroupOf(0, 7).kind == "section", "a section still wins over gathering")
 ns.Rules.Unassign(db, { itemID = 500 })
 for _, layoutName in ipairs({ "compact", "semicompact", "default" }) do
 	ns.Menu.SetLayout(layoutName)

@@ -10,10 +10,12 @@ ns.Layout = Layout
 --   { bag = n, slot = n, area = "bags" | "reagent" | "keyring", item = { itemID, guid, ... } | nil }
 -- opts: { showEmpty = bool, hideKeyring = bool, bagReagents = bool }
 -- Returns an array of groups:
---   { key, kind = "section" | "rest" | "reagent" | "bagreagent" | "keyring", name, collapsed, color, below, slots = {...}, count }
--- Order: sections above Rest, Rest, sections below Rest, Reagents, Reagents (bags), Keyring.
--- With opts.bagReagents, crafting reagents in normal bags that would be in Rest go to the
--- virtual "bagreagent" group instead, shown right after the real reagent bag.
+--   { key, kind = "section" | "rest" | "reagent" | "bagreagent" | "keyring", name, collapsed, color, below, slots = {...}, count, gathers }
+-- Order: sections above Rest, Rest, sections below Rest, Reagents, Keyring.
+-- With opts.bagReagents, crafting reagents in normal bags that would be in Rest join the
+-- reagent bag's group instead (gathers = true): the reagent bag's items, then the bag
+-- reagents, then the reagent bag's empty slots, as one Reagents group. Without a reagent
+-- bag they make a "bagreagent" group of their own in its place.
 -- Only "bags" area items are classified into sections; empty slots always go to Rest, in
 -- physical bag order among Rest's items.
 function Layout.Build(db, slots, opts)
@@ -74,11 +76,24 @@ function Layout.Build(db, slots, opts)
 	table.insert(result, rest)
 	AddSections(true)
 	if #reagent.slots > 0 then
+		if opts.bagReagents then
+			local merged, empty = {}, {}
+			for _, slot in ipairs(reagent.slots) do
+				table.insert(slot.item and merged or empty, slot)
+			end
+			for _, list in ipairs({ bagReagent.slots, empty }) do
+				for _, slot in ipairs(list) do
+					table.insert(merged, slot)
+				end
+			end
+			reagent.slots = merged
+			reagent.count = reagent.count + bagReagent.count
+			reagent.gathers = true
+		end
 		table.insert(result, reagent)
-	end
-	-- Shown when empty too while sections are (e.g. while dragging), so a reagent moved to
-	-- Rest can be dragged back.
-	if #bagReagent.slots > 0 or (opts.bagReagents and opts.showEmpty) then
+	elseif #bagReagent.slots > 0 or (opts.bagReagents and opts.showEmpty) then
+		-- No reagent bag. Shown when empty too while sections are (e.g. while dragging), so a
+		-- reagent moved to Rest can be dragged back.
 		table.insert(result, bagReagent)
 	end
 	if #keyring.slots > 0 and not opts.hideKeyring then

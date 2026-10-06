@@ -282,10 +282,10 @@ local function NewWindow(cfg)
 			return ("%s %s |cff999999(%d)|r"):format(marker, group.name, group.count)
 		elseif group.kind == "rest" then
 			return ("%s %s |cff999999(%d)|r"):format(marker, L.REST, #group.slots)
+		elseif group.kind == "bagreagent" or (group.kind == "reagent" and group.gathers) then
+			return ("%s %s |cff999999(%d)|r"):format(marker, L.REAGENTS, group.count)
 		elseif group.kind == "reagent" then
 			return ("%s %s"):format(marker, L.REAGENTS)
-		elseif group.kind == "bagreagent" then
-			return ("%s %s |cff999999(%d)|r"):format(marker, L.REAGENTS_BAGS, group.count)
 		end
 		return ("%s %s"):format(marker, L.KEYRING)
 	end
@@ -296,8 +296,8 @@ local function NewWindow(cfg)
 			return ("%s |cff999999(%d)|r"):format(group.name, group.count)
 		elseif group.kind == "rest" then
 			return ("%s |cff999999(%d)|r"):format(L.REST, #group.slots)
-		elseif group.kind == "bagreagent" then
-			return ("%s |cff999999(%d)|r"):format(L.REAGENTS_BAGS, group.count)
+		elseif group.kind == "bagreagent" or (group.kind == "reagent" and group.gathers) then
+			return ("%s |cff999999(%d)|r"):format(L.REAGENTS, group.count)
 		end
 		return group.kind == "reagent" and L.REAGENTS or L.KEYRING
 	end
@@ -335,6 +335,11 @@ local function NewWindow(cfg)
 		return state
 	end
 
+	-- Reagents gathered from the bags: their own group, or merged into the reagent bag's.
+	local function GathersReagents(group)
+		return group.kind == "bagreagent" or (group.kind == "reagent" and group.gathers)
+	end
+
 	local function IsDropTarget(group)
 		if not cursorState or cursorState.source == "locked" or (cfg.AcceptsDrops and not cfg.AcceptsDrops()) then
 			return false
@@ -343,13 +348,13 @@ local function NewWindow(cfg)
 			return cursorState.section ~= group.key
 		elseif group.kind == "rest" then
 			return cursorState.source == "bags" and cursorState.section ~= Rules.REST
-		elseif group.kind == "bagreagent" then
+		elseif GathersReagents(group) then
 			return cursorState.source == "bags" and cursorState.item.isReagent and cursorState.section ~= "bagreagent"
 		end
 		return false
 	end
 
-	-- Dropped on Rest: out of its section, or out of Reagents (bags) for good.
+	-- Dropped on Rest: out of its section, or out of the gathered bag reagents for good.
 	local function MoveToRest(state)
 		if state.section == "bagreagent" then
 			Rules.KeepInRest(cfg.GetDB(), state.item)
@@ -375,7 +380,7 @@ local function NewWindow(cfg)
 		if group.kind == "rest" then
 			MoveToRest(state)
 			ClearCursor()
-		elseif group.kind == "bagreagent" then
+		elseif GathersReagents(group) then
 			Rules.UnassignLinked(db, cfg.GetPartnerDB(), state.item)
 			ClearCursor()
 		elseif group.kind == "section" then
@@ -539,7 +544,9 @@ local function NewWindow(cfg)
 	local function PlaceButton(group, slot, x, y, used)
 		local button = buttons.ForSlot(slot)
 		button.bsSectionName = group.kind == "section" and group.name or nil
-		button.bsGroupKind = group.kind
+		-- Bag reagents shown among the reagent bag's slots stay what they are: dropping on
+		-- one is like dropping on a Rest slot, not into the reagent bag.
+		button.bsGroupKind = (group.kind == "reagent" and slot.area ~= "reagent") and "bagreagent" or group.kind
 		used[button] = true
 		button:ClearAllPoints()
 		button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
@@ -661,7 +668,7 @@ local function NewWindow(cfg)
 				DrawRow(chunk, dataRow)
 			end
 		end
-		-- Reagents, Reagents (bags) and Keyring: full width at the bottom.
+		-- Reagents and Keyring: full width at the bottom.
 		for index, group in ipairs(groups) do
 			if group.kind == "reagent" or group.kind == "bagreagent" or group.kind == "keyring" then
 				y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + rowGap
