@@ -171,6 +171,7 @@ _G.C_Container = {
 }
 -- _G._staleCursor mimics GetCursorItem still answering after the cursor was emptied.
 _G.C_Cursor = { GetCursorItem = function()
+	if _G._badCursorLocation then return _G._badCursorLocation end
 	local c = cursor or _G._staleCursor
 	return c and MakeLocation(c.bag, c.slot) or nil
 end }
@@ -965,7 +966,15 @@ check(bagSlots[1].bought and bagSlots[1].hasBag and not bagSlots[1].Lock._shown,
 check(not bagSlots[2].bought and bagSlots[2].Lock._shown and bagSlots[3].Lock._shown, "slots not bought yet show a padlock")
 bagSlots[1]._scripts.OnClick(bagSlots[1])
 check(cursor and cursor.bag == -2 and cursor.slot == 2, "clicking a bought slot picks up its bag, to swap it")
+-- Blizzard's IsValid errors on the location of a bag picked up from a bank bag slot; the
+-- drop targets must cope (the bag isn't an item to sort, so nothing lights up).
+_G._badCursorLocation = { IsValid = function() error("bad argument #1 to 'DoesItemExist'") end }
+Fire("CURSOR_CHANGED")
+ns.RequestRefresh()
+check(FindGroupFrame("section") == nil, "a bag picked up from a bank bag slot causes no error")
+_G._badCursorLocation = nil
 cursor = nil
+Fire("CURSOR_CHANGED")
 check(BagSectionsCharDB.bank.bagSlots and BagSectionsCharDB.bank.bagSlots.max == 4 and BagSectionsCharDB.bank.bagSlots.slots[2].link, "the bag slots are remembered too")
 local buyButton, costText
 for _, frame in ipairs(frames) do

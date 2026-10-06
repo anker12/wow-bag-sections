@@ -63,9 +63,22 @@ function Inventory.GetItem(bag, slot)
 	}
 end
 
+-- Whether a location (e.g. the cursor's) points at an item that can be looked up. Some
+-- can't: a bag picked up from the bank's bag slots makes Blizzard's own IsValid raise an
+-- error, so ask carefully and treat those as unknown.
+function Inventory.IsKnownLocation(location)
+	if not location then
+		return false
+	end
+	local ok, exists = pcall(function()
+		return location:IsValid() and C_Item.DoesItemExist(location)
+	end)
+	return ok and exists or false
+end
+
 -- Same as GetItem, but for any ItemLocation (cursor, equipment slot, bank).
 function Inventory.GetItemFromLocation(location)
-	if not (location and location:IsValid() and C_Item.DoesItemExist(location)) then
+	if not Inventory.IsKnownLocation(location) then
 		return nil
 	end
 	local itemID = C_Item.GetItemID(location)

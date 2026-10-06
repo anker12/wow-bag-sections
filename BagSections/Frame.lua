@@ -314,7 +314,7 @@ local function NewWindow(cfg)
 			return nil
 		end
 		local location = C_Cursor.GetCursorItem()
-		if not (location and location:IsValid()) then
+		if not ns.Inventory.IsKnownLocation(location) then
 			return nil
 		end
 		local item = ns.Inventory.GetItemFromLocation(location)

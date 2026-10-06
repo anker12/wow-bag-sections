@@ -127,3 +127,4 @@ mention BagSections.
 | T119 | Look at the bottom row | "Bag slots:" then every bank bag slot: bought ones (with or without a bag) and the rest padlocked, the same number as Blizzard's bank. |
 | T120 | Click a bag in a bought slot, then click another bag from your bags onto that slot; drag a bag into an empty bought slot | The bags swap / go in, like in Blizzard's bank; the bank's slots update. Nothing is blocked. |
 | T121 | Bank columns at 6 | Buy slot and its price move to their own line above the bag slots instead of overlapping them. |
+| T122 | At the bank, pick up the bag in a bought bank bag slot, move it over the bank and bags, put it back (or swap it with a bag from your bags) | No Lua error; the bag moves like in Blizzard's bank; no sections light up for it. |
