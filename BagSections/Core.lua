@@ -48,10 +48,13 @@ function ns.NewSectionsBelowRest()
 	return ns.db.restPosition == "top"
 end
 
--- The Quest Items setting is account wide; each character's section list follows it.
+-- The Quest Items setting is account wide and covers the bags and the bank: each
+-- character's bag and bank section lists follow it.
 function ns.SyncAutoQuest()
-	if ns.charDB.autoQuest ~= ns.db.autoQuest then
-		Rules.SetAutoQuest(ns.charDB, ns.db.autoQuest, L.QUEST_ITEMS, ns.NewSectionsBelowRest())
+	for _, db in ipairs({ ns.charDB, ns.charDB.bankSections }) do
+		if db and db.autoQuest ~= ns.db.autoQuest then
+			Rules.SetAutoQuest(db, ns.db.autoQuest, L.QUEST_ITEMS, ns.NewSectionsBelowRest())
+		end
 	end
 end
 
@@ -121,7 +124,6 @@ local function OnAddonLoaded()
 	ns.charDB = BagSectionsCharDB
 	-- The bank's sections and item rules live apart from the bags'.
 	BagSectionsCharDB.bankSections = Rules.Upgrade(BagSectionsCharDB.bankSections)
-	BagSectionsCharDB.bankSections.autoQuest = false
 	-- Sections with the same name in bags and bank share their items (see Rules.Link).
 	Rules.LinkByName(BagSectionsCharDB, BagSectionsCharDB.bankSections)
 	ns.SyncAutoQuest()

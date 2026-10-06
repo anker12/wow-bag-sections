@@ -481,6 +481,11 @@ function Menu.OpenBankMenu(owner)
 			copy:CreateButton(L.BANK_COPY_ALL:format(#missing), function() Menu.CopyBagSections(missing) end)
 		end
 		copy:SetEnabled(#missing > 0)
+		root:CreateCheckbox(L.QUEST_SECTION, function()
+			return ns.db.autoQuest
+		end, function()
+			ns.SetAutoQuest(not ns.db.autoQuest)
+		end)
 		root:CreateCheckbox(L.BANK_REAGENT_SECTION, function()
 			return db.autoReagent
 		end, function()

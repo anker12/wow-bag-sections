@@ -1028,20 +1028,39 @@ check(BagSectionsCharDB.bank.tabs[1].items[2].id == 700, "with its items in thei
 check(_G._lastPopup and _G._lastPopup.data.onAccept, "first visit asks about bank sections")
 check(BagSectionsCharDB.bankSetupDone, "only asked once")
 local bankDB = BagSectionsCharDB.bankSections
+-- Quest Items is one setting for the bags and the bank: it's on, so the bank has it too.
+local function OwnSections(list)
+	local own = {}
+	for _, s in ipairs(list.sections) do
+		if not s.auto then table.insert(own, s) end
+	end
+	return own
+end
+local function AutoSection(list, auto)
+	for _, s in ipairs(list.sections) do
+		if s.auto == auto then return s end
+	end
+end
+check(ns.db.autoQuest and bankDB.autoQuest and AutoSection(bankDB, ns.Rules.AUTO_QUEST), "the bank has a Quest Items section while the setting is on")
 local bagSectionCount = #BagSectionsCharDB.sections
 local missingBefore = #ns.Rules.MissingSections(BagSectionsCharDB, bankDB)
 _G._lastPopup.data.onAccept() -- yes, set up
 check(_G._lastPopup.data.onAccept and _G._lastPopup.data.onCancel, "then asks about copying")
 _G._lastPopup.data.onAccept() -- yes, copy
-check(#bankDB.sections == missingBefore and missingBefore > 0, "bag sections copied to the bank")
+check(#OwnSections(bankDB) == missingBefore and missingBefore > 0, "bag sections copied to the bank")
 check(#BagSectionsCharDB.sections == bagSectionCount, "the bags' sections are unchanged")
-check(bankDB.sections[1].name == ns.Rules.MissingSections(BagSectionsCharDB, { sections = {} })[1].name, "same names, same order")
+check(OwnSections(bankDB)[1].name == ns.Rules.MissingSections(BagSectionsCharDB, { sections = {} })[1].name, "same names, same order")
 _G._lastPopup.data.onAccept() -- yes, Reagents section
 check(bankDB.autoReagent and bankDB.sections[#bankDB.sections].auto == ns.Rules.AUTO_REAGENT, "bank Reagents section added")
 check(#ns.Rules.MissingSections(BagSectionsCharDB, bankDB) == 0, "nothing left to copy")
+-- Turning Quest Items off takes it out of the bags and the bank; on puts it back in both.
+ns.SetAutoQuest(false)
+check(not AutoSection(BagSectionsCharDB, ns.Rules.AUTO_QUEST) and not AutoSection(bankDB, ns.Rules.AUTO_QUEST), "Quest Items off: gone from bags and bank")
+ns.SetAutoQuest(true)
+check(AutoSection(BagSectionsCharDB, ns.Rules.AUTO_QUEST) and AutoSection(bankDB, ns.Rules.AUTO_QUEST), "Quest Items on: back in bags and bank")
 
 -- Copied sections are linked to the bag section they came from: they share items.
-local bankSection = bankDB.sections[1]
+local bankSection = OwnSections(bankDB)[1]
 local bagPartner = ns.Rules.FindByLink(BagSectionsCharDB, bankSection.link)
 check(bankSection.link and bagPartner and bagPartner.name == bankSection.name, "copies are linked to their bag section")
 ns.BankFrame.RequestRefresh()

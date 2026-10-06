@@ -16,6 +16,8 @@ section into CurseForge's changelog box when uploading.
 - "Buy tab" is now "Buy slot", with the price of the next slot next to it (red if you can't
   afford it). Clicking a padlocked slot also offers to buy it. Buying goes through
   Blizzard's own purchase button and dialog, so it's no longer blocked.
+- The Quest Items section setting now covers the bank too: turning it on or off changes
+  both the bags and the bank. The bank's gear menu has the switch too.
 
 ### Added
 - The bank window replaces Blizzard's at the banker ("Replace the default bank", on by

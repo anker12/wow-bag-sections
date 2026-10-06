@@ -56,7 +56,8 @@ into their own "Quest Items" section automatically. That includes quest starters
 whose type is Quest. It's a normal section otherwise: rename it, colour it, or move it
 below Rest. Drag a quest item to Rest to keep that item out, or into another section to
 put it there instead. Turning the option off removes the section, unless you've added
-other items to it by hand. The option applies to all your characters; loading a profile
+other items to it by hand. The option applies to the bags and the bank (each has its own
+Quest Items section) and to all your characters; loading a profile
 keeps it as it is (the profile only decides where the section sits).
 
 ### Reagents (bags)

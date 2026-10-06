@@ -130,3 +130,4 @@ mention BagSections.
 | T122 | At the bank, pick up the bag in a bought bank bag slot, move it over the bank and bags, put it back (or swap it with a bag from your bags) | No Lua error; the bag moves like in Blizzard's bank; no sections light up for it. |
 | T123 | Bags open: hover each bag button on the action bar (backpack, bags, reagent bag) | That bag's slots glow in the bag window, in every layout; the glow goes when the mouse leaves. |
 | T124 | At the bank: hover a bag in a bank bag slot | That bag's slots glow in the bank window; the glow goes when the mouse leaves. |
+| T125 | Quest Items on, quest item in the bank: open the bank | The bank has a Quest Items section with the quest item in it. Turn the option off (Settings or either gear menu): the section goes from both bags and bank; on again: back in both. |

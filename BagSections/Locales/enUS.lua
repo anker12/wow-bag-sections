@@ -72,7 +72,7 @@ L.ADDED_TO = "%s added to %s."
 
 L.QUEST_ITEMS = "Quest Items"
 L.QUEST_SECTION = "Quest Items section"
-L.OPT_QUEST_SECTION_DESC = "Put quest items into their own \"Quest Items\" section automatically. You can rename, colour and move it like any section. Drag a quest item to Rest to keep it out. Applies to all your characters."
+L.OPT_QUEST_SECTION_DESC = "Put quest items into their own \"Quest Items\" section automatically. You can rename, colour and move it like any section. Drag a quest item to Rest to keep it out. Applies to the bags and the bank, on all your characters."
 L.GROUP_LAYOUT = "Layout"
 L.GROUP_SECTIONS = "Sections and items"
 L.GROUP_APPEARANCE = "Appearance"
