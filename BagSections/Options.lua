@@ -75,6 +75,8 @@ function Options.Init()
 	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, function(value)
 		return ("%d%%"):format(math.floor(value * 100 + 0.5))
 	end, function() ns.Frame.ApplyScale() end)
+	AddSlider("semiRowSpacing", L.OPT_SEMI_ROW_SPACING, L.OPT_SEMI_ROW_SPACING_DESC, ns.DEFAULTS.semiRowSpacing, 4, 30, 1, nil, Refresh)
+	AddSlider("semiColumnSpacing", L.OPT_SEMI_COLUMN_SPACING, L.OPT_SEMI_COLUMN_SPACING_DESC, ns.DEFAULTS.semiColumnSpacing, 6, 40, 1, nil, Refresh)
 	AddCheckbox("showEmptySections", L.SHOW_EMPTY, L.OPT_SHOW_EMPTY_DESC, ns.DEFAULTS.showEmptySections, Refresh)
 	AddCheckbox("showKeyring", L.SHOW_KEYRING, L.OPT_SHOW_KEYRING_DESC, ns.DEFAULTS.showKeyring, Refresh)
 
@@ -106,6 +108,16 @@ function Options.Init()
 	end
 
 	Settings.RegisterAddOnCategory(category)
+
+	-- Show the bags as a live preview while this settings page is open (see
+	-- Frame.SetPreview). Only reads the panel's state; nothing of Blizzard's is hooked.
+	if SettingsPanel then
+		local watcher = CreateFrame("Frame")
+		watcher:SetScript("OnUpdate", function()
+			local onOurPage = SettingsPanel:IsShown() and SettingsPanel:GetCurrentCategory() == category
+			ns.Frame.SetPreview(onOurPage and true or false)
+		end)
+	end
 end
 
 function Options.Open()

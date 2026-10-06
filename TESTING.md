@@ -96,3 +96,6 @@ mention BagSections.
 | T88 | Leave the bank, fly somewhere, `/reload`, then `/bs bank` | Same contents as when you left. The footer says "Updated … ago". Tooltips work; Shift-click links an item in chat. |
 | T89 | Log in to another character on the same account | Its own character bank (or the visit hint), and the same account bank tabs. |
 | T90 | Change Columns, Section name size, background and border settings with the Bank window open | It follows them, like the bags. |
+| T91 | Semi-compact, Settings → the two Semi-compact spacing sliders: drag each to the smallest, then the largest, then back to the default (6 and 12) | Each changes only its own gap. Smallest: every row's items stay clear of the section names below, and blue drop highlights of neighbouring sections don't touch. Largest side by side: rows that no longer fit wrap. The defaults look as before. Neither slider is in the gear menu. |
+| T92 | Bags closed. Esc → Options → AddOns → BagSections | The bags open above the Settings panel, titled "Bags (preview)". Moving any slider or ticking any box changes them straight away. Click another settings page: they close. Close Settings: they stay closed, and B opens them normally. |
+| T93 | Bags open, then `/bs config` | The bags stay open as the preview; after closing Settings they're still open. |

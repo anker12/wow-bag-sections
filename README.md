@@ -73,6 +73,10 @@ rows, never your items.
 
 ### Appearance
 
+While BagSections' page in Settings is open, the bags stay open above it as a live
+preview ("Bags (preview)"), so every change shows straight away. They close again when you
+leave the page, unless they were already open.
+
 In Settings:
 * **Background:** *Dark* (plain dark) or *Blizzard* (Blizzard's own panel background).
   **Background opacity** sets how see-through it is.
@@ -106,7 +110,8 @@ Switch layouts from the gear menu (Layout) or in Settings.
   bar to lock again. The layout is locked by default and after every `/reload`, so moving
   the window never moves sections by accident. A row can hold at most as many sections as
   fit at one slot wide each (8 at 10 columns). *Reset rows* in the Layout menu goes back to
-  that 3-per-row starting point. Your arrangement also sets the section order used by the other
+  that 3-per-row starting point. Settings → **Semi-compact: space between rows** and
+  **Semi-compact: space between sections side by side** set the gaps between sections. Your arrangement also sets the section order used by the other
   layouts, and profiles save it. Reagents and Keyring stay full width at the bottom.
 * **Compact:** works like Blizzard's combined bag. All sections run through one grid with
   no gaps: each section starts in the slot right after the previous one ends and wraps onto
