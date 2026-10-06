@@ -7,12 +7,18 @@
 local _, ns = ...
 local L = ns.L
 
-local TAB_BUTTON_SIZE = 30 -- the bank's bag slots in the footer
+-- The bank's bag slots in the footer: item buttons at Blizzard's bank sizes
+-- (BankItemButtonBagTemplate: scale 0.75, one every 50 units), with the slot frame art
+-- sized to sit around the button instead of the item button's default 64x64.
+local TAB_BUTTON_SCALE = 0.75
+local TAB_STEP = 50 -- from one slot to the next, in the buttons' own units
+local TAB_FRAME_SIZE = 46 -- the slot frame art
 local TAB_ROW_GAP = 6
+local BUY_BUTTON_WIDTH = 100
 
 local window -- set below
 local tabButtons = {}
-local bankBackground, buyTab, tabDivider
+local bankBackground, buyTab, buyCost, slotsLabel, tabDivider
 
 -- Snapshot slots get plain item buttons that only show the saved item: there's no live
 -- item behind them to click or drag. (Forever has no ItemButtonTemplate; the plain
@@ -81,12 +87,19 @@ local function CreateButtons(content, win)
 			cached.HideExcept(keep)
 		end,
 		UpdateShown = live.UpdateShown,
+		Enumerate = live.Enumerate,
 		UpdateCooldowns = live.UpdateCooldowns,
 		Precreate = live.Precreate,
 	}
 end
 
--- The bank's stone background, like Blizzard's bank. Opacity and border follow Settings.
+-- Blizzard's bank look: its stone background, and its border with the round portrait corner
+-- (the banker's face at the bank, a bank icon elsewhere). Opacity follows Settings; with
+-- the Blizzard border turned off it uses the plain thin border like the bags.
+local PORTRAIT_SIZE = 62
+local BANK_ICON = "Interface\\Icons\\INV_Misc_Bag_10_Blue"
+local portraitFrame, portrait
+
 local function Style(main)
 	ns.Frame.StyleWindow(main)
 	if not bankBackground then
@@ -96,102 +109,238 @@ local function Style(main)
 		bankBackground:SetAtlas("bank-frame-background")
 		bankBackground:SetHorizTile(true)
 		bankBackground:SetVertTile(true)
+		NineSliceUtil.ApplyLayoutByName(main.BlizzardBorder, "PortraitFrameTemplate")
+		-- Same size and place as Blizzard's portrait frames (PortraitFrameBaseTemplate).
+		portraitFrame = CreateFrame("Frame", nil, main)
+		portraitFrame:SetSize(1, 1)
+		portraitFrame:SetPoint("TOPLEFT")
+		portraitFrame:SetFrameLevel(main.BlizzardBorder:GetFrameLevel() - 1)
+		portrait = portraitFrame:CreateTexture(nil, "OVERLAY")
+		portrait:SetSize(PORTRAIT_SIZE, PORTRAIT_SIZE)
+		portrait:SetPoint("TOPLEFT", -5, 7)
+		local mask = portraitFrame:CreateMaskTexture()
+		mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		mask:SetPoint("TOPLEFT", portrait, "TOPLEFT", 2, 0)
+		mask:SetPoint("BOTTOMRIGHT", portrait, "BOTTOMRIGHT", -2, 4)
+		portrait:AddMaskTexture(mask)
 	end
 	main.BlizzardBackground:Show()
 	main.BlizzardBackground:SetAlpha(ns.db.backgroundAlpha or 0.94)
 	main:SetBackdropColor(0, 0, 0, 0)
+	portraitFrame:SetShown(ns.db.blizzardBorder ~= false)
 end
 
--- Tabs to show as bag slots: live at the bank, else from the snapshot.
-local function CurrentTabs()
-	if ns.Bank.IsOpen() then
-		local tabs = {}
-		for _, tab in ipairs(ns.Inventory.BankTabs()) do
-			table.insert(tabs, { bag = tab.ID, name = tab.name, icon = tab.icon, size = C_Container.GetContainerNumSlots(tab.ID) or 0 })
-		end
-		return tabs
+local function UpdatePortrait()
+	if not portrait then
+		return
 	end
-	return ns.charDB.bank and ns.charDB.bank.tabs or {}
+	if ns.Bank.IsOpen() and UnitExists and UnitExists("npc") then
+		SetPortraitTexture(portrait, "npc")
+	else
+		portrait:SetTexture(BANK_ICON)
+	end
 end
 
-local function CreateTabButton(main, index)
-	local button = CreateFrame("Button", nil, main.Chrome)
-	button:SetSize(TAB_BUTTON_SIZE, TAB_BUTTON_SIZE)
+-- The bank's bag slots, like Blizzard's bank: slot 1 is the bank itself, slots 2 and up
+-- take a bag once bought. { max = n, slots = { [slot] = { bought, icon, link } } }, live at
+-- the bank, else from the snapshot.
+local function BagSlots()
+	if ns.Bank.IsOpen() then
+		return ns.Bank.ReadBagSlots()
+	end
+	local snapshot = ns.charDB.bank
+	if not snapshot then
+		return { max = 0, slots = {} }
+	end
+	if snapshot.bagSlots then
+		return snapshot.bagSlots
+	end
+	-- Snapshots from before bag slots were saved: what was bought, without the bags.
+	local slots = {}
+	for index = 2, #snapshot.tabs do
+		slots[index] = { bought = true }
+	end
+	return { max = #snapshot.tabs, slots = slots }
+end
+
+local function NextSlotPrice()
+	if not (ns.Bank.IsOpen() and C_Bank.CanPurchaseBankTab and C_Bank.CanPurchaseBankTab(Enum.BankType.Character)) then
+		return nil
+	end
+	return C_Bank.FetchNextPurchasableBankTabData and C_Bank.FetchNextPurchasableBankTabData(Enum.BankType.Character)
+end
+
+-- Buying a slot: Blizzard only lets its own code buy one, so the Buy slot button (and the
+-- invisible button laid over a padlocked slot while it's hovered) are made from
+-- BankPanelPurchaseButtonScriptTemplate, which Blizzard provides for addons: clicking it
+-- runs Blizzard's own click code and confirm dialog (with the price) and buys the slot.
+local function MakePurchaseButton(button)
+	button:SetAttribute("overrideBankType", Enum.BankType.Character)
+	return button
+end
+
+local purchaseProxy -- laid over the hovered padlocked slot
+
+local function ShowPurchaseProxy(slotButton)
+	if not ns.Bank.IsOpen() then
+		return
+	end
+	if not purchaseProxy then
+		purchaseProxy = MakePurchaseButton(CreateFrame("Button", nil, slotButton:GetParent(), "BankPanelPurchaseButtonScriptTemplate"))
+		purchaseProxy:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(BANK_BAG_PURCHASE or L.BANK_SLOT_LOCKED)
+			GameTooltip:Show()
+		end)
+		purchaseProxy:SetScript("OnLeave", function(self)
+			GameTooltip_Hide()
+			self:Hide()
+		end)
+	end
+	purchaseProxy:ClearAllPoints()
+	purchaseProxy:SetAllPoints(slotButton)
+	purchaseProxy:SetFrameLevel(slotButton:GetFrameLevel() + 5)
+	purchaseProxy:Show()
+end
+
+-- A bought slot: pick up the bag in it, or drop a bag in, like Blizzard's bank bag slots.
+local function PickupBagSlot(self)
+	if self.bought and ns.Bank.IsOpen() then
+		C_Container.PickupContainerItem(Enum.BagIndex.Characterbanktab, self.slotIndex)
+	end
+end
+
+local function CreateBagSlotButton(main, index)
+	local button = CreateFrame("ItemButton", nil, main.Chrome)
+	button:SetScale(TAB_BUTTON_SCALE)
+	button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	button:RegisterForDrag("LeftButton")
 	button.Background = button:CreateTexture(nil, "BACKGROUND")
 	button.Background:SetAllPoints()
 	button.Background:SetAtlas("bank-frame-bag-slot-bg")
-	button.Icon = button:CreateTexture(nil, "ARTWORK")
-	button.Icon:SetPoint("TOPLEFT", 3, -3)
-	button.Icon:SetPoint("BOTTOMRIGHT", -3, 3)
-	button.Frame = button:CreateTexture(nil, "OVERLAY")
-	button.Frame:SetAllPoints()
-	button.Frame:SetAtlas("bank-frame-bag-slotframe")
-	button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+	button:SetNormalAtlas("bank-frame-bag-slotframe")
+	local frameArt = button:GetNormalTexture()
+	frameArt:ClearAllPoints()
+	frameArt:SetPoint("CENTER")
+	frameArt:SetSize(TAB_FRAME_SIZE, TAB_FRAME_SIZE)
+	button.Lock = button:CreateTexture(nil, "ARTWORK", nil, 1)
+	button.Lock:SetAllPoints()
+	button.Lock:SetAtlas("bankslot-icon-lock")
+	button:SetScript("OnClick", PickupBagSlot)
+	button:SetScript("OnDragStart", PickupBagSlot)
+	button:SetScript("OnReceiveDrag", PickupBagSlot)
 	button:SetScript("OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip_SetTitle(GameTooltip, self.tabName)
-		GameTooltip_AddNormalLine(GameTooltip, L.BANK_TAB_SLOTS:format(self.size or 0))
+		if self.bought and ns.Bank.IsOpen() then
+			-- Show which bank slots belong to this bag, like Blizzard's bank does.
+			window.HighlightBag(self.bagID)
+		end
+		if not self.bought and ns.Bank.IsOpen() and NextSlotPrice() then
+			-- The purchase button takes over this spot, and shows the tooltip.
+			ShowPurchaseProxy(self)
+			return
+		end
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		if not self.bought then
+			GameTooltip:SetText(BANK_BAG_PURCHASE or L.BANK_SLOT_LOCKED)
+		elseif ns.Bank.IsOpen() and self.hasBag then
+			GameTooltip:SetBagItem(Enum.BagIndex.Characterbanktab, self.slotIndex)
+		elseif self.link then
+			GameTooltip:SetHyperlink(self.link)
+		else
+			GameTooltip:SetText(BANK_BAG or L.BANK_SLOT_EMPTY)
+		end
 		GameTooltip:Show()
 	end)
-	button:SetScript("OnLeave", GameTooltip_Hide)
+	button:SetScript("OnLeave", function()
+		GameTooltip_Hide()
+		window.HighlightBag(nil)
+	end)
 	tabButtons[index] = button
 	return button
 end
 
-local function CanBuyTab()
-	return ns.Bank.IsOpen() and C_Bank.CanPurchaseBankTab and C_Bank.CanPurchaseBankTab(Enum.BankType.Character)
-		and C_Bank.FetchNextPurchasableBankTabData and C_Bank.FetchNextPurchasableBankTabData(Enum.BankType.Character)
-end
-
-StaticPopupDialogs["BAGSECTIONS_BUY_BANK_TAB"] = {
-	text = "%s",
-	button1 = YES,
-	button2 = NO,
-	timeout = 0,
-	whileDead = 1,
-	hideOnEscape = 1,
-	OnAccept = function()
-		C_Bank.PurchaseBankTab(Enum.BankType.Character)
-	end,
-}
-
--- The bank's bag slots along the bottom, like Blizzard's bank, and a button to buy the
--- next tab while at the bank. Returns the height used.
+-- Footer row: "Bag slots:" and every bag slot (bought or locked), then the price of the
+-- next slot and a Buy slot button, like Blizzard's bank. When it's too narrow for both,
+-- the price and button get a line of their own above the slots. Returns the height used.
 local function FooterExtra(main, pad, bottom)
 	if not buyTab then
-		buyTab = CreateFrame("Button", nil, main.Chrome, "UIPanelButtonTemplate")
-		buyTab:SetSize(110, 22)
-		buyTab:SetText(L.BANK_BUY_TAB)
-		buyTab:SetScript("OnClick", function()
-			local data = CanBuyTab()
-			if data then
-				StaticPopup_Show("BAGSECTIONS_BUY_BANK_TAB", L.BANK_BUY_TAB_CONFIRM:format(GetMoneyString(data.tabCost or 0, true)))
-			end
-		end)
+		buyTab = MakePurchaseButton(CreateFrame("Button", nil, main.Chrome, "BankPanelPurchaseButtonScriptTemplate, UIPanelButtonTemplate"))
+		buyTab:SetSize(BUY_BUTTON_WIDTH, 22)
+		buyTab:SetText(L.BANK_BUY_SLOT)
+		buyCost = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		slotsLabel = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		slotsLabel:SetText(BAGSLOTTEXT_COLON or L.BANK_BAG_SLOTS)
 		tabDivider = main.Chrome:CreateTexture(nil, "ARTWORK")
 		tabDivider:SetColorTexture(1, 1, 1, 0.12)
 		tabDivider:SetHeight(1)
 	end
-	local tabs = CurrentTabs()
-	for index, tab in ipairs(tabs) do
-		local button = tabButtons[index] or CreateTabButton(main, index)
-		button.tabName = (tab.name and tab.name ~= "") and tab.name or L.BANK_TAB:format(index)
-		button.size = tab.size
-		button.Icon:SetTexture(tab.icon)
+	local innerWidth = (main:GetWidth() or 0) - pad * 2
+	local info = BagSlots()
+	-- On screen: how far apart the slots are, and the height their frames need.
+	local step = TAB_STEP * TAB_BUTTON_SCALE
+	local slotSize = TAB_FRAME_SIZE * TAB_BUTTON_SCALE
+	local labelWidth = (slotsLabel:GetStringWidth() or 0) + 8
+	local count = math.max(info.max - 1, 0)
+	local slotsWidth = labelWidth + count * step
+
+	local price = NextSlotPrice()
+	if price then
+		local money = GetMoneyString(price.tabCost or 0, true)
+		if price.canAfford == false then
+			money = RED_FONT_COLOR_CODE and (RED_FONT_COLOR_CODE .. money .. "|r") or money
+		end
+		buyCost:SetText((COSTS_LABEL or L.BANK_COST) .. " " .. money)
+	end
+	local buyWidth = price and ((buyCost:GetStringWidth() or 0) + 8 + BUY_BUTTON_WIDTH) or 0
+	local twoLines = price and slotsWidth + 12 + buyWidth > innerWidth
+	local rowHeight = slotSize + 6
+	local slotsBottom = bottom
+
+	slotsLabel:SetShown(count > 0)
+	slotsLabel:ClearAllPoints()
+	slotsLabel:SetPoint("LEFT", main.Chrome, "BOTTOMLEFT", pad, slotsBottom + rowHeight / 2)
+	for index = 2, info.max do
+		local slot = info.slots[index] or {}
+		local button = tabButtons[index] or CreateBagSlotButton(main, index)
+		button.slotIndex = index
+		-- The bank bag in this slot (Blizzard's BankItemButtonBagMixin:GetExactBankTabSlot).
+		button.bagID = Enum.BagIndex.CharacterBankTab_1 + index - 1
+		button.bought = slot.bought or false
+		button.hasBag = slot.icon ~= nil
+		button.link = slot.link
+		button:SetItemButtonTexture(slot.icon)
+		button.Lock:SetShown(not button.bought)
 		button:ClearAllPoints()
-		button:SetPoint("BOTTOMLEFT", main.Chrome, "BOTTOMLEFT", pad + (index - 1) * (TAB_BUTTON_SIZE + 4), bottom)
+		-- Points are in the button's own (scaled) units.
+		-- Centred in its step, in the button's own (scaled) units.
+		local centreX = pad + labelWidth + (index - 2) * step + step / 2
+		local centreY = slotsBottom + rowHeight / 2
+		button:SetPoint("CENTER", main.Chrome, "BOTTOMLEFT", centreX / TAB_BUTTON_SCALE, centreY / TAB_BUTTON_SCALE)
 		button:Show()
 	end
-	for index = #tabs + 1, #tabButtons do
-		tabButtons[index]:Hide()
+	for index, button in pairs(tabButtons) do
+		if index > info.max then
+			button:Hide()
+		end
 	end
-	buyTab:SetShown(CanBuyTab() and true or false)
+
+	local buyBottom = twoLines and (slotsBottom + rowHeight + 4) or slotsBottom
+	buyTab:SetShown(price and true or false)
+	buyCost:SetShown(price and true or false)
 	buyTab:ClearAllPoints()
-	buyTab:SetPoint("BOTTOMRIGHT", main.Chrome, "BOTTOMRIGHT", -pad, bottom + (TAB_BUTTON_SIZE - 22) / 2)
-	local height = TAB_BUTTON_SIZE + TAB_ROW_GAP
+	buyTab:SetPoint("BOTTOMRIGHT", main.Chrome, "BOTTOMRIGHT", -pad, buyBottom + (rowHeight - 22) / 2)
+	buyCost:ClearAllPoints()
+	buyCost:SetPoint("RIGHT", buyTab, "LEFT", -8, 0)
+
+	local height = (twoLines and (rowHeight * 2 + 4) or rowHeight) + TAB_ROW_GAP
+	if count == 0 and not price then
+		height = 0
+	end
+	tabDivider:SetShown(height > 0)
 	tabDivider:ClearAllPoints()
 	tabDivider:SetPoint("BOTTOMLEFT", main.Chrome, "BOTTOMLEFT", pad, bottom + height - TAB_ROW_GAP / 2)
 	tabDivider:SetPoint("BOTTOMRIGHT", main.Chrome, "BOTTOMRIGHT", -pad, bottom + height - TAB_ROW_GAP / 2)
+	UpdatePortrait()
 	return height
 end
 
@@ -227,6 +376,9 @@ window = ns.Frame.NewWindow({
 	columnsKey = "bankColumns",
 	scaleKey = "bankScale",
 	positionKey = "bankFrame",
+	-- Room for the portrait corner, like Blizzard's bank.
+	titleHeight = 58,
+	titleInset = 52,
 	-- Until it's moved: next to the bags if they're open, else where Blizzard's bank opens.
 	PlaceByDefault = function(main)
 		if BagSectionsFrame and BagSectionsFrame:IsShown() then

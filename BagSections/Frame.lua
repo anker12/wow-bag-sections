@@ -31,7 +31,7 @@ local CELL = BUTTON_SIZE + SPACING
 
 -- Compact layout: every group runs through one shared grid, outlined in its colour.
 -- Slots keep a strict grid (same columns on every row); the gap between all slots is wider
--- than in the default layout so outlines fit between neighbouring sections.
+-- than in the stacked layout so outlines fit between neighbouring sections.
 local COMPACT_GAP = 10 -- space between slots, in every direction
 local COMPACT_CELL = BUTTON_SIZE + COMPACT_GAP
 local OUTLINE_PADDING = 3 -- space between a section's items and its outline, on every side
@@ -189,6 +189,11 @@ local function NewWindow(cfg)
 	Frame.IsOwnBag = cfg.IsOwnBag
 	Frame.isBank = cfg.isBank or false
 
+	-- Space above the items: the title row, or more for the bank's portrait corner.
+	local titleHeight = cfg.titleHeight or TITLE_HEIGHT
+	-- The title moves right to clear a portrait.
+	local titleInset = cfg.titleInset or 0
+
 	-- Slots per row and scale have their own settings per window.
 	local function Columns()
 		return ns.db[cfg.columnsKey] or ns.DEFAULTS[cfg.columnsKey] or 10
@@ -277,10 +282,10 @@ local function NewWindow(cfg)
 			return ("%s %s |cff999999(%d)|r"):format(marker, group.name, group.count)
 		elseif group.kind == "rest" then
 			return ("%s %s |cff999999(%d)|r"):format(marker, L.REST, #group.slots)
+		elseif group.kind == "bagreagent" or (group.kind == "reagent" and group.gathers) then
+			return ("%s %s |cff999999(%d)|r"):format(marker, L.REAGENTS, group.count)
 		elseif group.kind == "reagent" then
 			return ("%s %s"):format(marker, L.REAGENTS)
-		elseif group.kind == "bagreagent" then
-			return ("%s %s |cff999999(%d)|r"):format(marker, L.REAGENTS_BAGS, group.count)
 		end
 		return ("%s %s"):format(marker, L.KEYRING)
 	end
@@ -291,8 +296,8 @@ local function NewWindow(cfg)
 			return ("%s |cff999999(%d)|r"):format(group.name, group.count)
 		elseif group.kind == "rest" then
 			return ("%s |cff999999(%d)|r"):format(L.REST, #group.slots)
-		elseif group.kind == "bagreagent" then
-			return ("%s |cff999999(%d)|r"):format(L.REAGENTS_BAGS, group.count)
+		elseif group.kind == "bagreagent" or (group.kind == "reagent" and group.gathers) then
+			return ("%s |cff999999(%d)|r"):format(L.REAGENTS, group.count)
 		end
 		return group.kind == "reagent" and L.REAGENTS or L.KEYRING
 	end
@@ -309,7 +314,7 @@ local function NewWindow(cfg)
 			return nil
 		end
 		local location = C_Cursor.GetCursorItem()
-		if not (location and location:IsValid()) then
+		if not ns.Inventory.IsKnownLocation(location) then
 			return nil
 		end
 		local item = ns.Inventory.GetItemFromLocation(location)
@@ -330,6 +335,11 @@ local function NewWindow(cfg)
 		return state
 	end
 
+	-- Reagents gathered from the bags: their own group, or merged into the reagent bag's.
+	local function GathersReagents(group)
+		return group.kind == "bagreagent" or (group.kind == "reagent" and group.gathers)
+	end
+
 	local function IsDropTarget(group)
 		if not cursorState or cursorState.source == "locked" or (cfg.AcceptsDrops and not cfg.AcceptsDrops()) then
 			return false
@@ -338,13 +348,13 @@ local function NewWindow(cfg)
 			return cursorState.section ~= group.key
 		elseif group.kind == "rest" then
 			return cursorState.source == "bags" and cursorState.section ~= Rules.REST
-		elseif group.kind == "bagreagent" then
+		elseif GathersReagents(group) then
 			return cursorState.source == "bags" and cursorState.item.isReagent and cursorState.section ~= "bagreagent"
 		end
 		return false
 	end
 
-	-- Dropped on Rest: out of its section, or out of Reagents (bags) for good.
+	-- Dropped on Rest: out of its section, or out of the gathered bag reagents for good.
 	local function MoveToRest(state)
 		if state.section == "bagreagent" then
 			Rules.KeepInRest(cfg.GetDB(), state.item)
@@ -370,7 +380,7 @@ local function NewWindow(cfg)
 		if group.kind == "rest" then
 			MoveToRest(state)
 			ClearCursor()
-		elseif group.kind == "bagreagent" then
+		elseif GathersReagents(group) then
 			Rules.UnassignLinked(db, cfg.GetPartnerDB(), state.item)
 			ClearCursor()
 		elseif group.kind == "section" then
@@ -448,7 +458,6 @@ local function NewWindow(cfg)
 		header.Text:SetJustifyH("LEFT")
 		header.Line = header:CreateTexture(nil, "ARTWORK")
 		header.Line:SetColorTexture(1, 1, 1, 0.15)
-		header.Line:SetHeight(1)
 		header.Line:SetPoint("LEFT", header.Text, "RIGHT", 6, 0)
 		header.Line:SetPoint("RIGHT")
 		header:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
@@ -516,7 +525,7 @@ local function NewWindow(cfg)
 		return overlay
 	end
 
-	-- border: draw the blue border (default layout; compact turns the outline blue instead).
+	-- border: draw the blue border (stacked layout; compact turns the outline blue instead).
 	-- Rest's highlight never takes the mouse: dropping on any Rest slot places the item there
 	-- (see Frame.OnItemButtonDrop).
 	local function ShowOverlay(index, group, x, y, width, height, border)
@@ -534,7 +543,9 @@ local function NewWindow(cfg)
 	local function PlaceButton(group, slot, x, y, used)
 		local button = buttons.ForSlot(slot)
 		button.bsSectionName = group.kind == "section" and group.name or nil
-		button.bsGroupKind = group.kind
+		-- Bag reagents shown among the reagent bag's slots stay what they are: dropping on
+		-- one is like dropping on a Rest slot, not into the reagent bag.
+		button.bsGroupKind = (group.kind == "reagent" and slot.area ~= "reagent") and "bagreagent" or group.kind
 		used[button] = true
 		button:ClearAllPoints()
 		button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
@@ -546,6 +557,10 @@ local function NewWindow(cfg)
 		header.group = group
 		header:ClearAllPoints()
 		header.Text:SetText(GroupTitle(group))
+		-- At least one screen pixel thick, set on every draw as the window's scale can change.
+		-- A plain 1-unit line is under a pixel at scales below 1, and is then rounded away or
+		-- not depending on where it lands, so lines came and went as sections moved.
+		PixelUtil.SetHeight(header.Line, 1, 1)
 		if Frame.IsRearranging() and CanDrag(group) then
 			header:RegisterForDrag("LeftButton")
 		else
@@ -555,7 +570,7 @@ local function NewWindow(cfg)
 		return header
 	end
 
-	-- Draws one group the default way (header, then a grid of `columns` slots) in a box at
+	-- Draws one group the stacked way (header, then a grid of `columns` slots) in a box at
 	-- (x, y) that is `width` pixels wide. Returns the height used.
 	local function DrawGroup(index, group, x, y, width, columns, gridWidth, used)
 		local top = y
@@ -590,8 +605,8 @@ local function NewWindow(cfg)
 		return y - top
 	end
 
-	-- Default layout: groups stacked top to bottom at full width.
-	local function RenderDefault(groups, columns, gridWidth, used)
+	-- Stacked layout: groups top to bottom at full width.
+	local function RenderStacked(groups, columns, gridWidth, used)
 		local y = 0
 		for index, group in ipairs(groups) do
 			y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + GROUP_GAP
@@ -599,7 +614,7 @@ local function NewWindow(cfg)
 		return y - GROUP_GAP
 	end
 
-	-- Semi-compact layout: like the default, but your sections sit side by side, a number per
+	-- Semi-compact layout: like the stacked one, but your sections sit side by side, a number per
 	-- row (AUTO_PER_ROW until the player arranges rows), each growing downwards. Rest,
 	-- Reagents and Keyring stay full width.
 
@@ -656,7 +671,7 @@ local function NewWindow(cfg)
 				DrawRow(chunk, dataRow)
 			end
 		end
-		-- Reagents, Reagents (bags) and Keyring: full width at the bottom.
+		-- Reagents and Keyring: full width at the bottom.
 		for index, group in ipairs(groups) do
 			if group.kind == "reagent" or group.kind == "bagreagent" or group.kind == "keyring" then
 				y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + rowGap
@@ -969,7 +984,7 @@ local function NewWindow(cfg)
 	end
 
 	-- Compact layout: sections and Rest flow through one grid; the reagent bag and keyring sit
-	-- in a second grid below a divider, like the default layout keeps them separate.
+	-- in a second grid below a divider, like the stacked layout keeps them separate.
 	local COMPACT_DIVIDER_GAP = 10
 
 	local function RenderCompact(groups, columns, used)
@@ -987,7 +1002,7 @@ local function NewWindow(cfg)
 			local dividerY = height + COMPACT_DIVIDER_GAP / 2
 			dividerLine:ClearAllPoints()
 			dividerLine:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -dividerY)
-			dividerLine:SetSize(width, 1)
+			PixelUtil.SetSize(dividerLine, width, 1, 0, 1)
 			dividerLine:Show()
 			height = RenderFlow(extra, columns, used, height + COMPACT_DIVIDER_GAP, counters)
 		end
@@ -1082,7 +1097,7 @@ local function NewWindow(cfg)
 		-- options and sort buttons, inside the border's top band.
 		main.buttonRowY = 1 - (main.CloseButton:GetHeight() or 24) / 2
 		main.Title = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-		main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", PADDING, main.buttonRowY)
+		main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", PADDING + titleInset, main.buttonRowY)
 		main.Title:SetText(cfg.title)
 		-- The bags: right-click the title to look at the bank from anywhere. Dragging it
 		-- still moves the window, as the rest of the title row does.
@@ -1227,7 +1242,7 @@ local function NewWindow(cfg)
 		end)
 
 		content = CreateFrame("Frame", nil, main)
-		content:SetPoint("TOPLEFT", PADDING, -TITLE_HEIGHT)
+		content:SetPoint("TOPLEFT", PADDING, -titleHeight)
 		buttons = cfg.CreateButtons(content, Frame)
 
 		-- Compact-layout outlines draw above the item buttons: the buttons' slot art is larger
@@ -1266,8 +1281,8 @@ local function NewWindow(cfg)
 
 		main.RearrangeBar = CreateFrame("Button", nil, main.Chrome)
 		main.RearrangeBar:SetHeight(REARRANGE_BAR_HEIGHT - 4)
-		main.RearrangeBar:SetPoint("TOPLEFT", PADDING, -TITLE_HEIGHT + 2)
-		main.RearrangeBar:SetPoint("TOPRIGHT", -PADDING, -TITLE_HEIGHT + 2)
+		main.RearrangeBar:SetPoint("TOPLEFT", PADDING, -titleHeight + 2)
+		main.RearrangeBar:SetPoint("TOPRIGHT", -PADDING, -titleHeight + 2)
 		main.RearrangeBar.Background = main.RearrangeBar:CreateTexture(nil, "BACKGROUND")
 		main.RearrangeBar.Background:SetAllPoints()
 		main.RearrangeBar.Background:SetColorTexture(DROP_COLOR.r, DROP_COLOR.g, DROP_COLOR.b, 0.2)
@@ -1294,9 +1309,9 @@ local function NewWindow(cfg)
 			return
 		end
 		local pad = Shared.SidePadding()
-		main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", pad, main.buttonRowY)
-		main.RearrangeBar:SetPoint("TOPLEFT", pad, -TITLE_HEIGHT + 2)
-		main.RearrangeBar:SetPoint("TOPRIGHT", -pad, -TITLE_HEIGHT + 2)
+		main.Title:SetPoint("LEFT", main.Chrome, "TOPLEFT", pad + titleInset, main.buttonRowY)
+		main.RearrangeBar:SetPoint("TOPLEFT", pad, -titleHeight + 2)
+		main.RearrangeBar:SetPoint("TOPRIGHT", -pad, -titleHeight + 2)
 		Frame.RequestRefresh()
 		cfg.Style(main)
 	end
@@ -1419,7 +1434,7 @@ local function NewWindow(cfg)
 
 	-- Redraw: rescan bags, then place everything.
 	-- mode "layout" always rebuilds the arrangement. Mode "items" (bag contents changed) does
-	-- too in the default layout, but the compact layout keeps its frozen arrangement.
+	-- too in the stacked layout, but the compact layout keeps its frozen arrangement.
 	function Frame.Render(mode)
 		if not (main and main:IsShown()) then
 			return
@@ -1464,7 +1479,7 @@ local function NewWindow(cfg)
 		elseif ns.db[cfg.layoutKey] == "semicompact" then
 			contentHeight = RenderSemiCompact(groups, columns, gridWidth, used)
 		else
-			contentHeight = RenderDefault(groups, columns, gridWidth, used)
+			contentHeight = RenderStacked(groups, columns, gridWidth, used)
 		end
 
 		buttons.HideExcept(used)
@@ -1481,8 +1496,8 @@ local function NewWindow(cfg)
 		main.RearrangeBar:SetShown(barHeight > 0)
 		content:ClearAllPoints()
 		local pad = Shared.SidePadding()
-		content:SetPoint("TOPLEFT", pad, -(TITLE_HEIGHT + barHeight))
-		bodyHeight = TITLE_HEIGHT + barHeight + contentHeight
+		content:SetPoint("TOPLEFT", pad, -(titleHeight + barHeight))
+		bodyHeight = titleHeight + barHeight + contentHeight
 		main:SetWidth(gridWidth + pad * 2)
 
 		local bagSlots = {}
@@ -1500,6 +1515,21 @@ local function NewWindow(cfg)
 	function Frame.UpdateButtons()
 		if main and main:IsShown() then
 			buttons.UpdateShown()
+		end
+	end
+
+	-- Glows every slot that belongs to `bag` (nil: none), like Blizzard's bags do while a
+	-- bag button is hovered: the slots to empty before that bag can be swapped. Uses the
+	-- item button template's own BagIndicator glow.
+	function Frame.HighlightBag(bag)
+		if not buttons then
+			return
+		end
+		for _, button in buttons.Enumerate() do
+			local indicator = rawget(button, "BagIndicator")
+			if indicator then
+				indicator:SetShown(bag ~= nil and button:IsShown() and button:GetBagID() == bag)
+			end
 		end
 	end
 

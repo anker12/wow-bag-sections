@@ -42,7 +42,7 @@ local function Read()
 	if #tabs > 0 and totalSize == 0 then
 		return nil -- tabs known but their slots not loaded yet
 	end
-	return { updated = time(), tabs = tabs }
+	return { updated = time(), tabs = tabs, bagSlots = Bank.ReadBagSlots() }
 end
 
 local function Snapshot()
@@ -99,6 +99,26 @@ function Bank.OnClosed()
 	Snapshot()
 	isOpen = false
 	ns.BankFrame.Hide()
+end
+
+-- The bank's bag slots, like Blizzard's bank shows them: slot 1 is the bank itself, slots
+-- 2 to max take a bag once bought. Only answers at the bank.
+-- Returns { max = n, slots = { [slot] = { bought, icon, link } } }.
+function Bank.ReadBagSlots()
+	local bankType = Enum.BankType.Character
+	local max = C_Bank.FetchMaxNumBankTabs and C_Bank.FetchMaxNumBankTabs(bankType) or 0
+	local bought = #(C_Bank.FetchPurchasedBankTabData and C_Bank.FetchPurchasedBankTabData(bankType) or {})
+	local slots = {}
+	for index = 2, max do
+		local slot = { bought = index <= bought }
+		local location = ItemLocation:CreateFromBagAndSlot(Enum.BagIndex.Characterbanktab, index)
+		if slot.bought and C_Item.DoesItemExist(location) then
+			slot.icon = C_Item.GetItemIcon(location)
+			slot.link = C_Item.GetItemLink(location)
+		end
+		slots[index] = slot
+	end
+	return { max = max, slots = slots }
 end
 
 -- True while the player is at the bank, so the bank window shows what's there right now.

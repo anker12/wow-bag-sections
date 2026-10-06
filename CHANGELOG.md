@@ -5,6 +5,24 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Changed
+- Semi-compact is now the default layout, for the bags and the bank. The old "Default"
+  layout is now called "Stacked". Your current layout choice stays as it is.
+- Semi-compact's space between rows is 4 by default (was 6). Your current setting stays as
+  it is.
+- The bank window looks more like Blizzard's: its border with the round portrait corner
+  (the banker, or a bank icon away from the bank).
+- Every bank bag slot shows along the bottom, bought or not (padlocked). Bags in bought
+  slots can be swapped by clicking or dragging, as in Blizzard's bank.
+- Hovering a bag button on the action bar glows that bag's slots in the bags, and hovering
+  a bank bag slot glows that bag's slots in the bank: the slots to empty before swapping
+  the bag, as Blizzard's bags and bank show them.
+- "Buy tab" is now "Buy slot", with the price of the next slot next to it (red if you can't
+  afford it). Clicking a padlocked slot also offers to buy it. Buying goes through
+  Blizzard's own purchase button and dialog, so it's no longer blocked.
+- The Quest Items section setting now covers the bank too: turning it on or off changes
+  both the bags and the bank. It's in Settings only, no longer in the gear menu.
+
 ### Added
 - The bank window replaces Blizzard's at the banker ("Replace the default bank", on by
   default): Blizzard's look (stone background, the bank's bag slots at the bottom, buy a
@@ -13,14 +31,15 @@ section into CurseForge's changelog box when uploading.
   right-click, drag and drop, search and sort. Away from the bank it shows the last visit,
   as before. Only the character bank is shown.
 - Bank sections, kept separately from the bag sections. The first visit to a banker offers
-  to copy your bag sections and add an automatic Reagents section; the bank's gear menu has
-  New section, Copy sections from bags and the Reagents section switch.
+  to copy your bag sections; the bank's gear menu has New section and Copy sections from
+  bags. The bank has an automatic Reagents section, on by default (Settings → Reagents
+  section in the bank, for all your characters).
 - Linked sections: a bag section and its bank copy share their items, so an item lands in
   the matching section when it moves between bags and bank. Sections with the same name
   are linked automatically. "New section" in either gear menu can make a linked copy of
   one from the other side.
-- "Gather reagents from bags" setting (off by default): crafting reagents in your normal
-  bags show together as "Reagents (bags)", right after the reagent bag.
+- "Gather reagents from bags" setting (on by default): crafting reagents in your normal
+  bags show in the Reagents section together with the reagent bag, as one block.
 
 ### Changed
 - Settings are grouped under headings: Layout, Sections and items, Appearance, Text size,
@@ -28,6 +47,10 @@ section into CurseForge's changelog box when uploading.
 - The Quest Items section is on by default, and the setting now applies to all your
   characters (it used to be per character). Existing installs keep the setting of the
   first character you log in with.
+
+### Fixed
+- Section header lines no longer come and go (most visible in Semi-compact, and in the bank
+  at its smaller scale): they're kept at least one screen pixel thick at any scale.
 
 ## [1.3.0] - 2026-10-04
 

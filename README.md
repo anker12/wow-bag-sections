@@ -46,27 +46,29 @@ Copy the `BagSections` folder into
 * Gear you add is matched by exact item, so only that sword goes to the section. Everything
   else is matched by item type: every Hearthstone, every stack of that potion. You can change
   this for gear in the settings, or per item with Alt+Right-click.
-* Sections are saved per character. Settings (layout, sizes, appearance, Quest Items) are
+* Sections are saved per character. Settings (layout, sizes, appearance, Quest Items, Reagents) are
   shared by all your characters.
 
 ### Quest Items section
 
-With **Quest Items section** on (the default; Settings or the gear menu), quest items go
+With **Quest Items section** on (the default; in Settings), quest items go
 into their own "Quest Items" section automatically. That includes quest starters and items
 whose type is Quest. It's a normal section otherwise: rename it, colour it, or move it
 below Rest. Drag a quest item to Rest to keep that item out, or into another section to
 put it there instead. Turning the option off removes the section, unless you've added
-other items to it by hand. The option applies to all your characters; loading a profile
+other items to it by hand. The option applies to the bags and the bank (each has its own
+Quest Items section) and to all your characters; loading a profile
 keeps it as it is (the profile only decides where the section sits).
 
-### Reagents (bags)
+### Gather reagents from bags
 
-Turn on **Gather reagents from bags** in Settings, and crafting reagents in your normal bags
-(the items the reagent bag would take) are shown together as **Reagents (bags)**, right
-after the reagent bag, as their own block so you can tell them apart. Only items that
-would otherwise be in Rest move there; items you've put in a section stay in it. Drag one
-to Rest to keep that item in Rest, or back onto Reagents (bags) to undo that. Off by
-default.
+With **Gather reagents from bags** on (the default; in Settings), crafting reagents in your normal bags
+(the items the reagent bag would take) are shown in the **Reagents** section together with
+the reagent bag, as one block like the bank's Reagents section: the reagent bag's items,
+then the reagents from your bags, then the reagent bag's empty slots. Without a reagent bag
+they get a Reagents section of their own. Only items that would otherwise be in Rest move
+there; items you've put in a section stay in it. Drag one to Rest to keep that item in
+Rest, or back onto the Reagents header to undo that.
 
 ### Profiles
 
@@ -109,8 +111,11 @@ gold, they move to their own line above it, and wrap onto more lines if needed.
 
 Switch layouts from the gear menu (Layout) or in Settings.
 
-* **Default:** the layout above. Each section is stacked at full width.
-* **Semi-compact:** like Default, but sections sit side by side in rows, each an equal
+Bags and bank both start in **Semi-compact**.
+
+* **Stacked** (called Default in earlier versions): the layout above. Each section is stacked at
+  full width.
+* **Semi-compact** (the default): like Stacked, but sections sit side by side in rows, each an equal
   share of the row's width and growing downwards. Out of the box it puts 3 sections per
   row, with Rest on its own row. **Arrange the rows yourself:** gear menu → *Rearrange sections* unlocks the layout,
   and a blue bar under the title shows it's unlocked. Then drag a section's name:
@@ -122,13 +127,14 @@ Switch layouts from the gear menu (Layout) or in Settings.
   the window never moves sections by accident. A row can hold at most as many sections as
   fit at one slot wide each (8 at 10 columns). *Reset rows* in the Layout menu goes back to
   that 3-per-row starting point. Settings → **Semi-compact: space between rows** and
-  **Semi-compact: space between sections side by side** set the gaps between sections. Your arrangement also sets the section order used by the other
+  **Semi-compact: space between sections side by side** set the gaps between sections (4
+  and 12 by default). Your arrangement also sets the section order used by the other
   layouts, and profiles save it. Reagents and Keyring stay full width at the bottom.
 * **Compact:** works like Blizzard's combined bag. All sections run through one grid with
   no gaps: each section starts in the slot right after the previous one ends and wraps onto
   the next line. Each section is outlined in its own colour, even across line breaks, with
   its name on its top edge. Slots always line up in the same columns on every row. Compact
-  spaces slots a little further apart than Default to fit thin outlines between sections,
+  spaces slots a little further apart than Stacked to fit thin outlines between sections,
   so its window is slightly wider. Reagents and Keyring sit below a thin divider, apart
   from your sections. Hover a name to see it in full. Change a section's colour
   from its right-click menu (Colour...). Rest is grey and Reagents green. Empty and
@@ -152,22 +158,25 @@ Bags  [search........]  [sort] [⚙] [x]
 ### Bank
 
 At a banker, BagSections' bank window opens instead of Blizzard's (Settings → **Replace the
-default bank**; needs `/reload`). It looks like Blizzard's bank (the stone background, the
-bank's bag slots along the bottom) and works like it: right-click items to move them
-between bank and bags, drag and drop, search, sort, and buy another tab. Closing it ends
-the conversation with the banker.
+default bank**; needs `/reload`). It looks like Blizzard's bank (the stone background, its
+border with the banker's portrait, the bank's bag slots along the bottom) and works like
+it: right-click items to move them between bank and bags, drag and drop, search and sort.
+Every bag slot shows along the bottom: bought ones with their bag (click or drag to swap
+it; hovering it glows the bank slots that belong to that bag), the rest with a padlock. **Buy slot** shows the price of the next one; click it (or
+a padlocked slot) to buy it. Closing the window ends the conversation with the banker.
 
-It has its own layout, separate from the bags: Default, Semi-compact or Compact, from the
+It has its own layout, separate from the bags: Stacked, Semi-compact (the default) or Compact, from the
 bank window's gear menu or Settings → **Bank layout**. Its size is separate too: Settings →
 **Bank columns** (15 by default, half as wide again as the bags) and **Bank scale**.
 
 **Bank sections** work like your bag sections, but are kept separately: creating, renaming
 or deleting one in the bank doesn't touch the bags, and the other way round. The first time
-you visit a banker, BagSections asks whether to set them up: copy your bag sections to the
-bank, and add an automatic **Reagents** section that collects crafting reagents. Later, the
+you visit a banker, BagSections asks whether to copy your bag sections to the bank. The
+bank also has an automatic **Reagents** section that collects crafting reagents, on by
+default (Settings → **Reagents section in the bank**, for all your characters). Later, the
 bank window's gear menu has **New section...**, **Copy sections from bags** (one, or all
-that the bank doesn't have yet), the **Reagents section** switch and **Set up bank
-sections...** to go through the questions again. Drag an item from your bags onto a bank
+that the bank doesn't have yet) and **Set up bank sections...** to go through the
+questions again. Drag an item from your bags onto a bank
 section to put it in the bank, in that section.
 
 **Linked sections:** a bank section copied from a bag section (or the other way round) is

@@ -6,13 +6,14 @@ local Rules = ns.Rules
 
 ns.DEFAULTS = {
 	frame = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -60, y = 100 },
-	layout = "default", -- "default" | "semicompact" | "compact"
+	-- "semicompact" | "default" (shown as "Stacked"; saved under its old name) | "compact"
+	layout = "semicompact",
 	-- Where Rest sits relative to newly created sections: "bottom" puts new sections above
 	-- Rest, "top" puts them below it. Existing sections keep their place.
 	restPosition = "bottom",
 	columns = 10,
 	-- Semi-compact: space between rows of sections, and between sections side by side.
-	semiRowSpacing = 6,
+	semiRowSpacing = 4,
 	semiColumnSpacing = 12,
 	scale = 1,
 	-- On by default so a newly created (still empty) section shows up straight away.
@@ -23,11 +24,13 @@ ns.DEFAULTS = {
 	takeOverBags = true,
 	-- Automatic Quest Items section, for every character on the account.
 	autoQuest = true,
-	-- Crafting reagents in normal bags shown together next to the reagent bag.
-	bagReagents = false,
+	-- Crafting reagents in normal bags shown in the Reagents section with the reagent bag.
+	bagReagents = true,
+	-- Automatic Reagents section in the bank, for every character on the account.
+	bankReagents = true,
 	-- Bank window: replaces Blizzard's at the banker; its own layout.
 	replaceBank = true,
-	bankLayout = "default",
+	bankLayout = "semicompact",
 	bankColumns = 15, -- half as wide again as the bags by default
 	bankScale = 1,
 	-- Appearance
@@ -48,16 +51,31 @@ function ns.NewSectionsBelowRest()
 	return ns.db.restPosition == "top"
 end
 
--- The Quest Items setting is account wide; each character's section list follows it.
-function ns.SyncAutoQuest()
-	if ns.charDB.autoQuest ~= ns.db.autoQuest then
-		Rules.SetAutoQuest(ns.charDB, ns.db.autoQuest, L.QUEST_ITEMS, ns.NewSectionsBelowRest())
+-- The automatic sections are account-wide settings: each character's section lists follow
+-- them. Quest Items covers the bags and the bank, Reagents the bank (the bags have the
+-- reagent bag).
+function ns.SyncAutoSections()
+	local below = ns.NewSectionsBelowRest()
+	for _, db in ipairs({ ns.charDB, ns.charDB.bankSections }) do
+		if db and db.autoQuest ~= ns.db.autoQuest then
+			Rules.SetAutoQuest(db, ns.db.autoQuest, L.QUEST_ITEMS, below)
+		end
+	end
+	local bank = ns.charDB.bankSections
+	if bank and bank.autoReagent ~= ns.db.bankReagents then
+		Rules.SetAuto(bank, Rules.AUTO_REAGENT, ns.db.bankReagents, L.REAGENTS, below)
 	end
 end
 
 function ns.SetAutoQuest(enabled)
 	ns.db.autoQuest = enabled and true or false
-	ns.SyncAutoQuest()
+	ns.SyncAutoSections()
+	ns.RequestRefresh()
+end
+
+function ns.SetBankReagents(enabled)
+	ns.db.bankReagents = enabled and true or false
+	ns.SyncAutoSections()
 	ns.RequestRefresh()
 end
 
@@ -121,10 +139,9 @@ local function OnAddonLoaded()
 	ns.charDB = BagSectionsCharDB
 	-- The bank's sections and item rules live apart from the bags'.
 	BagSectionsCharDB.bankSections = Rules.Upgrade(BagSectionsCharDB.bankSections)
-	BagSectionsCharDB.bankSections.autoQuest = false
 	-- Sections with the same name in bags and bank share their items (see Rules.Link).
 	Rules.LinkByName(BagSectionsCharDB, BagSectionsCharDB.bankSections)
-	ns.SyncAutoQuest()
+	ns.SyncAutoSections()
 
 	ns.Frame.Init()
 	ns.BankFrame.Init()
@@ -153,6 +170,16 @@ local function OnAddonLoaded()
 	events:RegisterEvent("BAG_UPDATE_COOLDOWN")
 	events:RegisterEvent("PLAYER_MONEY")
 	events:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+	-- Hovering a bag button on the action bar glows that bag's slots, like Blizzard's bags.
+	if EventRegistry then
+		local owner = {}
+		EventRegistry:RegisterCallback("BagSlot.OnEnter", function(_, bagSlot)
+			if bagSlot and bagSlot.GetBagID then
+				ns.Frame.HighlightBag(bagSlot:GetBagID())
+			end
+		end, owner)
+		EventRegistry:RegisterCallback("BagSlot.OnLeave", function() ns.Frame.HighlightBag(nil) end, owner)
+	end
 	-- Ticking or unticking "Show on Backpack" in the Currency tab.
 	if EventRegistry then
 		EventRegistry:RegisterCallback("TokenFrame.OnTokenWatchChanged", function() ns.Frame.UpdateFooter() end, events)

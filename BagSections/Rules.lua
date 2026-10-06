@@ -288,7 +288,7 @@ function Rules.Unassign(db, item)
 	end
 end
 
--- Keeps an item in Rest even though an automatic group (Quest Items, Reagents (bags))
+-- Keeps an item in Rest even though an automatic group (Quest Items, gathered bag reagents)
 -- would take it.
 function Rules.KeepInRest(db, item)
 	if item.guid then

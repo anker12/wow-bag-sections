@@ -12,7 +12,7 @@ local frames = {}
 local KNOWN_TEMPLATES = {
 	BackdropTemplate = true, BagSearchBoxTemplate = true, ContainerFrameItemButtonTemplate = true,
 	FlatPanelBackgroundTemplate = true, NineSlicePanelTemplate = true, UIPanelCloseButton = true,
-	UIPanelButtonTemplate = true,
+	UIPanelButtonTemplate = true, BankPanelPurchaseButtonScriptTemplate = true,
 }
 local function NewFrame(frameType, name, parent, template)
 	for t in tostring(template or ""):gmatch("[^,%s]+") do
@@ -66,7 +66,9 @@ local function NewFrame(frameType, name, parent, template)
 		GetPoint = function() return "BOTTOMRIGHT", nil, "BOTTOMRIGHT", -60, 100 end,
 		CreateFontString = function() return NewFrame("FontString") end,
 		CreateTexture = function() return NewFrame("Texture") end,
+		CreateMaskTexture = function() return NewFrame("MaskTexture") end,
 		GetHighlightTexture = function(self) self._hl = self._hl or NewFrame("Texture"); return self._hl end,
+		GetNormalTexture = function(self) self._normal = self._normal or NewFrame("Texture"); return self._normal end,
 		SetText = function(self, text) self._text = text end,
 		GetText = function(self) return self._text end,
 		SetAttribute = function(self, key, value) self._attrs[key] = value; if self.OnAttributeChanged then self:OnAttributeChanged(key, value) end end,
@@ -89,6 +91,8 @@ local function NewFrame(frameType, name, parent, template)
 		frame.GetBagID = function(self) return self.bagID or self._parent:GetID() end
 		frame.SetHasItem = function(self, has) self.hasItem = has and 1 or nil end
 		frame.HasItem = function(self) return self.hasItem end
+		frame.BagIndicator = NewFrame("Texture")
+		frame.BagIndicator._shown = false
 		frame._shown = false
 	end
 	table.insert(frames, frame)
@@ -111,6 +115,8 @@ local NUM_SLOTS = { [0] = 16, [1] = 4, [2] = 0, [3] = 0, [4] = 0, [5] = 2, [-1] 
 NUM_SLOTS[6], NUM_SLOTS[15] = 4, 2
 ITEMS["6:2"] = { itemID = 700, name = "Old Robe", stack = 1 }
 ITEMS["15:1"] = { itemID = 800, name = "Shared Ore", stack = 12, maxStack = 20 }
+-- The bag in the bank's bag slot 2 (Characterbanktab is the bank's list of bag slots).
+ITEMS["-2:2"] = { itemID = 900, name = "Bank Bag", stack = 1 }
 local cursor -- { bag, slot }
 local sortCalls = 0
 
@@ -127,7 +133,7 @@ end
 
 _G.Enum = {
 	BankType = { Character = 0, Guild = 1, Account = 2 },
-	BagIndex = { Keyring = -1, Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5, CharacterBankTab_1 = 6, CharacterBankTab_9 = 14 },
+	BagIndex = { Characterbanktab = -2, Keyring = -1, Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5, CharacterBankTab_1 = 6, CharacterBankTab_9 = 14 },
 	TooltipDataType = { Item = 0 },
 	ItemClass = { Questitem = 12 },
 }
@@ -167,11 +173,14 @@ _G.C_Container = {
 }
 -- _G._staleCursor mimics GetCursorItem still answering after the cursor was emptied.
 _G.C_Cursor = { GetCursorItem = function()
+	if _G._badCursorLocation then return _G._badCursorLocation end
 	local c = cursor or _G._staleCursor
 	return c and MakeLocation(c.bag, c.slot) or nil
 end }
 _G.C_Item = {
 	DoesItemExist = function(loc) return ItemAt(loc.bag, loc.slot) ~= nil end,
+	GetItemIcon = function(loc) local i = ItemAt(loc.bag, loc.slot); return i and 1 end,
+	GetItemLink = function(loc) local i = ItemAt(loc.bag, loc.slot); return i and ("link:" .. i.name) end,
 	GetItemGUID = function(loc) return "Item-" .. loc.bag .. "-" .. loc.slot .. "-" .. ItemAt(loc.bag, loc.slot).itemID end,
 	GetItemID = function(loc) local i = ItemAt(loc.bag, loc.slot); return i and i.itemID end,
 	IsEquippableItem = function(itemID) for _, i in pairs(ITEMS) do if i.itemID == itemID then return i.equip or false end end return false end,
@@ -194,10 +203,12 @@ _G.C_Bank = {
 	CanViewBank = function() return _G._atBank end,
 	CloseBankFrame = function() _G._bankClosed = true end,
 	CanPurchaseBankTab = function() return true end,
-	FetchNextPurchasableBankTabData = function() return { tabCost = 100000 } end,
+	FetchNextPurchasableBankTabData = function() return { tabCost = 100000, canAfford = _G._canAfford ~= false } end,
+	-- Slot 1 is the bank; slot 2 is bought (the bag below), slots 3-4 aren't.
+	FetchMaxNumBankTabs = function() return 4 end,
 	PurchaseBankTab = function() end,
 	FetchPurchasedBankTabData = function(bankType)
-		if bankType == 0 then return { { ID = 6, name = "Gear", icon = 1 } } end
+		if bankType == 0 then return { { ID = 6, name = "Gear", icon = 1 }, { ID = 7, name = "", icon = 2 } } end
 		if bankType == 2 then return { { ID = 15, name = "", icon = 1 } } end
 		return {}
 	end,
@@ -237,6 +248,7 @@ _G.GetMoney = function() return 12345 end
 _G.PixelUtil = {
 	SetPoint = function(region, ...) region:SetPoint(...) end,
 	SetSize = function(region, w, h) region:SetSize(w, h) end,
+	SetHeight = function(region, h, minPixels) region:SetHeight(h); region._minPixels = minPixels end,
 }
 _G._now = 100
 _G.GetTime = function() return _G._now end
@@ -274,10 +286,17 @@ _G.ColorPickerFrame = {
 	GetColorRGB = function() return 0.1, 0.2, 0.3 end,
 }
 _G.MinimalSliderWithSteppersMixin = { Label = { Right = 2 } }
+-- Records the text of every menu entry in _G._menuEntries.
 _G.MenuUtil = { CreateContextMenu = function(owner, fn)
+	_G._menuEntries = {}
 	local function Description()
 		local d = {}
-		setmetatable(d, { __index = function() return function() return Description() end end })
+		setmetatable(d, { __index = function()
+			return function(_, text)
+				if type(text) == "string" then _G._menuEntries[text] = true end
+				return Description()
+			end
+		end })
 		return d
 	end
 	fn(owner, Description())
@@ -360,6 +379,7 @@ Fire("ADDON_LOADED", "BagSections")
 Fire("PLAYER_LOGIN")
 check(type(BagSectionsDB) == "table" and type(BagSectionsCharDB) == "table", "saved variables initialized")
 check(not ns.Frame.IsShown(), "window starts hidden")
+check(BagSectionsDB.layout == "semicompact" and BagSectionsDB.bankLayout == "semicompact", "bags and bank start in Semi-compact")
 
 -- The Quest Items section is on by default, for the whole account.
 check(BagSectionsDB.autoQuest == true and BagSectionsCharDB.autoQuest == true, "Quest Items on by default")
@@ -415,6 +435,22 @@ RunOnUpdates()
 check(not ns.Frame.IsShown(), "Escape closes the window")
 _G.ToggleAllBags()
 check(ns.Frame.IsShown(), "B opens again")
+
+-- Hovering a bag button on the action bar glows that bag's slots (Blizzard's BagIndicator).
+local function Glowing()
+	local list = {}
+	for _, frame in ipairs(frames) do
+		local indicator = rawget(frame, "BagIndicator")
+		if indicator and indicator._shown then table.insert(list, frame) end
+	end
+	return list
+end
+_G._registryCallbacks["BagSlot.OnEnter"]({}, { GetBagID = function() return 1 end })
+local glowing = Glowing()
+check(#glowing == 4, "hovering bag 1's button glows its 4 slots (" .. #glowing .. ")")
+for _, button in ipairs(glowing) do check(button:GetBagID() == 1, "only bag 1's slots glow") end
+_G._registryCallbacks["BagSlot.OnLeave"]({})
+check(#Glowing() == 0, "the glow goes when the mouse leaves")
 
 -- Item buttons get their bag from a parent frame, not from a value written on the button.
 local probe = ns.ItemButtons.Get(1, 2)
@@ -641,21 +677,24 @@ check(BagSectionsDB.autoQuest and db.autoQuest, "turned on for the account and t
 groups = ns.Layout.Build(db, ns.Inventory.Scan())
 check(GroupOf(1, 3).name == "Quest Items", "quest item goes to Quest Items section")
 
--- Reagents (bags): off by default; when on, reagents in normal bags gather right after the
--- reagent bag. Sections win; dragging one to Rest keeps it there; dragging back undoes it.
-groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = BagSectionsDB.bagReagents })
-check(BagSectionsDB.bagReagents == false and GroupOf(0, 7).kind == "rest", "reagents stay in Rest by default")
-BagSectionsDB.bagReagents = true
+-- Gather reagents from bags: on by default; reagents in normal bags join the reagent bag's
+-- Reagents group (off: they stay in Rest). Sections win; dragging one to Rest keeps it
+-- there; dragging back undoes it.
+check(BagSectionsDB.bagReagents == true, "gathering reagents from bags is on by default")
+groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = false })
+check(GroupOf(0, 7).kind == "rest", "off: reagents stay in Rest")
 local function Kinds()
 	local list = {}
 	for _, g in ipairs(groups) do list[#list + 1] = g.kind end
 	return table.concat(list, ",")
 end
 groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = true })
-check(GroupOf(0, 7).kind == "bagreagent", "a bag reagent gathers in Reagents (bags)")
-check(GroupOf(5, 1).kind == "reagent", "the real reagent bag is unchanged")
-check(Kinds():find("reagent,bagreagent", 1, true), "Reagents (bags) comes right after the reagent bag (" .. Kinds() .. ")")
+check(GroupOf(0, 7).kind == "reagent", "a bag reagent joins the Reagents group")
+check(GroupOf(5, 1).kind == "reagent", "with the reagent bag's slots")
+check(not Kinds():find("bagreagent", 1, true), "one Reagents group, not two (" .. Kinds() .. ")")
 ns.RequestRefresh()
+check(ns.ItemButtons.Get(0, 7).bsGroupKind == "bagreagent" and ns.ItemButtons.Get(5, 1).bsGroupKind == "reagent",
+	"in it, bag reagents keep their own drop behaviour and reagent bag slots theirs")
 C_Container.PickupContainerItem(0, 7)
 Fire("CURSOR_CHANGED")
 local restTarget = FindGroupFrame("rest")
@@ -665,19 +704,29 @@ groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = true })
 check(GroupOf(0, 7).kind == "rest", "dragged to Rest: stays in Rest")
 C_Container.PickupContainerItem(0, 7)
 Fire("CURSOR_CHANGED")
-local bagReagentTarget = FindGroupFrame("bagreagent")
-check(bagReagentTarget, "Reagents (bags) takes it back")
+local bagReagentTarget = FindGroupFrame("reagent")
+check(bagReagentTarget, "Reagents takes it back")
 bagReagentTarget._scripts.OnReceiveDrag(bagReagentTarget)
 groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = true })
-check(GroupOf(0, 7).kind == "bagreagent", "and it's back in Reagents (bags)")
+check(GroupOf(0, 7).kind == "reagent", "and it's back in Reagents")
 ns.Rules.Assign(db, { itemID = 500 }, db.sections[1].id, ns.Rules.KIND_ITEMID)
 groups = ns.Layout.Build(db, ns.Inventory.Scan(), { bagReagents = true })
-check(GroupOf(0, 7).kind == "section", "a section still wins over Reagents (bags)")
+check(GroupOf(0, 7).kind == "section", "a section still wins over gathering")
 ns.Rules.Unassign(db, { itemID = 500 })
 for _, layoutName in ipairs({ "compact", "semicompact", "default" }) do
 	ns.Menu.SetLayout(layoutName)
 	check(ns.Frame.IsShown(), "draws in " .. layoutName)
 end
+-- Header lines are at least a screen pixel thick, so none vanish at scales below 1.
+local headerLines = 0
+for _, frame in ipairs(frames) do
+	local line = rawget(frame, "Line")
+	if line and frame._shown and frame.group then
+		headerLines = headerLines + 1
+		check(line._minPixels == 1, "header line of " .. tostring(frame.group.key) .. " is kept at least a pixel thick")
+	end
+end
+check(headerLines > 0, "headers drawn with lines")
 BagSectionsDB.bagReagents = false
 ns.RequestRefresh()
 
@@ -758,7 +807,7 @@ local function Gaps()
 	return sb._point[4] - (sa._point[4] + sa._w), sa._point[5] - sd._point[5]
 end
 local function Near(x, y) return math.abs(x - y) <= 0.5 end
-check(BagSectionsDB.semiRowSpacing == 6 and BagSectionsDB.semiColumnSpacing == 12, "section spacing defaults")
+check(BagSectionsDB.semiRowSpacing == 4 and BagSectionsDB.semiColumnSpacing == 12, "section spacing defaults")
 local baseColumnGap, baseRowDistance = Gaps()
 check(Near(baseColumnGap, 12), "default: 12 between sections side by side, as before")
 BagSectionsDB.semiColumnSpacing = 30
@@ -769,13 +818,13 @@ check(rowDistance == baseRowDistance, "rows don't move when only the side-by-sid
 BagSectionsDB.semiRowSpacing = 20
 ns.RequestRefresh()
 columnGap, rowDistance = Gaps()
-check(rowDistance - baseRowDistance == 14, "rows move apart by the extra spacing")
+check(rowDistance - baseRowDistance == 16, "rows move apart by the extra spacing")
 check(Near(columnGap, 30), "side-by-side spacing unchanged by the row spacing")
 BagSectionsDB.semiRowSpacing, BagSectionsDB.semiColumnSpacing = 0, 0
 ns.RequestRefresh()
 columnGap, rowDistance = Gaps()
-check(Near(columnGap, 6) and rowDistance - baseRowDistance == -2, "spacing never goes below the minimums")
-BagSectionsDB.semiRowSpacing, BagSectionsDB.semiColumnSpacing = 6, 12
+check(Near(columnGap, 6) and rowDistance == baseRowDistance, "spacing never goes below the minimums (rows: the default 4 is the minimum)")
+BagSectionsDB.semiRowSpacing, BagSectionsDB.semiColumnSpacing = 4, 12
 ns.RequestRefresh()
 
 
@@ -898,7 +947,7 @@ for _, frame in ipairs(frames) do if frame._name == "BagSectionsBankFrame" then 
 local function CachedBankButtons()
 	local list = {}
 	for _, frame in ipairs(frames) do
-		if frame._type == "ItemButton" and frame._template == nil and frame._shown and frame:IsVisible() then table.insert(list, frame) end
+		if frame._type == "ItemButton" and frame._template == nil and not rawget(frame, "Lock") and frame._shown and frame:IsVisible() then table.insert(list, frame) end
 	end
 	return list
 end
@@ -935,27 +984,116 @@ check(math.abs(bankWindow._w - mainFrame._w) < 1, "bank columns set separately f
 BagSectionsDB.bankColumns = 15
 ns.BankFrame.RequestRefresh()
 check(rawget(bankWindow, "FreeSlots")._text == "3 / 4", "bank free slots (the account bank is ignored)")
-check(BagSectionsCharDB.bank and #BagSectionsCharDB.bank.tabs == 1 and BagSectionsCharDB.bank.tabs[1].bag == 6, "character bank remembered, with its bag")
+check(BagSectionsCharDB.bank and #BagSectionsCharDB.bank.tabs == 2 and BagSectionsCharDB.bank.tabs[1].bag == 6, "character bank remembered, with its bag")
+
+-- Bag slots along the bottom like Blizzard's bank: every slot, bought or not, the bag in a
+-- bought slot can be picked up and swapped, and the next slot's price next to Buy slot.
+local function BagSlotButtons()
+	local list = {}
+	for _, frame in ipairs(frames) do
+		if frame._type == "ItemButton" and rawget(frame, "Lock") and frame._shown then table.insert(list, frame) end
+	end
+	table.sort(list, function(x, y) return x.slotIndex < y.slotIndex end)
+	return list
+end
+local setupPopup = _G._lastPopup -- the first-visit questions, checked below
+local bagSlots = BagSlotButtons()
+check(#bagSlots == 3, "every bank bag slot shows (slots 2 to 4)")
+local function SlotX(button) return button._point[4] * 0.75 end
+check(SlotX(bagSlots[2]) - SlotX(bagSlots[1]) == 37.5, "slots are spaced like Blizzard's bank (50 units at 0.75 scale)")
+check(rawget(bagSlots[1]:GetNormalTexture(), "_w") == 46, "the slot frame art sits around the button, not at 64x64")
+check(bagSlots[1].bought and bagSlots[1].hasBag and not bagSlots[1].Lock._shown, "a bought slot shows its bag")
+check(not bagSlots[2].bought and bagSlots[2].Lock._shown and bagSlots[3].Lock._shown, "slots not bought yet show a padlock")
+bagSlots[1]._scripts.OnEnter(bagSlots[1])
+local bankGlow = Glowing()
+check(#bankGlow == 0 or bankGlow[1]:GetBagID() == 7, "hovering a bank bag slot glows only that bag's slots")
+bagSlots[1].bagID = 6 -- the test bank's items are all in bag 6; check the glow follows the slot's bag
+bagSlots[1]._scripts.OnEnter(bagSlots[1])
+check(#Glowing() == 4, "hovering glows every slot of that bank bag")
+bagSlots[1]._scripts.OnLeave(bagSlots[1])
+check(#Glowing() == 0, "and stops when the mouse leaves")
+bagSlots[1]._scripts.OnClick(bagSlots[1])
+check(cursor and cursor.bag == -2 and cursor.slot == 2, "clicking a bought slot picks up its bag, to swap it")
+-- Blizzard's IsValid errors on the location of a bag picked up from a bank bag slot; the
+-- drop targets must cope (the bag isn't an item to sort, so nothing lights up).
+_G._badCursorLocation = { IsValid = function() error("bad argument #1 to 'DoesItemExist'") end }
+Fire("CURSOR_CHANGED")
+ns.RequestRefresh()
+check(FindGroupFrame("section") == nil, "a bag picked up from a bank bag slot causes no error")
+_G._badCursorLocation = nil
+cursor = nil
+Fire("CURSOR_CHANGED")
+check(BagSectionsCharDB.bank.bagSlots and BagSectionsCharDB.bank.bagSlots.max == 4 and BagSectionsCharDB.bank.bagSlots.slots[2].link, "the bag slots are remembered too")
+local buyButton, costText
+for _, frame in ipairs(frames) do
+	if frame._template == "BankPanelPurchaseButtonScriptTemplate, UIPanelButtonTemplate" and frame._text == "Buy slot" then buyButton = frame end
+	if frame._type == "FontString" and type(frame._text) == "string" and frame._text:find("100000", 1, true) then costText = frame end
+end
+check(buyButton and buyButton._shown, "Buy slot shows at the bank")
+check(costText and costText._shown, "with the price of the next slot next to it")
+-- Buying goes through Blizzard's purchase button template (its own click code and dialog),
+-- set to the character bank, so it isn't blocked.
+check(buyButton._attrs.overrideBankType == 0, "Buy slot is Blizzard's purchase button for the character bank")
+bagSlots[2]._scripts.OnEnter(bagSlots[2])
+local proxy
+for _, frame in ipairs(frames) do
+	if frame._template == "BankPanelPurchaseButtonScriptTemplate" then proxy = frame end
+end
+check(proxy and proxy._shown and proxy._attrs.overrideBankType == 0, "hovering a padlocked slot puts Blizzard's purchase button over it")
+proxy._scripts.OnLeave(proxy)
+check(not proxy._shown, "and takes it away again")
+_G._lastPopup = setupPopup
+check(rawget(rawget(bankWindow, "BlizzardBorder"), "_layout") == "PortraitFrameTemplate", "Blizzard's bank border, with the portrait corner")
 check(BagSectionsCharDB.bank.tabs[1].items[2].id == 700, "with its items in their slots")
 
 -- First visit: set up bank sections. Copy the bag sections, add a Reagents section.
 check(_G._lastPopup and _G._lastPopup.data.onAccept, "first visit asks about bank sections")
 check(BagSectionsCharDB.bankSetupDone, "only asked once")
 local bankDB = BagSectionsCharDB.bankSections
+-- Quest Items is one setting for the bags and the bank: it's on, so the bank has it too.
+local function OwnSections(list)
+	local own = {}
+	for _, s in ipairs(list.sections) do
+		if not s.auto then table.insert(own, s) end
+	end
+	return own
+end
+local function AutoSection(list, auto)
+	for _, s in ipairs(list.sections) do
+		if s.auto == auto then return s end
+	end
+end
+check(ns.db.autoQuest and bankDB.autoQuest and AutoSection(bankDB, ns.Rules.AUTO_QUEST), "the bank has a Quest Items section while the setting is on")
+check(ns.db.bankReagents and bankDB.autoReagent and AutoSection(bankDB, ns.Rules.AUTO_REAGENT), "and a Reagents section, on by default")
 local bagSectionCount = #BagSectionsCharDB.sections
 local missingBefore = #ns.Rules.MissingSections(BagSectionsCharDB, bankDB)
+local introPopup = _G._lastPopup
 _G._lastPopup.data.onAccept() -- yes, set up
-check(_G._lastPopup.data.onAccept and _G._lastPopup.data.onCancel, "then asks about copying")
+check(_G._lastPopup ~= introPopup and _G._lastPopup.data.onAccept, "then asks about copying")
+local copyPopup = _G._lastPopup
 _G._lastPopup.data.onAccept() -- yes, copy
-check(#bankDB.sections == missingBefore and missingBefore > 0, "bag sections copied to the bank")
+check(_G._lastPopup == copyPopup, "no question about a Reagents section: it's a setting")
+check(#OwnSections(bankDB) == missingBefore and missingBefore > 0, "bag sections copied to the bank")
 check(#BagSectionsCharDB.sections == bagSectionCount, "the bags' sections are unchanged")
-check(bankDB.sections[1].name == ns.Rules.MissingSections(BagSectionsCharDB, { sections = {} })[1].name, "same names, same order")
-_G._lastPopup.data.onAccept() -- yes, Reagents section
-check(bankDB.autoReagent and bankDB.sections[#bankDB.sections].auto == ns.Rules.AUTO_REAGENT, "bank Reagents section added")
+check(OwnSections(bankDB)[1].name == ns.Rules.MissingSections(BagSectionsCharDB, { sections = {} })[1].name, "same names, same order")
 check(#ns.Rules.MissingSections(BagSectionsCharDB, bankDB) == 0, "nothing left to copy")
+-- Turning Quest Items off takes it out of the bags and the bank; on puts it back in both.
+ns.SetAutoQuest(false)
+check(not AutoSection(BagSectionsCharDB, ns.Rules.AUTO_QUEST) and not AutoSection(bankDB, ns.Rules.AUTO_QUEST), "Quest Items off: gone from bags and bank")
+ns.SetAutoQuest(true)
+check(AutoSection(BagSectionsCharDB, ns.Rules.AUTO_QUEST) and AutoSection(bankDB, ns.Rules.AUTO_QUEST), "Quest Items on: back in bags and bank")
+ns.SetBankReagents(false)
+check(not bankDB.autoReagent and not AutoSection(bankDB, ns.Rules.AUTO_REAGENT), "bank Reagents off: gone")
+ns.SetBankReagents(true)
+check(AutoSection(bankDB, ns.Rules.AUTO_REAGENT), "bank Reagents on: back")
+-- Both are settings only, not in the gear menus.
+ns.Menu.OpenMainMenu(UIParent)
+check(_G._menuEntries[ns.L.SHOW_EMPTY] and not _G._menuEntries[ns.L.QUEST_SECTION], "bags' gear menu: no Quest Items switch")
+ns.Menu.OpenBankMenu(bankWindow)
+check(_G._menuEntries[ns.L.SHOW_EMPTY] and not _G._menuEntries[ns.L.QUEST_SECTION] and not _G._menuEntries[ns.L.BANK_REAGENT_SECTION], "bank's gear menu: no Quest Items or Reagents switch")
 
 -- Copied sections are linked to the bag section they came from: they share items.
-local bankSection = bankDB.sections[1]
+local bankSection = OwnSections(bankDB)[1]
 local bagPartner = ns.Rules.FindByLink(BagSectionsCharDB, bankSection.link)
 check(bankSection.link and bagPartner and bagPartner.name == bankSection.name, "copies are linked to their bag section")
 ns.BankFrame.RequestRefresh()
@@ -1041,6 +1179,8 @@ check(BagSectionsCharDB.bank.tabs[1].items[3], "nothing is read away from the ba
 SlashCmdList.BAGSECTIONS("bank")
 check(bankWindow:IsShown() and #CachedBankButtons() == 4 and #LiveBankButtons() == 0, "the snapshot, with its own buttons")
 check(bankFooter() == "Updated just now", "says how old the snapshot is")
+check(#BagSlotButtons() == 3 and BagSlotButtons()[1].hasBag, "away from the bank, the bag slots show as they were")
+check(not buyButton._shown, "no Buy slot away from the bank")
 C_Container.PickupContainerItem(0, 5)
 Fire("CURSOR_CHANGED")
 check(FindGroupFrame("section", bankSection.id) == nil, "away from the bank, bank sections don't take drops")

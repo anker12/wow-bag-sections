@@ -24,6 +24,8 @@ read_globals = {
 	"ClearCursor", "CursorHasItem", "GetMouseFoci", "GetMoney", "GetMoneyString", "GetKeyRingSize",
 	"InCombatLockdown", "GetTime", "PixelUtil", "GetCursorPosition", "CreateColor", "unpack", "NineSliceUtil", "OKAY", "CreateSettingsButtonInitializer", "CreateSettingsListSectionHeaderInitializer", "ColorPickerFrame", "NORMAL_FONT_COLOR", "IsAltKeyDown", "PlaySound", "hooksecurefunc", "strtrim", "tinsert", "bit",
 	"ACCEPT", "CANCEL", "YES", "NO", "NUM_BAG_SLOTS",
+	"UnitExists", "SetPortraitTexture", "BANK_BAG_PURCHASE", "BANK_BAG", "BAGSLOTTEXT_COLON",
+	"RED_FONT_COLOR_CODE", "COSTS_LABEL",
 	"SettingsPanel", "BankFrame", "ShowUIPanel", "C_Bank", "time", "HandleModifiedItemClick", "BagSectionsFrame",
 	"CreateFont", "C_CurrencyInfo", "BreakUpLargeNumbers", "AbbreviateNumbers", "EventRegistry",
 }
