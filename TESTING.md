@@ -28,7 +28,7 @@ mention BagSections.
 | T20 | Gear menu, Layout, Compact | All sections run through one grid with no gaps, and each starts right after the previous one. Each is outlined in its colour, including across line breaks, with its name on its top edge. The window width doesn't change. |
 | T21 | In compact, right-click a section header, then Colour... and pick a colour | The outline and name change colour as you pick. Cancel restores the old colour. |
 | T22 | In compact, drag an item onto another section | It's added to that section, and the layout updates once. |
-| T23 | Switch back to Layout, Default | The window looks and works exactly as before. |
+| T23 | Switch back to Layout, Stacked | The window looks and works exactly as before. |
 | T24 | With a quest item in your bags, turn on Settings → Quest Items section | A "Quest Items" section appears with the quest item in it. |
 | T25 | Loot or accept a quest that gives a quest item | The new item goes straight into Quest Items. |
 | T26 | Drag a quest item from Quest Items to Rest | It stays in Rest, including after `/reload`. |
@@ -47,7 +47,7 @@ mention BagSections.
 | T39 | In compact, make a section wrap so its two parts don't touch | The name shows once, on the larger part; both parts have the same outline colour. |
 | T40 | In compact, look at sections that start partway along a row (e.g. after another section) | Their left-hand outline is fully drawn, the same as the other sides. |
 | T41 | In compact, with a reagent bag (and keyring) | Reagents and Keyring sit below a thin divider, separate from your sections and Rest. |
-| T42 | Drag an item while sections are on screen, in both layouts | Valid sections light up blue (a blue border in Default; the outline turns blue in Compact). There's no text in the sections; hovering one shows "Drop to add to …". |
+| T42 | Drag an item while sections are on screen, in both layouts | Valid sections light up blue (a blue border in Stacked; the outline turns blue in Compact). There's no text in the sections; hovering one shows "Drop to add to …". |
 | T43 | Start dragging an item, then cancel it several ways (right-click, Escape, drop on the action bar, drop in the world and cancel the destroy prompt) | The blue highlights go away every time, and sections stay usable without `/reload`. |
 | T44 | Drag an item from a section onto an empty Rest slot | It lands in that exact slot and leaves the section. |
 | T45 | In Rest, drag an item onto another empty Rest slot | It moves there and stays there. |
@@ -58,8 +58,8 @@ mention BagSections.
 | T50 | Gear menu → Layout → Semi-compact | Your sections sit 3 per row, side by side, each growing downwards. Rest, Reagents and Keyring are full width. The window width is unchanged. |
 | T51 | Gear menu → Layout and Settings | There's no "Sections per row" option any more; Semi-compact starts at 3 per row. |
 | T52 | Semi-compact with a long section name | The name is cut short with "…"; hovering the header shows it in full. |
-| T53 | Semi-compact: drag an item onto a section, collapse a section, use right-click menus | Everything works as in Default. |
-| T54 | Switch back to Default | It looks exactly as before. |
+| T53 | Semi-compact: drag an item onto a section, collapse a section, use right-click menus | Everything works as in Stacked. |
+| T54 | Switch back to Stacked | It looks exactly as before. |
 | T55 | Semi-compact: try to drag a section name without unlocking | Nothing moves; clicking the name still collapses it. |
 | T56 | Gear menu → Rearrange sections | A blue bar under the title says sections can be dragged. |
 | T57 | Drag a section name onto another row, between two sections | A blue vertical line shows the spot; on release the section joins that row there. |
@@ -69,7 +69,7 @@ mention BagSections.
 | T61 | Click the blue bar | Locked again; dragging names does nothing. `/reload` also locks. |
 | T62 | Save a profile, load it on another character | Same rows. |
 | T63 | Gear menu → Layout → Reset rows | Back to the automatic 3-per-row arrangement. |
-| T64 | Switch to Default after rearranging | Sections are in the same order as the rows (reading order), with sections after Rest shown below it. |
+| T64 | Switch to Stacked after rearranging | Sections are in the same order as the rows (reading order), with sections after Rest shown below it. |
 | T65 | At the bank, right-click items bank → bags and bags → bank, repeatedly | They move every time; no "BagSections has been blocked" message. |
 | T66 | Right-click a bind-on-equip item, then Cancel on the bind prompt | No blue drop highlights left behind; everything stays clickable. |
 | T67 | Drag gear from the character pane and drop it back on the character pane | No blue drop highlights left behind. |
@@ -96,7 +96,7 @@ mention BagSections.
 | T88 | Leave the bank, fly somewhere, `/reload`, then `/bs bank` | Same contents as when you left. The footer says "Updated … ago". Tooltips work; Shift-click links an item in chat. |
 | T89 | Log in to another character on the same account | Its own character bank (or the visit hint), and the same account bank tabs. |
 | T90 | Change Columns, Section name size, background and border settings with the Bank window open | It follows them, like the bags. |
-| T91 | Semi-compact, Settings → the two Semi-compact spacing sliders: drag each to the smallest, then the largest, then back to the default (6 and 12) | Each changes only its own gap. Smallest: every row's items stay clear of the section names below, and blue drop highlights of neighbouring sections don't touch. Largest side by side: rows that no longer fit wrap. The defaults look as before. Neither slider is in the gear menu. |
+| T91 | Semi-compact, Settings → the two Semi-compact spacing sliders: drag each to the smallest, then the largest, then back to the default (4 and 12) | Each changes only its own gap. Smallest: every row's items stay clear of the section names below, and blue drop highlights of neighbouring sections don't touch. Largest side by side: rows that no longer fit wrap. The defaults look as before. Neither slider is in the gear menu. |
 | T92 | Bags closed. Esc → Options → AddOns → BagSections | The bags open above the Settings panel, titled "Bags (preview)". Moving any slider or ticking any box changes them straight away. Click another settings page: they close. Close Settings: they stay closed, and B opens them normally. |
 | T93 | Bags open, then `/bs config` | The bags stay open as the preview; after closing Settings they're still open. |
 | T94 | Options → AddOns → BagSections | Settings are grouped under Layout, Sections and items, Appearance, Text size, General and Profiles. Every setting still works (and shows in the preview). |
@@ -132,4 +132,5 @@ mention BagSections.
 | T124 | At the bank: hover a bag in a bank bag slot | That bag's slots glow in the bank window; the glow goes when the mouse leaves. |
 | T125 | Quest Items on, quest item in the bank: open the bank | The bank has a Quest Items section with the quest item in it. Turn the option off in Settings: the section goes from both bags and bank; on again: back in both. |
 | T127 | Fresh install, or first login after updating | Gather reagents from bags and Reagents section in the bank are on. Neither gear menu has Quest Items or Reagents switches; Settings has Quest Items section, Gather reagents from bags and Reagents section in the bank. Turn Reagents section in the bank off: the bank's Reagents section goes, on every character. |
+| T128 | Fresh install: open the bags and the bank | Both are in Semi-compact, with 4 between rows and 12 between sections side by side. The Layout menus and Settings list Stacked, Semi-compact and Compact (no "Default"). |
 | T126 | Semi-compact, bags and bank, at a scale below 1 (e.g. Bank scale 0.8): collapse and expand sections in a shared row and on their own rows | Every header keeps its line to the right of its name, in narrow boxes too; none disappear as sections move. |

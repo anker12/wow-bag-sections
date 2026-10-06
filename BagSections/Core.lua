@@ -6,13 +6,14 @@ local Rules = ns.Rules
 
 ns.DEFAULTS = {
 	frame = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -60, y = 100 },
-	layout = "default", -- "default" | "semicompact" | "compact"
+	-- "semicompact" | "default" (shown as "Stacked"; saved under its old name) | "compact"
+	layout = "semicompact",
 	-- Where Rest sits relative to newly created sections: "bottom" puts new sections above
 	-- Rest, "top" puts them below it. Existing sections keep their place.
 	restPosition = "bottom",
 	columns = 10,
 	-- Semi-compact: space between rows of sections, and between sections side by side.
-	semiRowSpacing = 6,
+	semiRowSpacing = 4,
 	semiColumnSpacing = 12,
 	scale = 1,
 	-- On by default so a newly created (still empty) section shows up straight away.
@@ -29,7 +30,7 @@ ns.DEFAULTS = {
 	bankReagents = true,
 	-- Bank window: replaces Blizzard's at the banker; its own layout.
 	replaceBank = true,
-	bankLayout = "default",
+	bankLayout = "semicompact",
 	bankColumns = 15, -- half as wide again as the bags by default
 	bankScale = 1,
 	-- Appearance

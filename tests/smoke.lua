@@ -379,6 +379,7 @@ Fire("ADDON_LOADED", "BagSections")
 Fire("PLAYER_LOGIN")
 check(type(BagSectionsDB) == "table" and type(BagSectionsCharDB) == "table", "saved variables initialized")
 check(not ns.Frame.IsShown(), "window starts hidden")
+check(BagSectionsDB.layout == "semicompact" and BagSectionsDB.bankLayout == "semicompact", "bags and bank start in Semi-compact")
 
 -- The Quest Items section is on by default, for the whole account.
 check(BagSectionsDB.autoQuest == true and BagSectionsCharDB.autoQuest == true, "Quest Items on by default")
@@ -806,7 +807,7 @@ local function Gaps()
 	return sb._point[4] - (sa._point[4] + sa._w), sa._point[5] - sd._point[5]
 end
 local function Near(x, y) return math.abs(x - y) <= 0.5 end
-check(BagSectionsDB.semiRowSpacing == 6 and BagSectionsDB.semiColumnSpacing == 12, "section spacing defaults")
+check(BagSectionsDB.semiRowSpacing == 4 and BagSectionsDB.semiColumnSpacing == 12, "section spacing defaults")
 local baseColumnGap, baseRowDistance = Gaps()
 check(Near(baseColumnGap, 12), "default: 12 between sections side by side, as before")
 BagSectionsDB.semiColumnSpacing = 30
@@ -817,13 +818,13 @@ check(rowDistance == baseRowDistance, "rows don't move when only the side-by-sid
 BagSectionsDB.semiRowSpacing = 20
 ns.RequestRefresh()
 columnGap, rowDistance = Gaps()
-check(rowDistance - baseRowDistance == 14, "rows move apart by the extra spacing")
+check(rowDistance - baseRowDistance == 16, "rows move apart by the extra spacing")
 check(Near(columnGap, 30), "side-by-side spacing unchanged by the row spacing")
 BagSectionsDB.semiRowSpacing, BagSectionsDB.semiColumnSpacing = 0, 0
 ns.RequestRefresh()
 columnGap, rowDistance = Gaps()
-check(Near(columnGap, 6) and rowDistance - baseRowDistance == -2, "spacing never goes below the minimums")
-BagSectionsDB.semiRowSpacing, BagSectionsDB.semiColumnSpacing = 6, 12
+check(Near(columnGap, 6) and rowDistance == baseRowDistance, "spacing never goes below the minimums (rows: the default 4 is the minimum)")
+BagSectionsDB.semiRowSpacing, BagSectionsDB.semiColumnSpacing = 4, 12
 ns.RequestRefresh()
 
 

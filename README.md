@@ -111,8 +111,11 @@ gold, they move to their own line above it, and wrap onto more lines if needed.
 
 Switch layouts from the gear menu (Layout) or in Settings.
 
-* **Default:** the layout above. Each section is stacked at full width.
-* **Semi-compact:** like Default, but sections sit side by side in rows, each an equal
+Bags and bank both start in **Semi-compact**.
+
+* **Stacked** (called Default in earlier versions): the layout above. Each section is stacked at
+  full width.
+* **Semi-compact** (the default): like Stacked, but sections sit side by side in rows, each an equal
   share of the row's width and growing downwards. Out of the box it puts 3 sections per
   row, with Rest on its own row. **Arrange the rows yourself:** gear menu → *Rearrange sections* unlocks the layout,
   and a blue bar under the title shows it's unlocked. Then drag a section's name:
@@ -124,13 +127,14 @@ Switch layouts from the gear menu (Layout) or in Settings.
   the window never moves sections by accident. A row can hold at most as many sections as
   fit at one slot wide each (8 at 10 columns). *Reset rows* in the Layout menu goes back to
   that 3-per-row starting point. Settings → **Semi-compact: space between rows** and
-  **Semi-compact: space between sections side by side** set the gaps between sections. Your arrangement also sets the section order used by the other
+  **Semi-compact: space between sections side by side** set the gaps between sections (4
+  and 12 by default). Your arrangement also sets the section order used by the other
   layouts, and profiles save it. Reagents and Keyring stay full width at the bottom.
 * **Compact:** works like Blizzard's combined bag. All sections run through one grid with
   no gaps: each section starts in the slot right after the previous one ends and wraps onto
   the next line. Each section is outlined in its own colour, even across line breaks, with
   its name on its top edge. Slots always line up in the same columns on every row. Compact
-  spaces slots a little further apart than Default to fit thin outlines between sections,
+  spaces slots a little further apart than Stacked to fit thin outlines between sections,
   so its window is slightly wider. Reagents and Keyring sit below a thin divider, apart
   from your sections. Hover a name to see it in full. Change a section's colour
   from its right-click menu (Colour...). Rest is grey and Reagents green. Empty and
@@ -161,7 +165,7 @@ Every bag slot shows along the bottom: bought ones with their bag (click or drag
 it; hovering it glows the bank slots that belong to that bag), the rest with a padlock. **Buy slot** shows the price of the next one; click it (or
 a padlocked slot) to buy it. Closing the window ends the conversation with the banker.
 
-It has its own layout, separate from the bags: Default, Semi-compact or Compact, from the
+It has its own layout, separate from the bags: Stacked, Semi-compact (the default) or Compact, from the
 bank window's gear menu or Settings → **Bank layout**. Its size is separate too: Settings →
 **Bank columns** (15 by default, half as wide again as the bags) and **Bank scale**.
 

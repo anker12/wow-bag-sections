@@ -31,7 +31,7 @@ local CELL = BUTTON_SIZE + SPACING
 
 -- Compact layout: every group runs through one shared grid, outlined in its colour.
 -- Slots keep a strict grid (same columns on every row); the gap between all slots is wider
--- than in the default layout so outlines fit between neighbouring sections.
+-- than in the stacked layout so outlines fit between neighbouring sections.
 local COMPACT_GAP = 10 -- space between slots, in every direction
 local COMPACT_CELL = BUTTON_SIZE + COMPACT_GAP
 local OUTLINE_PADDING = 3 -- space between a section's items and its outline, on every side
@@ -525,7 +525,7 @@ local function NewWindow(cfg)
 		return overlay
 	end
 
-	-- border: draw the blue border (default layout; compact turns the outline blue instead).
+	-- border: draw the blue border (stacked layout; compact turns the outline blue instead).
 	-- Rest's highlight never takes the mouse: dropping on any Rest slot places the item there
 	-- (see Frame.OnItemButtonDrop).
 	local function ShowOverlay(index, group, x, y, width, height, border)
@@ -570,7 +570,7 @@ local function NewWindow(cfg)
 		return header
 	end
 
-	-- Draws one group the default way (header, then a grid of `columns` slots) in a box at
+	-- Draws one group the stacked way (header, then a grid of `columns` slots) in a box at
 	-- (x, y) that is `width` pixels wide. Returns the height used.
 	local function DrawGroup(index, group, x, y, width, columns, gridWidth, used)
 		local top = y
@@ -605,8 +605,8 @@ local function NewWindow(cfg)
 		return y - top
 	end
 
-	-- Default layout: groups stacked top to bottom at full width.
-	local function RenderDefault(groups, columns, gridWidth, used)
+	-- Stacked layout: groups top to bottom at full width.
+	local function RenderStacked(groups, columns, gridWidth, used)
 		local y = 0
 		for index, group in ipairs(groups) do
 			y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + GROUP_GAP
@@ -614,7 +614,7 @@ local function NewWindow(cfg)
 		return y - GROUP_GAP
 	end
 
-	-- Semi-compact layout: like the default, but your sections sit side by side, a number per
+	-- Semi-compact layout: like the stacked one, but your sections sit side by side, a number per
 	-- row (AUTO_PER_ROW until the player arranges rows), each growing downwards. Rest,
 	-- Reagents and Keyring stay full width.
 
@@ -984,7 +984,7 @@ local function NewWindow(cfg)
 	end
 
 	-- Compact layout: sections and Rest flow through one grid; the reagent bag and keyring sit
-	-- in a second grid below a divider, like the default layout keeps them separate.
+	-- in a second grid below a divider, like the stacked layout keeps them separate.
 	local COMPACT_DIVIDER_GAP = 10
 
 	local function RenderCompact(groups, columns, used)
@@ -1434,7 +1434,7 @@ local function NewWindow(cfg)
 
 	-- Redraw: rescan bags, then place everything.
 	-- mode "layout" always rebuilds the arrangement. Mode "items" (bag contents changed) does
-	-- too in the default layout, but the compact layout keeps its frozen arrangement.
+	-- too in the stacked layout, but the compact layout keeps its frozen arrangement.
 	function Frame.Render(mode)
 		if not (main and main:IsShown()) then
 			return
@@ -1479,7 +1479,7 @@ local function NewWindow(cfg)
 		elseif ns.db[cfg.layoutKey] == "semicompact" then
 			contentHeight = RenderSemiCompact(groups, columns, gridWidth, used)
 		else
-			contentHeight = RenderDefault(groups, columns, gridWidth, used)
+			contentHeight = RenderStacked(groups, columns, gridWidth, used)
 		end
 
 		buttons.HideExcept(used)

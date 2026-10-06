@@ -6,6 +6,10 @@ section into CurseForge's changelog box when uploading.
 ## [Unreleased]
 
 ### Changed
+- Semi-compact is now the default layout, for the bags and the bank. The old "Default"
+  layout is now called "Stacked". Your current layout choice stays as it is.
+- Semi-compact's space between rows is 4 by default (was 6). Your current setting stays as
+  it is.
 - The bank window looks more like Blizzard's: its border with the round portrait corner
   (the banker, or a bank icon away from the bank).
 - Every bank bag slot shows along the bottom, bought or not (padlocked). Bags in bought

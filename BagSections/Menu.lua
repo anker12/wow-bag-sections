@@ -354,7 +354,7 @@ function Menu.OpenMainMenu(owner)
 			ns.db.showKeyring = not ns.db.showKeyring
 			Changed()
 		end)
-		local function IsLayout(name) return (ns.db.layout or "default") == name end
+		local function IsLayout(name) return (ns.db.layout or "semicompact") == name end
 		if IsLayout("semicompact") then
 			root:CreateCheckbox(L.REARRANGE, function()
 				return ns.Frame.IsRearranging()
@@ -363,7 +363,7 @@ function Menu.OpenMainMenu(owner)
 			end)
 		end
 		local layout = root:CreateButton(L.LAYOUT)
-		layout:CreateRadio(L.LAYOUT_DEFAULT, function() return IsLayout("default") end, function() Menu.SetLayout("default") end)
+		layout:CreateRadio(L.LAYOUT_STACKED, function() return IsLayout("default") end, function() Menu.SetLayout("default") end)
 		layout:CreateRadio(L.LAYOUT_SEMICOMPACT, function() return IsLayout("semicompact") end, function() Menu.SetLayout("semicompact") end)
 		layout:CreateRadio(L.LAYOUT_COMPACT, function() return IsLayout("compact") end, function() Menu.SetLayout("compact") end)
 		if IsLayout("semicompact") then
@@ -469,7 +469,7 @@ function Menu.OpenBankMenu(owner)
 			ns.db.showEmptySections = not ns.db.showEmptySections
 			Changed()
 		end)
-		local function IsLayout(name) return (ns.db.bankLayout or "default") == name end
+		local function IsLayout(name) return (ns.db.bankLayout or "semicompact") == name end
 		if IsLayout("semicompact") then
 			root:CreateCheckbox(L.REARRANGE, function()
 				return bank.IsRearranging()
@@ -482,7 +482,7 @@ function Menu.OpenBankMenu(owner)
 			Changed()
 		end
 		local layout = root:CreateButton(L.LAYOUT)
-		layout:CreateRadio(L.LAYOUT_DEFAULT, function() return IsLayout("default") end, function() SetLayout("default") end)
+		layout:CreateRadio(L.LAYOUT_STACKED, function() return IsLayout("default") end, function() SetLayout("default") end)
 		layout:CreateRadio(L.LAYOUT_SEMICOMPACT, function() return IsLayout("semicompact") end, function() SetLayout("semicompact") end)
 		layout:CreateRadio(L.LAYOUT_COMPACT, function() return IsLayout("compact") end, function() SetLayout("compact") end)
 		if IsLayout("semicompact") then
