@@ -170,6 +170,14 @@ that the bank doesn't have yet), the **Reagents section** switch and **Set up ba
 sections...** to go through the questions again. Drag an item from your bags onto a bank
 section to put it in the bank, in that section.
 
+**Linked sections:** a bank section copied from a bag section (or the other way round) is
+linked to it, and they share their items: put an item in one and it's in the other too, so
+it lands in the matching section when you deposit or withdraw it. Removing it from one
+removes it from both. Names, colours and order stay separate, and deleting one just removes
+the link. Sections with the same name in bags and bank are linked automatically, keeping
+the items already in either. **New section** in either gear menu also lists the other
+side's sections that don't have a partner yet, to make a linked copy.
+
 **Right-click the "Bags" title** (or type `/bs bank`) to look at your bank from anywhere.
 Every visit to a bank is remembered (per character), so away from the bank the window shows
 that copy, with how long ago it was updated ("Live" while you're at the bank). Hover an

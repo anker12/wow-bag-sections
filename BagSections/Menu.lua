@@ -208,6 +208,8 @@ function Menu.LoadProfile(name)
 		Rules.ApplyProfile(ns.charDB, profile)
 		-- The profile places the Quest Items section; whether it exists is account wide.
 		ns.SyncAutoQuest()
+		-- Bank sections with the same names as the profile's are linked to them.
+		Rules.LinkByName(ns.charDB, ns.charDB.bankSections)
 		ns.Print(L.PROFILE_LOADED:format(name))
 		Changed()
 	end
@@ -339,7 +341,7 @@ end
 function Menu.OpenMainMenu(owner)
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(L.ADDON_NAME)
-		root:CreateButton(L.NEW_SECTION, function() Menu.PromptNewSection() end)
+		Menu.AddNewSectionEntry(root, ns.Frame)
 		root:CreateCheckbox(L.SHOW_EMPTY, function()
 			return ns.db.showEmptySections
 		end, function()
@@ -393,6 +395,31 @@ function Menu.CopyBagSections(sections)
 	return created
 end
 
+-- "New section": an empty one, or (when the other side has sections this side doesn't)
+-- a linked copy of one of those, or all of them.
+function Menu.AddNewSectionEntry(root, window)
+	local db, partner = window.GetDB(), window.GetPartnerDB()
+	local missing = partner and Rules.MissingSections(partner, db) or {}
+	if #missing == 0 then
+		root:CreateButton(L.NEW_SECTION, function() Menu.PromptNewSection(nil, window) end)
+		return
+	end
+	local new = root:CreateButton(L.NEW_SECTION_MENU)
+	new:CreateButton(L.NEW_EMPTY_SECTION, function() Menu.PromptNewSection(nil, window) end)
+	new:CreateDivider()
+	new:CreateTitle(window.isBank and L.FROM_BAGS or L.FROM_BANK)
+	local function Copy(sections)
+		Rules.CopySections(partner, db, sections)
+		Changed()
+	end
+	for _, section in ipairs(missing) do
+		new:CreateButton(section.name, function() Copy({ section }) end)
+	end
+	if #missing > 1 then
+		new:CreateButton(L.BANK_COPY_ALL:format(#missing), function() Copy(missing) end)
+	end
+end
+
 function Menu.SetBankReagents(enabled)
 	Rules.SetAuto(ns.charDB.bankSections, Rules.AUTO_REAGENT, enabled, L.REAGENTS, ns.NewSectionsBelowRest())
 	Changed()
@@ -443,7 +470,7 @@ function Menu.OpenBankMenu(owner)
 	local db = ns.charDB.bankSections
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(L.BANK)
-		root:CreateButton(L.NEW_SECTION, function() Menu.PromptNewSection(nil, bank) end)
+		Menu.AddNewSectionEntry(root, bank)
 		local copy = root:CreateButton(L.BANK_COPY_SECTIONS)
 		local missing = Rules.MissingSections(ns.charDB, db)
 		for _, section in ipairs(missing) do
@@ -505,7 +532,7 @@ function Menu.OpenItemMenu(button, window)
 	if not item then
 		return
 	end
-	local db = window.GetDB()
+	local db, partner = window.GetDB(), window.GetPartnerDB()
 	local current = Rules.Classify(db, item)
 	local matched = Rules.MatchedKind(db, item)
 
@@ -518,7 +545,7 @@ function Menu.OpenItemMenu(button, window)
 			assign:CreateRadio(section.name, function()
 				return current == section.id
 			end, function()
-				Rules.Assign(db, item, section.id, matched or Rules.DefaultKind(item, ns.db))
+				Rules.AssignLinked(db, partner, item, section.id, matched or Rules.DefaultKind(item, ns.db))
 				Changed()
 			end)
 		end
@@ -527,20 +554,20 @@ function Menu.OpenItemMenu(button, window)
 		end
 		assign:CreateButton(L.NEW_SECTION, function()
 			Menu.PromptNewSection(function(section)
-				Rules.Assign(db, item, section.id, Rules.DefaultKind(item, ns.db))
+				Rules.AssignLinked(db, partner, item, section.id, Rules.DefaultKind(item, ns.db))
 				Changed()
 			end, window)
 		end)
 
 		if current ~= Rules.REST then
 			root:CreateButton(L.REMOVE_FROM_SECTION, function()
-				Rules.Unassign(db, item)
+				Rules.UnassignLinked(db, partner, item)
 				Changed()
 			end)
 
 			local match = root:CreateButton(L.MATCH)
 			local function SetKind(kind)
-				Rules.Assign(db, item, current, kind)
+				Rules.AssignLinked(db, partner, item, current, kind)
 				if kind == Rules.KIND_GUID and db.rules.byItemID[item.itemID] == current then
 					db.rules.byItemID[item.itemID] = nil
 				end

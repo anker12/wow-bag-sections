@@ -236,6 +236,7 @@ window = ns.Frame.NewWindow({
 		end
 	end,
 	GetDB = function() return ns.charDB.bankSections end,
+	GetPartnerDB = function() return ns.charDB end,
 	Scan = function()
 		if ns.Bank.IsOpen() then
 			return ns.Inventory.ScanBank()

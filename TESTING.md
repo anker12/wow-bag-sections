@@ -118,4 +118,8 @@ mention BagSections.
 | T110 | At the bank, drag a bank item onto a bank section; drag a bag item onto a bank section | The bank item joins the section. The bag item moves into the bank, into that section. |
 | T111 | Rename, recolour, collapse, delete a bank section; Alt+Right-click a bank item | Only the bank changes; the item menu lists the bank's sections. |
 | T112 | Away from the bank, `/bs bank`, then pick up a bag item | The bank shows its sections from the last visit; bank sections don't light up as drop targets. |
+| T113 | Put an item in a bag section that's linked to a bank section, then deposit it | It shows in the matching bank section. Withdraw it: back in the bag section. |
+| T114 | Remove that item from the bank section (drag to Rest) | It's in Rest in the bank, and in Rest in the bags too after withdrawing. |
+| T115 | Existing user: bag and bank sections with the same name made before this update, each with items | After /reload both have each other's items. |
+| T116 | Bags gear menu → New section | When the bank has sections the bags don't, it opens a submenu: Empty section..., then those bank sections (and All). Picking one adds a linked bag section. Same in the bank's menu, the other way round. |
 | T117 | Open the bank; Settings → Bank columns and Bank scale | The bank is about half as wide again as the bags by default (15 columns). Each slider changes only the bank; Columns and Scale change only the bags. |
