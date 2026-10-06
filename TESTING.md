@@ -113,3 +113,4 @@ mention BagSections.
 | T105 | At the bank with a tab left to buy | "Buy tab" shows; clicking it asks to confirm with the price; Yes buys it and it appears in the bottom row. (If this is blocked, note it: Blizzard restricts buying tabs.) |
 | T106 | Close the bank window with its X; also press Escape at the bank; also walk away | Each ends the conversation with the banker, and the bank window closes. |
 | T107 | Settings → Replace the default bank off, /reload, talk to a banker | Blizzard's bank opens as normal. |
+| T117 | Open the bank; Settings → Bank columns and Bank scale | The bank is about half as wide again as the bags by default (15 columns). Each slider changes only the bank; Columns and Scale change only the bags. |

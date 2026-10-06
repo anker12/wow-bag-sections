@@ -224,6 +224,8 @@ window = ns.Frame.NewWindow({
 	name = "BagSectionsBankFrame",
 	title = L.BANK,
 	layoutKey = "bankLayout",
+	columnsKey = "bankColumns",
+	scaleKey = "bankScale",
 	positionKey = "bankFrame",
 	-- Until it's moved: next to the bags if they're open, else where Blizzard's bank opens.
 	PlaceByDefault = function(main)

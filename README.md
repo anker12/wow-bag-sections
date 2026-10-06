@@ -158,7 +158,8 @@ between bank and bags, drag and drop, search, sort, and buy another tab. Closing
 the conversation with the banker.
 
 It has its own layout, separate from the bags: Default, Semi-compact or Compact, from the
-bank window's gear menu or Settings → **Bank layout**.
+bank window's gear menu or Settings → **Bank layout**. Its size is separate too: Settings →
+**Bank columns** (15 by default, half as wide again as the bags) and **Bank scale**.
 
 **Right-click the "Bags" title** (or type `/bs bank`) to look at your bank from anywhere.
 Every visit to a bank is remembered (per character), so away from the bank the window shows
