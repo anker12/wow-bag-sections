@@ -5,6 +5,10 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Added
+- "Gather reagents from bags" setting (off by default): crafting reagents in your normal
+  bags show together as "Reagents (bags)", right after the reagent bag.
+
 ### Changed
 - Settings are grouped under headings: Layout, Sections and items, Appearance, Text size,
   General and Profiles.

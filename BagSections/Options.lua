@@ -66,6 +66,7 @@ function Options.Init()
 		function() return ns.db.autoQuest end,
 		function(value) ns.SetAutoQuest(value) end)
 	Settings.CreateCheckbox(category, questSetting, L.OPT_QUEST_SECTION_DESC)
+	AddCheckbox("bagReagents", L.OPT_BAG_REAGENTS, L.OPT_BAG_REAGENTS_DESC, ns.DEFAULTS.bagReagents, Refresh)
 	local restSetting = Settings.RegisterAddOnSetting(category, "BagSections_restPosition", "restPosition", ns.db, Settings.VarType.String, L.REST_POSITION, ns.DEFAULTS.restPosition)
 	Settings.CreateDropdown(category, restSetting, function()
 		local container = Settings.CreateControlTextContainer()

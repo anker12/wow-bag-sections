@@ -103,3 +103,6 @@ mention BagSections.
 | T95 | Fresh install (rename the SavedVariables), log in | A Quest Items section exists and catches quest items. |
 | T96 | Turn Quest Items off on one character, log in another | It's off there too, and its empty Quest Items section is gone. |
 | T97 | Change a text size on one character, log in another | Same size there. |
+| T98 | Put a crafting reagent (cloth, herb) in a normal bag. Settings → Gather reagents from bags on | It moves from Rest to "Reagents (bags)", a separate block right after Reagents, in all three layouts (Compact: its own paler green outline below the divider). Off again: back in Rest. |
+| T99 | Drag that reagent onto a Rest slot; then drag it onto the Reagents (bags) header | Rest: it stays in Rest. Header: it goes back to Reagents (bags). |
+| T100 | Add a reagent to one of your sections | It stays in the section. |
