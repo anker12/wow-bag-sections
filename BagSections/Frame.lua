@@ -458,7 +458,6 @@ local function NewWindow(cfg)
 		header.Text:SetJustifyH("LEFT")
 		header.Line = header:CreateTexture(nil, "ARTWORK")
 		header.Line:SetColorTexture(1, 1, 1, 0.15)
-		header.Line:SetHeight(1)
 		header.Line:SetPoint("LEFT", header.Text, "RIGHT", 6, 0)
 		header.Line:SetPoint("RIGHT")
 		header:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
@@ -558,6 +557,10 @@ local function NewWindow(cfg)
 		header.group = group
 		header:ClearAllPoints()
 		header.Text:SetText(GroupTitle(group))
+		-- At least one screen pixel thick, set on every draw as the window's scale can change.
+		-- A plain 1-unit line is under a pixel at scales below 1, and is then rounded away or
+		-- not depending on where it lands, so lines came and went as sections moved.
+		PixelUtil.SetHeight(header.Line, 1, 1)
 		if Frame.IsRearranging() and CanDrag(group) then
 			header:RegisterForDrag("LeftButton")
 		else
@@ -999,7 +1002,7 @@ local function NewWindow(cfg)
 			local dividerY = height + COMPACT_DIVIDER_GAP / 2
 			dividerLine:ClearAllPoints()
 			dividerLine:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -dividerY)
-			dividerLine:SetSize(width, 1)
+			PixelUtil.SetSize(dividerLine, width, 1, 0, 1)
 			dividerLine:Show()
 			height = RenderFlow(extra, columns, used, height + COMPACT_DIVIDER_GAP, counters)
 		end

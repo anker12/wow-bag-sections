@@ -131,3 +131,4 @@ mention BagSections.
 | T123 | Bags open: hover each bag button on the action bar (backpack, bags, reagent bag) | That bag's slots glow in the bag window, in every layout; the glow goes when the mouse leaves. |
 | T124 | At the bank: hover a bag in a bank bag slot | That bag's slots glow in the bank window; the glow goes when the mouse leaves. |
 | T125 | Quest Items on, quest item in the bank: open the bank | The bank has a Quest Items section with the quest item in it. Turn the option off (Settings or either gear menu): the section goes from both bags and bank; on again: back in both. |
+| T126 | Semi-compact, bags and bank, at a scale below 1 (e.g. Bank scale 0.8): collapse and expand sections in a shared row and on their own rows | Every header keeps its line to the right of its name, in narrow boxes too; none disappear as sections move. |

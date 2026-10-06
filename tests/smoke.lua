@@ -248,6 +248,7 @@ _G.GetMoney = function() return 12345 end
 _G.PixelUtil = {
 	SetPoint = function(region, ...) region:SetPoint(...) end,
 	SetSize = function(region, w, h) region:SetSize(w, h) end,
+	SetHeight = function(region, h, minPixels) region:SetHeight(h); region._minPixels = minPixels end,
 }
 _G._now = 100
 _G.GetTime = function() return _G._now end
@@ -707,6 +708,16 @@ for _, layoutName in ipairs({ "compact", "semicompact", "default" }) do
 	ns.Menu.SetLayout(layoutName)
 	check(ns.Frame.IsShown(), "draws in " .. layoutName)
 end
+-- Header lines are at least a screen pixel thick, so none vanish at scales below 1.
+local headerLines = 0
+for _, frame in ipairs(frames) do
+	local line = rawget(frame, "Line")
+	if line and frame._shown and frame.group then
+		headerLines = headerLines + 1
+		check(line._minPixels == 1, "header line of " .. tostring(frame.group.key) .. " is kept at least a pixel thick")
+	end
+end
+check(headerLines > 0, "headers drawn with lines")
 BagSectionsDB.bagReagents = false
 ns.RequestRefresh()
 

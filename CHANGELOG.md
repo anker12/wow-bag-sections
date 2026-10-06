@@ -43,6 +43,10 @@ section into CurseForge's changelog box when uploading.
   characters (it used to be per character). Existing installs keep the setting of the
   first character you log in with.
 
+### Fixed
+- Section header lines no longer come and go (most visible in Semi-compact, and in the bank
+  at its smaller scale): they're kept at least one screen pixel thick at any scale.
+
 ## [1.3.0] - 2026-10-04
 
 ### Added
