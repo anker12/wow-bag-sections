@@ -29,7 +29,7 @@ function Options.Init()
 	category, layout = Settings.RegisterVerticalLayoutCategory(L.ADDON_NAME)
 
 	local function Refresh() ns.RequestRefresh() end
-	local function Appearance() ns.Frame.ApplyAppearance() end
+	local function Appearance() ns.ApplyAppearance() end
 	local function Fonts() ns.Frame.ApplyFonts() end
 	local percent = function(value) return ("%d%%"):format(math.floor(value * 100 + 0.5)) end
 	-- Settings are listed in the order they're added, so each group starts with a header.
@@ -54,7 +54,7 @@ function Options.Init()
 		Refresh()
 		ns.BankFrame.Refresh()
 	end)
-	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, percent, function() ns.Frame.ApplyScale() end)
+	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, percent, function() ns.ApplyScale() end)
 	AddSlider("semiRowSpacing", L.OPT_SEMI_ROW_SPACING, L.OPT_SEMI_ROW_SPACING_DESC, ns.DEFAULTS.semiRowSpacing, 4, 30, 1, nil, Refresh)
 	AddSlider("semiColumnSpacing", L.OPT_SEMI_COLUMN_SPACING, L.OPT_SEMI_COLUMN_SPACING_DESC, ns.DEFAULTS.semiColumnSpacing, 6, 40, 1, nil, Refresh)
 
