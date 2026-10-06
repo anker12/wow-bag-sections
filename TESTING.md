@@ -110,7 +110,7 @@ mention BagSections.
 | T102 | At the bank: right-click an item in the bags, then one in the bank; drag items both ways; Shift-click to split a stack | Right-click deposits / withdraws; drag and drop works both ways; nothing is blocked. |
 | T103 | At the bank: click the bank window's sort button; type in its search box | The bank sorts; items that don't match are dimmed. |
 | T104 | Bank gear menu → Layout → Semi-compact, then Compact | The bank changes layout; the bags keep theirs. Settings → Bank layout shows the same choice. |
-| T105 | At the bank with a bag slot left to buy | "Buy slot" shows with "Cost:" and the price next to it (red if you can't afford it); clicking it asks to confirm; Yes buys it and its padlock goes away. (If this is blocked, note it: Blizzard restricts buying slots.) |
+| T105 | At the bank with a bag slot left to buy: click "Buy slot", Yes; then hover and click a padlocked slot, Yes | "Buy slot" shows with "Cost:" and the price next to it (red if you can't afford it). Both open Blizzard's own confirm dialog with the price; Yes buys the slot and its padlock goes away. No "blocked" popup. |
 | T106 | Close the bank window with its X; also press Escape at the bank; also walk away | Each ends the conversation with the banker, and the bank window closes. |
 | T107 | Settings → Replace the default bank off, /reload, talk to a banker | Blizzard's bank opens as normal. |
 | T108 | Visit a banker for the first time after updating | "Sort your bank into sections too?" Yes → "Copy your N bag sections to the bank?" (lists them) Yes → "Add a Reagents section?" Yes. The bank now has those sections (same names, colours, order) and a Reagents section with your reagents in it. Not asked again on the next visit. |

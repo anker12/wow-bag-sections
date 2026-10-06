@@ -11,7 +11,8 @@ section into CurseForge's changelog box when uploading.
 - Every bank bag slot shows along the bottom, bought or not (padlocked). Bags in bought
   slots can be swapped by clicking or dragging, as in Blizzard's bank.
 - "Buy tab" is now "Buy slot", with the price of the next slot next to it (red if you can't
-  afford it). Clicking a padlocked slot also offers to buy it.
+  afford it). Clicking a padlocked slot also offers to buy it. Buying goes through
+  Blizzard's own purchase button and dialog, so it's no longer blocked.
 
 ### Added
 - The bank window replaces Blizzard's at the banker ("Replace the default bank", on by

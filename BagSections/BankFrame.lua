@@ -169,31 +169,43 @@ local function NextSlotPrice()
 	return C_Bank.FetchNextPurchasableBankTabData and C_Bank.FetchNextPurchasableBankTabData(Enum.BankType.Character)
 end
 
-StaticPopupDialogs["BAGSECTIONS_BUY_BANK_TAB"] = {
-	text = "%s",
-	button1 = YES,
-	button2 = NO,
-	timeout = 0,
-	whileDead = 1,
-	hideOnEscape = 1,
-	OnAccept = function()
-		C_Bank.PurchaseBankTab(Enum.BankType.Character)
-	end,
-}
-
-local function AskToBuySlot()
-	local data = NextSlotPrice()
-	if data then
-		StaticPopup_Show("BAGSECTIONS_BUY_BANK_TAB", L.BANK_BUY_SLOT_CONFIRM:format(GetMoneyString(data.tabCost or 0, true)))
-	end
+-- Buying a slot: Blizzard only lets its own code buy one, so the Buy slot button (and the
+-- invisible button laid over a padlocked slot while it's hovered) are made from
+-- BankPanelPurchaseButtonScriptTemplate, which Blizzard provides for addons: clicking it
+-- runs Blizzard's own click code and confirm dialog (with the price) and buys the slot.
+local function MakePurchaseButton(button)
+	button:SetAttribute("overrideBankType", Enum.BankType.Character)
+	return button
 end
 
--- A bag slot: pick up the bag in it, or drop a bag in, like Blizzard's bank bag slots.
+local purchaseProxy -- laid over the hovered padlocked slot
+
+local function ShowPurchaseProxy(slotButton)
+	if not ns.Bank.IsOpen() then
+		return
+	end
+	if not purchaseProxy then
+		purchaseProxy = MakePurchaseButton(CreateFrame("Button", nil, slotButton:GetParent(), "BankPanelPurchaseButtonScriptTemplate"))
+		purchaseProxy:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(BANK_BAG_PURCHASE or L.BANK_SLOT_LOCKED)
+			GameTooltip:Show()
+		end)
+		purchaseProxy:SetScript("OnLeave", function(self)
+			GameTooltip_Hide()
+			self:Hide()
+		end)
+	end
+	purchaseProxy:ClearAllPoints()
+	purchaseProxy:SetAllPoints(slotButton)
+	purchaseProxy:SetFrameLevel(slotButton:GetFrameLevel() + 5)
+	purchaseProxy:Show()
+end
+
+-- A bought slot: pick up the bag in it, or drop a bag in, like Blizzard's bank bag slots.
 local function PickupBagSlot(self)
 	if self.bought and ns.Bank.IsOpen() then
 		C_Container.PickupContainerItem(Enum.BagIndex.Characterbanktab, self.slotIndex)
-	elseif not self.bought then
-		AskToBuySlot()
 	end
 end
 
@@ -217,6 +229,11 @@ local function CreateBagSlotButton(main, index)
 	button:SetScript("OnDragStart", PickupBagSlot)
 	button:SetScript("OnReceiveDrag", PickupBagSlot)
 	button:SetScript("OnEnter", function(self)
+		if not self.bought and ns.Bank.IsOpen() and NextSlotPrice() then
+			-- The purchase button takes over this spot, and shows the tooltip.
+			ShowPurchaseProxy(self)
+			return
+		end
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		if not self.bought then
 			GameTooltip:SetText(BANK_BAG_PURCHASE or L.BANK_SLOT_LOCKED)
@@ -239,10 +256,9 @@ end
 -- the price and button get a line of their own above the slots. Returns the height used.
 local function FooterExtra(main, pad, bottom)
 	if not buyTab then
-		buyTab = CreateFrame("Button", nil, main.Chrome, "UIPanelButtonTemplate")
+		buyTab = MakePurchaseButton(CreateFrame("Button", nil, main.Chrome, "BankPanelPurchaseButtonScriptTemplate, UIPanelButtonTemplate"))
 		buyTab:SetSize(BUY_BUTTON_WIDTH, 22)
 		buyTab:SetText(L.BANK_BUY_SLOT)
-		buyTab:SetScript("OnClick", AskToBuySlot)
 		buyCost = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 		slotsLabel = main.Chrome:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		slotsLabel:SetText(BAGSLOTTEXT_COLON or L.BANK_BAG_SLOTS)

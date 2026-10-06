@@ -12,7 +12,7 @@ local frames = {}
 local KNOWN_TEMPLATES = {
 	BackdropTemplate = true, BagSearchBoxTemplate = true, ContainerFrameItemButtonTemplate = true,
 	FlatPanelBackgroundTemplate = true, NineSlicePanelTemplate = true, UIPanelCloseButton = true,
-	UIPanelButtonTemplate = true,
+	UIPanelButtonTemplate = true, BankPanelPurchaseButtonScriptTemplate = true,
 }
 local function NewFrame(frameType, name, parent, template)
 	for t in tostring(template or ""):gmatch("[^,%s]+") do
@@ -969,14 +969,22 @@ cursor = nil
 check(BagSectionsCharDB.bank.bagSlots and BagSectionsCharDB.bank.bagSlots.max == 4 and BagSectionsCharDB.bank.bagSlots.slots[2].link, "the bag slots are remembered too")
 local buyButton, costText
 for _, frame in ipairs(frames) do
-	if frame._template == "UIPanelButtonTemplate" and frame._text == "Buy slot" then buyButton = frame end
+	if frame._template == "BankPanelPurchaseButtonScriptTemplate, UIPanelButtonTemplate" and frame._text == "Buy slot" then buyButton = frame end
 	if frame._type == "FontString" and type(frame._text) == "string" and frame._text:find("100000", 1, true) then costText = frame end
 end
 check(buyButton and buyButton._shown, "Buy slot shows at the bank")
 check(costText and costText._shown, "with the price of the next slot next to it")
-_G._lastPopup = nil
-bagSlots[2]._scripts.OnClick(bagSlots[2])
-check(_G._lastPopup and _G._lastPopup.which == "BAGSECTIONS_BUY_BANK_TAB", "clicking a locked slot offers to buy it")
+-- Buying goes through Blizzard's purchase button template (its own click code and dialog),
+-- set to the character bank, so it isn't blocked.
+check(buyButton._attrs.overrideBankType == 0, "Buy slot is Blizzard's purchase button for the character bank")
+bagSlots[2]._scripts.OnEnter(bagSlots[2])
+local proxy
+for _, frame in ipairs(frames) do
+	if frame._template == "BankPanelPurchaseButtonScriptTemplate" then proxy = frame end
+end
+check(proxy and proxy._shown and proxy._attrs.overrideBankType == 0, "hovering a padlocked slot puts Blizzard's purchase button over it")
+proxy._scripts.OnLeave(proxy)
+check(not proxy._shown, "and takes it away again")
 _G._lastPopup = setupPopup
 check(rawget(rawget(bankWindow, "BlizzardBorder"), "_layout") == "PortraitFrameTemplate", "Blizzard's bank border, with the portrait corner")
 check(BagSectionsCharDB.bank.tabs[1].items[2].id == 700, "with its items in their slots")
