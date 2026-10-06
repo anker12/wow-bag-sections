@@ -366,6 +366,24 @@ function Menu.OpenMainMenu(owner)
 	end)
 end
 
+-- Options button in the bank window's title bar.
+function Menu.OpenBankMenu(owner)
+	MenuUtil.CreateContextMenu(owner, function(_, root)
+		root:CreateTitle(L.BANK)
+		local function IsLayout(name) return (ns.db.bankLayout or "default") == name end
+		local function SetLayout(name)
+			ns.db.bankLayout = name
+			ns.BankFrame.RequestRefresh()
+		end
+		local layout = root:CreateButton(L.LAYOUT)
+		layout:CreateRadio(L.LAYOUT_DEFAULT, function() return IsLayout("default") end, function() SetLayout("default") end)
+		layout:CreateRadio(L.LAYOUT_SEMICOMPACT, function() return IsLayout("semicompact") end, function() SetLayout("semicompact") end)
+		layout:CreateRadio(L.LAYOUT_COMPACT, function() return IsLayout("compact") end, function() SetLayout("compact") end)
+		root:CreateDivider()
+		root:CreateButton(L.SETTINGS, function() ns.Options.Open() end)
+	end)
+end
+
 -- Alt+Right-click on an item.
 function Menu.OpenItemMenu(button)
 	local bag, slot = button:GetBagID(), button:GetID()

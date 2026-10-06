@@ -29,7 +29,7 @@ function Options.Init()
 	category, layout = Settings.RegisterVerticalLayoutCategory(L.ADDON_NAME)
 
 	local function Refresh() ns.RequestRefresh() end
-	local function Appearance() ns.Frame.ApplyAppearance() end
+	local function Appearance() ns.ApplyAppearance() end
 	local function Fonts() ns.Frame.ApplyFonts() end
 	local percent = function(value) return ("%d%%"):format(math.floor(value * 100 + 0.5)) end
 	-- Settings are listed in the order they're added, so each group starts with a header.
@@ -50,11 +50,19 @@ function Options.Init()
 		container:Add("compact", L.LAYOUT_COMPACT)
 		return container:GetData()
 	end, L.OPT_LAYOUT_DESC)
-	AddSlider("columns", L.OPT_COLUMNS, L.OPT_COLUMNS_DESC, ns.DEFAULTS.columns, 6, 24, 1, nil, function()
-		Refresh()
-		ns.BankFrame.Refresh()
-	end)
-	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, percent, function() ns.Frame.ApplyScale() end)
+	local bankLayoutSetting = Settings.RegisterAddOnSetting(category, "BagSections_bankLayout", "bankLayout", ns.db, Settings.VarType.String, L.BANK_LAYOUT, ns.DEFAULTS.bankLayout)
+	bankLayoutSetting:SetValueChangedCallback(Refresh)
+	Settings.CreateDropdown(category, bankLayoutSetting, function()
+		local container = Settings.CreateControlTextContainer()
+		container:Add("default", L.LAYOUT_DEFAULT)
+		container:Add("semicompact", L.LAYOUT_SEMICOMPACT)
+		container:Add("compact", L.LAYOUT_COMPACT)
+		return container:GetData()
+	end, L.OPT_BANK_LAYOUT_DESC)
+	AddSlider("columns", L.OPT_COLUMNS, L.OPT_COLUMNS_DESC, ns.DEFAULTS.columns, 6, 24, 1, nil, Refresh)
+	AddSlider("scale", L.OPT_SCALE, L.OPT_SCALE_DESC, ns.DEFAULTS.scale, 0.6, 1.5, 0.05, percent, function() ns.ApplyScale() end)
+	AddSlider("bankColumns", L.OPT_BANK_COLUMNS, L.OPT_BANK_COLUMNS_DESC, ns.DEFAULTS.bankColumns, 6, 30, 1, nil, Refresh)
+	AddSlider("bankScale", L.OPT_BANK_SCALE, L.OPT_BANK_SCALE_DESC, ns.DEFAULTS.bankScale, 0.6, 1.5, 0.05, percent, function() ns.ApplyScale() end)
 	AddSlider("semiRowSpacing", L.OPT_SEMI_ROW_SPACING, L.OPT_SEMI_ROW_SPACING_DESC, ns.DEFAULTS.semiRowSpacing, 4, 30, 1, nil, Refresh)
 	AddSlider("semiColumnSpacing", L.OPT_SEMI_COLUMN_SPACING, L.OPT_SEMI_COLUMN_SPACING_DESC, ns.DEFAULTS.semiColumnSpacing, 6, 40, 1, nil, Refresh)
 
@@ -107,6 +115,7 @@ function Options.Init()
 	-- General.
 	Header(L.GROUP_GENERAL)
 	AddCheckbox("takeOverBags", L.OPT_TAKEOVER, L.OPT_TAKEOVER_DESC, ns.DEFAULTS.takeOverBags)
+	AddCheckbox("replaceBank", L.OPT_REPLACE_BANK, L.OPT_REPLACE_BANK_DESC, ns.DEFAULTS.replaceBank)
 
 	Header(L.PROFILES, L.PROFILES_DESC)
 	if layout then

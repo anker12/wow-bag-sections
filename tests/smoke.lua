@@ -12,6 +12,7 @@ local frames = {}
 local KNOWN_TEMPLATES = {
 	BackdropTemplate = true, BagSearchBoxTemplate = true, ContainerFrameItemButtonTemplate = true,
 	FlatPanelBackgroundTemplate = true, NineSlicePanelTemplate = true, UIPanelCloseButton = true,
+	UIPanelButtonTemplate = true,
 }
 local function NewFrame(frameType, name, parent, template)
 	for t in tostring(template or ""):gmatch("[^,%s]+") do
@@ -126,7 +127,7 @@ end
 
 _G.Enum = {
 	BankType = { Character = 0, Guild = 1, Account = 2 },
-	BagIndex = { Keyring = -1, Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5 },
+	BagIndex = { Keyring = -1, Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5, CharacterBankTab_1 = 6, CharacterBankTab_9 = 14 },
 	TooltipDataType = { Item = 0 },
 	ItemClass = { Questitem = 12 },
 }
@@ -160,6 +161,7 @@ _G.C_Container = {
 		end
 	end,
 	SortBags = function() sortCalls = sortCalls + 1 end,
+	SortBank = function(bankType) _G._bankSorted = bankType end,
 	GetSortBagsRightToLeft = function() return false end,
 	SetSortBagsRightToLeft = function() end,
 }
@@ -190,6 +192,10 @@ _G.C_Timer = { After = function(_, fn) fn() end }
 _G._atBank = false
 _G.C_Bank = {
 	CanViewBank = function() return _G._atBank end,
+	CloseBankFrame = function() _G._bankClosed = true end,
+	CanPurchaseBankTab = function() return true end,
+	FetchNextPurchasableBankTabData = function() return { tabCost = 100000 } end,
+	PurchaseBankTab = function() end,
 	FetchPurchasedBankTabData = function(bankType)
 		if bankType == 0 then return { { ID = 6, name = "Gear", icon = 1 } } end
 		if bankType == 2 then return { { ID = 15, name = "", icon = 1 } } end
@@ -307,6 +313,10 @@ _G.hooksecurefunc = function(a, b, c)
 		_G[a] = function(...) original(...) b(...) end
 	end
 end
+-- Blizzard's bank window and the UI panel functions that show it.
+_G.BankFrame = NewFrame("Frame", "BankFrame", _G.UIParent)
+_G.BankFrame._shown = false
+_G.ShowUIPanel = function(panel) panel:Show() end
 -- A stand-in for Blizzard's combined bag frame and the functions that open/close it.
 _G.NUM_CONTAINER_FRAMES = 0
 _G.ContainerFrameCombinedBags = NewFrame("Frame", "ContainerFrameCombinedBags", _G.UIParent)
@@ -882,54 +892,90 @@ BagSectionsDB.sectionFontSize, BagSectionsDB.moneyFontSize, BagSectionsDB.slotsF
 ns.Frame.ApplyFonts()
 check(mainFrame._h == baseHeight, "back to the default size")
 
--- Bank viewer: right-click the Bags title before ever visiting a bank.
+-- Bank window: right-click the Bags title before ever visiting a bank.
 local bankWindow
 for _, frame in ipairs(frames) do if frame._name == "BagSectionsBankFrame" then bankWindow = frame end end
-local function BankButtons()
+local function CachedBankButtons()
 	local list = {}
 	for _, frame in ipairs(frames) do
-		if frame._type == "ItemButton" and frame._template == nil and frame._shown then table.insert(list, frame) end
+		if frame._type == "ItemButton" and frame._template == nil and frame._shown and frame:IsVisible() then table.insert(list, frame) end
 	end
 	return list
 end
+local function LiveBankButtons()
+	local list = {}
+	for _, frame in ipairs(frames) do
+		if frame._template == "ContainerFrameItemButtonTemplate" and frame._shown and frame:IsVisible() and frame:GetBagID() == 6 then table.insert(list, frame) end
+	end
+	return list
+end
+local bankFooter = function() return rawget(bankWindow, "Money")._text end
 local titleButton = rawget(mainFrame, "TitleButton")
 check(titleButton, "the Bags title is clickable")
 titleButton._scripts.OnClick(titleButton, "RightButton")
-check(bankWindow:IsShown(), "right-clicking the title opens the bank viewer")
-check(bankWindow.Empty._shown and #BankButtons() == 0, "explains how to fill it before the first visit")
+check(bankWindow:IsShown(), "right-clicking the title opens the bank window")
+check(bankFooter() == "Visit a bank once to see it here" and #CachedBankButtons() == 0, "explains how to fill it before the first visit")
 titleButton._scripts.OnClick(titleButton, "RightButton")
 check(not bankWindow:IsShown(), "right-clicking again closes it")
 
--- Visiting the bank takes a snapshot, character and account bank.
+-- At the banker: Blizzard's bank opens but is moved out of sight; this window takes over,
+-- with live item buttons, and a snapshot is taken (character bank only).
 _G._atBank = true
 Fire("BANKFRAME_OPENED")
-check(BagSectionsCharDB.bank and #BagSectionsCharDB.bank.tabs == 1, "character bank remembered")
+ShowUIPanel(BankFrame)
+check(BankFrame:IsShown() and BankFrame:GetParent() ~= UIParent, "Blizzard's bank stays open, out of sight")
+check(bankWindow:IsShown(), "the bank window opens at the banker")
+check(bankFooter() == "Live", "says it's live while at the bank")
+check(#LiveBankButtons() == 4, "live buttons for every slot of the bank tab")
+check(BagSectionsDB.bankColumns == 15 and BagSectionsDB.bankScale == 1, "bank size defaults: 15 columns")
+check(bankWindow._w > mainFrame._w * 1.4, "the bank window is about half as wide again as the bags")
+BagSectionsDB.bankColumns = 10
+ns.BankFrame.RequestRefresh()
+check(math.abs(bankWindow._w - mainFrame._w) < 1, "bank columns set separately from the bags'")
+BagSectionsDB.bankColumns = 15
+ns.BankFrame.RequestRefresh()
+check(rawget(bankWindow, "FreeSlots")._text == "3 / 4", "bank free slots (the account bank is ignored)")
+check(BagSectionsCharDB.bank and #BagSectionsCharDB.bank.tabs == 1 and BagSectionsCharDB.bank.tabs[1].bag == 6, "character bank remembered, with its bag")
 check(BagSectionsCharDB.bank.tabs[1].items[2].id == 700, "with its items in their slots")
-check(BagSectionsDB.accountBank and BagSectionsDB.accountBank.tabs[1].items[1].count == 12, "account bank remembered account wide")
-SlashCmdList.BAGSECTIONS("bank")
-check(bankWindow:IsShown() and #BankButtons() == 6, "bank viewer shows every bank slot")
-check(not bankWindow.Empty._shown, "no hint once there's a snapshot")
-check(bankWindow.Updated._text == "Live", "says it's live while at the bank")
-check(bankWindow.FreeSlots._text == "4 / 6", "bank free slots")
 
 -- Items moved at the bank update the snapshot.
 ITEMS["6:3"], ITEMS["6:2"] = ITEMS["6:2"], nil
 Fire("PLAYERBANKSLOTS_CHANGED")
 check(BagSectionsCharDB.bank.tabs[1].items[3] and not BagSectionsCharDB.bank.tabs[1].items[2], "snapshot follows changes at the bank")
 
--- After leaving, the snapshot stays and can be looked at from anywhere.
+-- Sorting, and a layout of its own.
+rawget(bankWindow, "SortButton")._scripts.OnClick(nil, "LeftButton")
+check(_G._bankSorted == 0, "the sort button sorts the character bank")
+BagSectionsDB.bankLayout = "compact"
+ns.BankFrame.RequestRefresh()
+check(BagSectionsDB.layout ~= "compact", "the bank's layout doesn't change the bags'")
+for _, layoutName in ipairs({ "semicompact", "default" }) do
+	BagSectionsDB.bankLayout = layoutName
+	ns.BankFrame.RequestRefresh()
+	check(#LiveBankButtons() == 4, "bank draws in " .. layoutName)
+end
+ns.Menu.OpenBankMenu(bankWindow)
+
+-- Closing the window at the bank ends the banker conversation; leaving closes the window.
+bankWindow:Hide()
+check(_G._bankClosed, "closing the bank window closes the bank")
+bankWindow:Show()
 _G._atBank = false
 Fire("BANKFRAME_CLOSED")
+check(not bankWindow:IsShown(), "leaving the bank closes the window")
+
+-- Away from the bank: the snapshot, read only.
 ITEMS["6:3"] = nil
 Fire("BAG_UPDATE_DELAYED")
 check(BagSectionsCharDB.bank.tabs[1].items[3], "nothing is read away from the bank")
-check(bankWindow.Updated._text == "Updated just now", "says how old the snapshot is")
+SlashCmdList.BAGSECTIONS("bank")
+check(bankWindow:IsShown() and #CachedBankButtons() == 4 and #LiveBankButtons() == 0, "the snapshot, with its own buttons")
+check(bankFooter() == "Updated just now", "says how old the snapshot is")
 local robe
-for _, button in ipairs(BankButtons()) do if button.link then robe = button end end
+for _, button in ipairs(CachedBankButtons()) do if button.link then robe = button end end
 robe._scripts.OnClick(robe)
 check(_G._linked == "link", "Shift-click links a bank item")
-local bankFont = rawget(bankWindow, "FreeSlots")._font
-check(bankFont == _G.BagSectionsFont_slots, "bank footer uses the free slots font")
+check(rawget(bankWindow, "FreeSlots")._font == _G.BagSectionsFont_slots, "bank footer uses the free slots font")
 SlashCmdList.BAGSECTIONS("bank")
 check(not bankWindow:IsShown(), "/bs bank closes it again")
 

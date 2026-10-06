@@ -106,3 +106,11 @@ mention BagSections.
 | T98 | Put a crafting reagent (cloth, herb) in a normal bag. Settings → Gather reagents from bags on | It moves from Rest to "Reagents (bags)", a separate block right after Reagents, in all three layouts (Compact: its own paler green outline below the divider). Off again: back in Rest. |
 | T99 | Drag that reagent onto a Rest slot; then drag it onto the Reagents (bags) header | Rest: it stays in Rest. Header: it goes back to Reagents (bags). |
 | T100 | Add a reagent to one of your sections | It stays in the section. |
+| T101 | Talk to a banker | BagSections' bank window opens (stone background, the bank's bag slots along the bottom, "Live" in the footer); Blizzard's bank isn't visible; the bags open too. No Lua errors or "blocked" popups. |
+| T102 | At the bank: right-click an item in the bags, then one in the bank; drag items both ways; Shift-click to split a stack | Right-click deposits / withdraws; drag and drop works both ways; nothing is blocked. |
+| T103 | At the bank: click the bank window's sort button; type in its search box | The bank sorts; items that don't match are dimmed. |
+| T104 | Bank gear menu → Layout → Semi-compact, then Compact | The bank changes layout; the bags keep theirs. Settings → Bank layout shows the same choice. |
+| T105 | At the bank with a tab left to buy | "Buy tab" shows; clicking it asks to confirm with the price; Yes buys it and it appears in the bottom row. (If this is blocked, note it: Blizzard restricts buying tabs.) |
+| T106 | Close the bank window with its X; also press Escape at the bank; also walk away | Each ends the conversation with the banker, and the bank window closes. |
+| T107 | Settings → Replace the default bank off, /reload, talk to a banker | Blizzard's bank opens as normal. |
+| T117 | Open the bank; Settings → Bank columns and Bank scale | The bank is about half as wide again as the bags by default (15 columns). Each slider changes only the bank; Columns and Scale change only the bags. |

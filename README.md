@@ -149,16 +149,23 @@ Bags  [search........]  [sort] [⚙] [x]
 ├─────────────────────┘ ▢            │
 ```
 
-### Bank, from anywhere
+### Bank
 
-**Right-click the "Bags" title** (or type `/bs bank`) to look at your bank wherever you
-are. Every time you visit a bank, BagSections remembers what's in it: your character's bank
-for that character, and the account bank for all your characters. The bank window shows
-that copy, one block per bank tab, with free slots and how long ago it was updated ("Live"
-while you're at the bank). Hover an item for its tooltip, or Shift-click to link it in
-chat. Items can only be moved while you're actually at the bank. Right-click the title
-again, or click the close button, to close it. It opens next to the bags, and you can drag
-it anywhere.
+At a banker, BagSections' bank window opens instead of Blizzard's (Settings → **Replace the
+default bank**; needs `/reload`). It looks like Blizzard's bank (the stone background, the
+bank's bag slots along the bottom) and works like it: right-click items to move them
+between bank and bags, drag and drop, search, sort, and buy another tab. Closing it ends
+the conversation with the banker.
+
+It has its own layout, separate from the bags: Default, Semi-compact or Compact, from the
+bank window's gear menu or Settings → **Bank layout**. Its size is separate too: Settings →
+**Bank columns** (15 by default, half as wide again as the bags) and **Bank scale**.
+
+**Right-click the "Bags" title** (or type `/bs bank`) to look at your bank from anywhere.
+Every visit to a bank is remembered (per character), so away from the bank the window shows
+that copy, with how long ago it was updated ("Live" while you're at the bank). Hover an
+item for its tooltip, or Shift-click to link it in chat; items can only be moved while
+you're at the bank. It opens next to the bags until you move it.
 
 ### Rest position
 

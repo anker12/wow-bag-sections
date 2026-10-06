@@ -25,6 +25,11 @@ ns.DEFAULTS = {
 	autoQuest = true,
 	-- Crafting reagents in normal bags shown together next to the reagent bag.
 	bagReagents = false,
+	-- Bank window: replaces Blizzard's at the banker; its own layout.
+	replaceBank = true,
+	bankLayout = "default",
+	bankColumns = 15, -- half as wide again as the bags by default
+	bankScale = 1,
 	-- Appearance
 	outlineAlpha = 0.7, -- compact layout section outlines
 	backgroundAlpha = 0.94,
@@ -74,43 +79,7 @@ local function ApplyDefaults(target, defaults)
 	return target
 end
 
--- Redraws are batched: any number of events in one frame cause a single redraw.
--- Modes, strongest first:
---   "layout"  - something the player did (assign, sort, section change): rebuild everything
---   "items"   - bag contents changed: rescan; the compact layout keeps its arrangement
---   "buttons" - only button state changed (locks, search, quest marks)
-local MODE_RANK = { buttons = 1, items = 2, layout = 3 }
-local refreshQueued, pendingMode = false, nil
-
-local function RunRefresh()
-	refreshQueued = false
-	local mode = pendingMode
-	pendingMode = nil
-	if mode == "buttons" then
-		ns.Frame.UpdateButtons()
-	elseif mode then
-		ns.Frame.Render(mode)
-	end
-end
-
--- mode: "layout" (default; also true or nil), "items", or "buttons" (also false).
-function ns.RequestRefresh(mode)
-	if mode == nil or mode == true then
-		mode = "layout"
-	elseif mode == false then
-		mode = "buttons"
-	end
-	if not pendingMode or MODE_RANK[mode] > MODE_RANK[pendingMode] then
-		pendingMode = mode
-	end
-	if not ns.Frame.IsShown() then
-		return
-	end
-	if not refreshQueued then
-		refreshQueued = true
-		C_Timer.After(0, RunRefresh)
-	end
-end
+-- ns.RequestRefresh (Frame.lua) redraws every window that's open, batched per frame.
 
 local FULL_REFRESH_EVENTS = {
 	BAG_UPDATE_DELAYED = "items",
@@ -150,10 +119,14 @@ local function OnAddonLoaded()
 	BagSectionsDB = ApplyDefaults(existingInstall and BagSectionsDB or {}, ns.DEFAULTS)
 	ns.db = BagSectionsDB
 	ns.charDB = BagSectionsCharDB
+	-- The bank's sections and item rules live apart from the bags'.
+	BagSectionsCharDB.bankSections = Rules.Upgrade(BagSectionsCharDB.bankSections)
+	BagSectionsCharDB.bankSections.autoQuest = false
 	ns.SyncAutoQuest()
 
 	ns.Frame.Init()
 	ns.BankFrame.Init()
+	ns.Bank.Init()
 	ns.Options.Init()
 	if ns.db.takeOverBags then
 		ns.Hooks.Install()
@@ -203,6 +176,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
 		ns.Bank.OnClosed()
 	elseif BANK_EVENTS[event] then
 		ns.Bank.RequestSnapshot()
+		ns.BankFrame.RequestRefresh("items")
 	elseif FULL_REFRESH_EVENTS[event] then
 		ns.RequestRefresh(FULL_REFRESH_EVENTS[event])
 		if event == "BAG_UPDATE_DELAYED" then
@@ -211,9 +185,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
 	elseif BUTTON_REFRESH_EVENTS[event] then
 		ns.RequestRefresh("buttons")
 	elseif event == "BAG_UPDATE_COOLDOWN" then
-		if ns.Frame.IsShown() then
-			ns.ItemButtons.UpdateCooldowns()
-		end
+		ns.UpdateCooldowns()
 	elseif event == "PLAYER_MONEY" or event == "CURRENCY_DISPLAY_UPDATE" then
 		ns.Frame.UpdateFooter()
 	elseif event == "PLAYER_REGEN_ENABLED" then

@@ -700,29 +700,24 @@ test("footer currencies: none tracked", function()
 	eq(#footer.places, 0)
 end)
 
-test("bank: snapshots in order, character bank first", function()
+test("bank: a snapshot becomes slots with the saved items", function()
 	local Bank = ns.Bank
-	local mine = { updated = 1, tabs = {} }
-	local shared = { updated = 2, tabs = {} }
-	local list = Bank.GetSnapshots({ bank = mine }, { accountBank = shared })
-	eq(#list, 2)
-	eq(list[1].kind, "character")
-	eq(list[2].data, shared)
-	eq(#Bank.GetSnapshots({}, {}), 0, "never visited")
-end)
-
-test("bank: free slots count across tabs and banks", function()
-	local Bank = ns.Bank
-	local snapshots = {
-		{ kind = "character", data = { tabs = {
-			{ size = 4, items = { [1] = { id = 1 }, [3] = { id = 2 } } },
-			{ size = 2, items = {} },
-		} } },
-		{ kind = "account", data = { tabs = { { size = 3, items = { [2] = { id = 3 } } } } } },
-	}
-	local free, total = Bank.CountFree(snapshots)
-	eq(free, 6)
-	eq(total, 9)
+	local snapshot = { updated = 1, tabs = {
+		{ bag = 6, size = 3, items = { [2] = { id = 700, count = 1, icon = 9, link = "robe" } } },
+		{ size = 1, items = {} }, -- saved before snapshots kept the bag
+	} }
+	local slots = Bank.SnapshotSlots(snapshot)
+	eq(#slots, 4)
+	eq(slots[2].bag, 6)
+	eq(slots[2].item.itemID, 700, "item rules still apply to saved items")
+	eq(slots[2].cached.link, "robe")
+	eq(slots[1].item, nil, "empty slots stay empty")
+	eq(slots[1].cached, false)
+	eq(slots[4].bag, 1002, "old snapshots get a stand-in bag number")
+	local free, total = Layout.CountFree(slots)
+	eq(free, 3)
+	eq(total, 4)
+	eq(#Bank.SnapshotSlots(nil), 0, "never visited")
 end)
 
 test("bank: snapshot age reads naturally", function()
