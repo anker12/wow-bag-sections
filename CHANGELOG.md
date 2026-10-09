@@ -5,6 +5,11 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Added
+- Quivers and ammo pouches get an Ammo section of their own at the bottom of the bags,
+  like the reagent bag. Their slots are no longer mixed into Rest, and the free slot count
+  leaves them out.
+
 ## [1.3.0] - 2026-10-06
 
 ### Added
