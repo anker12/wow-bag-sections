@@ -1151,6 +1151,46 @@ ITEMS["6:3"], ITEMS["6:2"] = ITEMS["6:2"], nil
 Fire("PLAYERBANKSLOTS_CHANGED")
 check(BagSectionsCharDB.bank.tabs[1].items[3] and not BagSectionsCharDB.bank.tabs[1].items[2], "snapshot follows changes at the bank")
 
+-- "Move all to bank" / "Move all to bags" on a section header, while at the bank.
+local savedItems = {}
+for key, item in pairs(ITEMS) do savedItems[key] = item end
+ns.Rules.AssignLinked(BagSectionsCharDB, bankDB, { itemID = 6948 }, bagPartner.id, ns.Rules.KIND_ITEMID)
+ns.Rules.AssignLinked(BagSectionsCharDB, bankDB, { itemID = 300 }, bagPartner.id, ns.Rules.KIND_ITEMID)
+local function SectionHeader(key, bagCheck)
+	for _, frame in ipairs(frames) do
+		local group = frame._shown and rawget(frame, "Line") and frame.group
+		if group and group.key == key and group.slots[1] and bagCheck(group.slots[1].bag) then return frame end
+	end
+end
+ns.RequestRefresh()
+local bagHeader = SectionHeader(bagPartner.id, ns.Inventory.IsSectionBag)
+check(bagHeader and bagHeader.group.count >= 2, "bag section with items")
+bagHeader._scripts.OnClick(bagHeader, "RightButton")
+check(_G._menuEntries[ns.L.MOVE_ALL_TO_BANK] and not _G._menuEntries[ns.L.MOVE_ALL_TO_BAGS], "at the bank, a bag section offers Move all to bank")
+ns.Mover.MoveGroup(bagHeader.group, true)
+local inBank = {}
+for slot = 1, 4 do local i = ITEMS["6:" .. slot]; if i then inBank[i.itemID] = true end end
+check(ITEMS["0:1"] == nil and ITEMS["1:2"] == nil and inBank[6948] and inBank[300] and inBank[700], "the section's items moved into the bank")
+for _, slot in ipairs(bagHeader.group.slots) do check(not ITEMS[slot.bag .. ":" .. slot.slot], "every item of the section left the bags") end
+check(not ns.Mover.IsBusy() and not CursorHasItem(), "the move finished with nothing left on the cursor")
+ns.BankFrame.RequestRefresh()
+bankHeader = SectionHeader(bankSection.id, ns.Inventory.IsBankBag)
+check(bankHeader and bankHeader.group.count >= 3, "the linked bank section has them, and the Old Robe")
+bankHeader._scripts.OnClick(bankHeader, "RightButton")
+check(_G._menuEntries[ns.L.MOVE_ALL_TO_BAGS], "a bank section offers Move all to bags")
+ns.Mover.MoveGroup(bankHeader.group, false)
+for _, slot in ipairs(bankHeader.group.slots) do check(not ITEMS[slot.bag .. ":" .. slot.slot], "everything in it moved to the bags") end
+local inBags = {}
+for _, slot in ipairs(ns.Inventory.Scan()) do if slot.item then inBags[slot.item.itemID] = true end end
+check(inBags[6948] and inBags[300] and inBags[700], "back in the bags, with the Old Robe")
+check(#printed == 0 or not printed[#printed]:find("Moved", 1, true), "no message when everything fits")
+for key in pairs(ITEMS) do ITEMS[key] = nil end
+for key, item in pairs(savedItems) do ITEMS[key] = item end
+ns.Rules.UnassignLinked(BagSectionsCharDB, bankDB, { itemID = 6948 })
+ns.Rules.UnassignLinked(BagSectionsCharDB, bankDB, { itemID = 300 })
+Fire("PLAYERBANKSLOTS_CHANGED")
+ns.RequestRefresh()
+
 -- Sorting, and a layout of its own.
 rawget(bankWindow, "SortButton")._scripts.OnClick(nil, "LeftButton")
 check(_G._bankSorted == 0, "the sort button sorts the character bank")

@@ -134,3 +134,8 @@ mention BagSections.
 | T127 | Fresh install, or first login after updating | Gather reagents from bags and Reagents section in the bank are on. Neither gear menu has Quest Items or Reagents switches; Settings has Quest Items section, Gather reagents from bags and Reagents section in the bank. Turn Reagents section in the bank off: the bank's Reagents section goes, on every character. |
 | T128 | Fresh install: open the bags and the bank | Both are in Semi-compact, with 4 between rows and 12 between sections side by side. The Layout menus and Settings list Stacked, Semi-compact and Compact (no "Default"). |
 | T126 | Semi-compact, bags and bank, at a scale below 1 (e.g. Bank scale 0.8): collapse and expand sections in a shared row and on their own rows | Every header keeps its line to the right of its name, in narrow boxes too; none disappear as sections move. |
+| T129 | At the bank, right-click a bag section with items, then Move all to bank | Every item of the section moves into the bank, onto matching stacks first, with no errors. A linked bank section shows them. |
+| T130 | At the bank, right-click a bank section, then Move all to bags | Every item moves into your bags. |
+| T131 | Away from the bank (or in the bank window showing a past visit), right-click a section | No Move all entry. |
+| T132 | Move all to bank with more items than free bank slots | What fits moves; a chat message says how many didn't fit. |
+| T133 | Start Move all to bank on a big section, then walk away from the banker | Moving stops, and a chat message says how many items were moved. |

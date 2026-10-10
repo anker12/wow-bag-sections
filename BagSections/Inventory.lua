@@ -17,6 +17,15 @@ function Inventory.IsSectionBag(bag)
 	return bag >= Enum.BagIndex.Backpack and bag <= NumBagSlots()
 end
 
+-- The section bags' IDs, in order.
+function Inventory.SectionBags()
+	local bags = {}
+	for bag = Enum.BagIndex.Backpack, NumBagSlots() do
+		table.insert(bags, bag)
+	end
+	return bags
+end
+
 -- Every bag ID this addon's window takes over from the default UI.
 function Inventory.IsHandledBag(bag)
 	return Inventory.IsSectionBag(bag) or bag == REAGENT_BAG or bag == KEYRING

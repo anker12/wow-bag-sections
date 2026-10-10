@@ -5,6 +5,11 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Added
+- At the bank, right-clicking a section in the bags offers "Move all to bank", and
+  right-clicking a section in the bank offers "Move all to bags". Items move one at a time,
+  onto stacks of the same item first. If some don't fit, a chat message says how many.
+
 ## [1.3.0] - 2026-10-06
 
 ### Added
