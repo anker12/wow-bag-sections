@@ -120,15 +120,17 @@ function Menu.OpenSectionMenu(owner, group, window)
 	end
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(section.name)
+		local semicompact = ns.db[window.isBank and "bankLayout" or "layout"] == "semicompact"
+		if semicompact then
+			-- Semi-compact places sections by dragging them (see Rearrange sections).
+			root:CreateButton(L.REARRANGE_UNLOCK, function() window.SetRearranging(true) end)
+		end
 		root:CreateButton(L.RENAME_SECTION, function() Menu.PromptRename(section, window) end)
 		root:CreateButton(section.collapsed and L.EXPAND or L.COLLAPSE, function()
 			section.collapsed = not section.collapsed
 			Changed()
 		end)
-		if ns.db[window.isBank and "bankLayout" or "layout"] == "semicompact" then
-			-- Semi-compact places sections by dragging them (see Rearrange sections).
-			root:CreateButton(L.REARRANGE_UNLOCK, function() window.SetRearranging(true) end)
-		else
+		if not semicompact then
 			root:CreateButton(L.MOVE_UP, function()
 				Rules.MoveSection(db, section.id, -1)
 				Changed()
