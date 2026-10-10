@@ -1,5 +1,8 @@
 # BagSections
 
+[CurseForge link](https://www.curseforge.com/wow/addons/bagsections)
+
+
 A bag addon for **World of Warcraft: Forever**. All your bags show as one window, and you
 can create named **sections** such as "Essentials" or "Weapon swap". Each section holds only
 the items you put in it, so it never has empty slots. Everything else, plus every empty slot,
