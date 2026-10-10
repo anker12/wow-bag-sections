@@ -1,4 +1,5 @@
--- Turns a scanned list of bag slots into display groups (sections, Rest, Reagents, Keyring).
+-- Turns a scanned list of bag slots into display groups (sections, Rest, Reagents, Ammo,
+-- Keyring).
 -- Pure logic: no WoW API calls, so it can be unit tested outside the game.
 
 local _, ns = ...
@@ -7,11 +8,12 @@ local Layout = {}
 ns.Layout = Layout
 
 -- slots: array in physical order of
---   { bag = n, slot = n, area = "bags" | "reagent" | "keyring", item = { itemID, guid, ... } | nil }
+--   { bag = n, slot = n, area = "bags" | "reagent" | "ammo" | "keyring", item = { itemID, guid, ... } | nil }
 -- opts: { showEmpty = bool, hideKeyring = bool, bagReagents = bool }
 -- Returns an array of groups:
---   { key, kind = "section" | "rest" | "reagent" | "bagreagent" | "keyring", name, collapsed, color, below, slots = {...}, count, gathers }
--- Order: sections above Rest, Rest, sections below Rest, Reagents, Keyring.
+--   { key, kind = "section" | "rest" | "reagent" | "bagreagent" | "ammo" | "keyring", name, collapsed, color, below, slots = {...}, count, gathers }
+-- Order: sections above Rest, Rest, sections below Rest, Reagents, Ammo, Keyring.
+-- Ammo is every quiver and ammo pouch, kept apart from the normal bags like the reagent bag.
 -- With opts.bagReagents, crafting reagents in normal bags that would be in Rest join the
 -- reagent bag's group instead (gathers = true): the reagent bag's items, then the bag
 -- reagents, then the reagent bag's empty slots, as one Reagents group. Without a reagent
@@ -42,6 +44,7 @@ function Layout.Build(db, slots, opts)
 	local collapsed = db.collapsedBuiltin or {}
 	local rest = { key = Rules.REST, kind = "rest", slots = {}, count = 0, collapsed = collapsed.rest or false }
 	local reagent = { key = "reagent", kind = "reagent", slots = {}, count = 0, collapsed = collapsed.reagent or false }
+	local ammo = { key = "ammo", kind = "ammo", slots = {}, count = 0, collapsed = collapsed.ammo or false }
 	local keyring = { key = "keyring", kind = "keyring", slots = {}, count = 0, collapsed = collapsed.keyring or false }
 	local bagReagent = { key = "bagreagent", kind = "bagreagent", slots = {}, count = 0, collapsed = collapsed.bagreagent or false }
 
@@ -49,6 +52,9 @@ function Layout.Build(db, slots, opts)
 		if slot.area == "reagent" then
 			table.insert(reagent.slots, slot)
 			if slot.item then reagent.count = reagent.count + 1 end
+		elseif slot.area == "ammo" then
+			table.insert(ammo.slots, slot)
+			if slot.item then ammo.count = ammo.count + 1 end
 		elseif slot.area == "keyring" then
 			table.insert(keyring.slots, slot)
 			if slot.item then keyring.count = keyring.count + 1 end
@@ -95,6 +101,9 @@ function Layout.Build(db, slots, opts)
 		-- No reagent bag. Shown when empty too while sections are (e.g. while dragging), so a
 		-- reagent moved to Rest can be dragged back.
 		table.insert(result, bagReagent)
+	end
+	if #ammo.slots > 0 then
+		table.insert(result, ammo)
 	end
 	if #keyring.slots > 0 and not opts.hideKeyring then
 		table.insert(result, keyring)

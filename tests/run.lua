@@ -199,6 +199,29 @@ test("layout: reagent bag and keyring stay separate and are never classified", f
 	eq(groups[4].kind, "keyring")
 end)
 
+test("layout: quivers and ammo pouches get their own Ammo group", function()
+	local db = Rules.NewCharDB()
+	local s = Rules.CreateSection(db, "Potions")
+	Rules.Assign(db, POTION, s.id, Rules.KIND_ITEMID)
+	local slots = Slots({
+		{ item = POTION },
+		{},
+		{ bag = 2, area = "ammo", item = POTION },
+		{ bag = 2, area = "ammo" },
+		{ bag = 5, area = "reagent" },
+		{ bag = -1, area = "keyring" },
+	})
+	local groups = Layout.Build(db, slots, { bagReagents = true })
+	eq(#groups, 5)
+	eq(groups[1].count, 1)
+	eq(#groups[2].slots, 1)
+	eq(groups[3].kind, "reagent")
+	eq(groups[4].kind, "ammo")
+	eq(#groups[4].slots, 2)
+	eq(groups[4].count, 1)
+	eq(groups[5].kind, "keyring")
+end)
+
 test("layout: keyring can be hidden", function()
 	local db = Rules.NewCharDB()
 	local slots = Slots({ { item = POTION }, { bag = -1, area = "keyring" } })

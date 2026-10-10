@@ -70,6 +70,13 @@ they get a Reagents section of their own. Only items that would otherwise be in 
 there; items you've put in a section stay in it. Drag one to Rest to keep that item in
 Rest, or back onto the Reagents header to undo that.
 
+### Ammo
+
+A quiver or ammo pouch in one of your bag slots gets an **Ammo** section of its own at the
+bottom, after Reagents, the same way the reagent bag does. Its slots are never mixed into
+your sections or Rest, and they aren't counted as free bag space in the footer, since they
+only take arrows or bullets. Items in it can't be added to a section.
+
 ### Profiles
 
 Settings → Profiles... (or the gear menu → Profiles) has *Save sections as profile...*,
@@ -129,13 +136,13 @@ Bags and bank both start in **Semi-compact**.
   that 3-per-row starting point. Settings → **Semi-compact: space between rows** and
   **Semi-compact: space between sections side by side** set the gaps between sections (4
   and 12 by default). Your arrangement also sets the section order used by the other
-  layouts, and profiles save it. Reagents and Keyring stay full width at the bottom.
+  layouts, and profiles save it. Reagents, Ammo and Keyring stay full width at the bottom.
 * **Compact:** works like Blizzard's combined bag. All sections run through one grid with
   no gaps: each section starts in the slot right after the previous one ends and wraps onto
   the next line. Each section is outlined in its own colour, even across line breaks, with
   its name on its top edge. Slots always line up in the same columns on every row. Compact
   spaces slots a little further apart than Stacked to fit thin outlines between sections,
-  so its window is slightly wider. Reagents and Keyring sit below a thin divider, apart
+  so its window is slightly wider. Reagents, Ammo and Keyring sit below a thin divider, apart
   from your sections. Hover a name to see it in full. Change a section's colour
   from its right-click menu (Colour...). Rest is grey and Reagents green. Empty and
   collapsed sections keep a small space so their name stays visible.

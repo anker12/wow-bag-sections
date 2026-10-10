@@ -6,6 +6,9 @@ section into CurseForge's changelog box when uploading.
 ## [Unreleased]
 
 ### Added
+- Quivers and ammo pouches get an Ammo section of their own at the bottom of the bags,
+  like the reagent bag. Their slots are no longer mixed into Rest, and the free slot count
+  leaves them out.
 - At the bank, right-clicking a section in the bags offers "Move all to bank", and
   right-clicking a section in the bank offers "Move all to bags". Items move one at a time,
   onto stacks of the same item first. If some don't fit, a chat message says how many.

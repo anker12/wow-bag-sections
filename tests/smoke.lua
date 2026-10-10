@@ -117,6 +117,8 @@ ITEMS["6:2"] = { itemID = 700, name = "Old Robe", stack = 1 }
 ITEMS["15:1"] = { itemID = 800, name = "Shared Ore", stack = 12, maxStack = 20 }
 -- The bag in the bank's bag slot 2 (Characterbanktab is the bank's list of bag slots).
 ITEMS["-2:2"] = { itemID = 900, name = "Bank Bag", stack = 1 }
+-- Bag family per bag (Blizzard's item family bits): 1 is a quiver, 2 an ammo pouch.
+local BAG_FAMILY = {}
 local cursor -- { bag, slot }
 local sortCalls = 0
 
@@ -150,7 +152,7 @@ _G.C_Container = {
 	GetContainerNumFreeSlots = function(bag)
 		local free = 0
 		for slot = 1, NUM_SLOTS[bag] or 0 do if not ItemAt(bag, slot) then free = free + 1 end end
-		return free, 0
+		return free, BAG_FAMILY[bag] or 0
 	end,
 	GetContainerFreeSlots = function(bag)
 		local list = {}
@@ -278,7 +280,14 @@ _G.EventRegistry = { RegisterCallback = function(_, event, fn) _G._registryCallb
 _G.GetMouseFoci = function() return {} end
 _G.strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
 _G.tinsert = table.insert
-_G.bit = { band = function() return 0 end }
+_G.bit = { band = function(a, b)
+	local result, bitValue = 0, 1
+	while a > 0 and b > 0 do
+		if a % 2 == 1 and b % 2 == 1 then result = result + bitValue end
+		a, b, bitValue = math.floor(a / 2), math.floor(b / 2), bitValue * 2
+	end
+	return result
+end }
 _G.ACCEPT, _G.CANCEL, _G.YES, _G.NO = "Accept", "Cancel", "Yes", "No"
 _G.NORMAL_FONT_COLOR = { GetRGB = function() return 1, 0.82, 0 end }
 _G.ColorPickerFrame = {
@@ -555,6 +564,44 @@ Fire("CURSOR_CHANGED")
 check(FindGroupFrame("section") == nil, "no section drop targets for reagent-bag items")
 ClearCursor()
 Fire("CURSOR_CHANGED")
+
+-- A quiver in bag slot 2 gets its own Ammo group, like the reagent bag: its arrows are
+-- never sorted into sections or Rest, its slots aren't free bag space, and its items
+-- can't be assigned to a section.
+local function RestSize(list)
+	for _, group in ipairs(list) do
+		if group.kind == "rest" then return #group.slots end
+	end
+end
+local restBefore = RestSize(ns.Layout.Build(db, ns.Inventory.Scan()))
+local bagWindow
+for _, frame in ipairs(frames) do if frame._name == "BagSectionsFrame" then bagWindow = frame end end
+local freeBefore = rawget(bagWindow, "FreeSlots")._text
+NUM_SLOTS[2], BAG_FAMILY[2] = 4, 1
+ITEMS["2:1"] = { itemID = 1000, name = "Rough Arrow", stack = 200, maxStack = 200 }
+check(ns.Inventory.IsAmmoBag(2) and not ns.Inventory.IsSectionBag(2), "a quiver is an ammo bag, not a section bag")
+check(ns.Inventory.IsHandledBag(2), "the window still shows the quiver")
+check(not ns.Inventory.IsAmmoBag(0) and not ns.Inventory.IsAmmoBag(1), "backpack and normal bags aren't ammo bags")
+groups = ns.Layout.Build(db, ns.Inventory.Scan())
+local ammoGroup
+for _, group in ipairs(groups) do
+	if group.kind == "ammo" then ammoGroup = group end
+end
+check(ammoGroup and #ammoGroup.slots == 4 and ammoGroup.count == 1, "quiver shown as its own Ammo group")
+check(RestSize(groups) == restBefore, "Rest doesn't take the quiver's slots")
+check(groups[#groups].kind == "ammo" and groups[#groups - 1].kind == "reagent", "Ammo comes after Reagents")
+Fire("BAG_UPDATE_DELAYED")
+RunOnUpdates()
+check(rawget(bagWindow, "FreeSlots")._text == freeBefore,
+	"quiver slots aren't counted as free bag space")
+C_Container.PickupContainerItem(2, 1)
+Fire("CURSOR_CHANGED")
+check(FindGroupFrame("section") == nil and FindGroupFrame("rest") == nil, "no drop targets for quiver items")
+ClearCursor()
+Fire("CURSOR_CHANGED")
+NUM_SLOTS[2], BAG_FAMILY[2], ITEMS["2:1"] = 0, nil, nil
+Fire("BAG_UPDATE_DELAYED")
+RunOnUpdates()
 
 -- Menus build without errors.
 local header

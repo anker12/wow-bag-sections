@@ -12,23 +12,44 @@ local function NumBagSlots()
 	return (Constants and Constants.InventoryConstants and Constants.InventoryConstants.NumBagSlots) or NUM_BAG_SLOTS or 4
 end
 
--- Bags shown in the window: backpack and the normal bag slots.
-function Inventory.IsSectionBag(bag)
+local function IsEquippedBag(bag)
 	return bag >= Enum.BagIndex.Backpack and bag <= NumBagSlots()
+end
+
+-- Item family bits of the bags that only take ammo: quivers (arrows) and ammo pouches
+-- (bullets).
+local AMMO_FAMILY = 0x0001 + 0x0002
+
+-- A quiver or ammo pouch in one of the normal bag slots. Like the reagent bag, its slots
+-- get an Ammo group of their own and are never part of sections or Rest.
+function Inventory.IsAmmoBag(bag)
+	if bag <= Enum.BagIndex.Backpack or not IsEquippedBag(bag) then
+		return false
+	end
+	local _, bagFamily = C_Container.GetContainerNumFreeSlots(bag)
+	return bit.band(bagFamily or 0, AMMO_FAMILY) ~= 0
+end
+
+-- Bags whose items are sorted into sections: backpack and the normal bag slots, apart from
+-- quivers and ammo pouches.
+function Inventory.IsSectionBag(bag)
+	return IsEquippedBag(bag) and not Inventory.IsAmmoBag(bag)
 end
 
 -- The section bags' IDs, in order.
 function Inventory.SectionBags()
 	local bags = {}
 	for bag = Enum.BagIndex.Backpack, NumBagSlots() do
-		table.insert(bags, bag)
+		if Inventory.IsSectionBag(bag) then
+			table.insert(bags, bag)
+		end
 	end
 	return bags
 end
 
 -- Every bag ID this addon's window takes over from the default UI.
 function Inventory.IsHandledBag(bag)
-	return Inventory.IsSectionBag(bag) or bag == REAGENT_BAG or bag == KEYRING
+	return IsEquippedBag(bag) or bag == REAGENT_BAG or bag == KEYRING
 end
 
 local function KeyringSize()
@@ -120,7 +141,8 @@ end
 function Inventory.Scan()
 	local slots = {}
 	for bag = Enum.BagIndex.Backpack, NumBagSlots() do
-		AddBag(slots, bag, "bags", C_Container.GetContainerNumSlots(bag) or 0)
+		local area = Inventory.IsAmmoBag(bag) and "ammo" or "bags"
+		AddBag(slots, bag, area, C_Container.GetContainerNumSlots(bag) or 0)
 	end
 	AddBag(slots, REAGENT_BAG, "reagent", C_Container.GetContainerNumSlots(REAGENT_BAG) or 0)
 	AddBag(slots, KEYRING, "keyring", KeyringSize())

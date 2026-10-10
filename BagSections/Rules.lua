@@ -44,7 +44,7 @@ function Rules.NewCharDB()
 		version = 1,
 		sections = {},
 		rules = { byItemID = {}, byGUID = {} },
-		-- Collapsed state of the built-in groups: rest, reagent, keyring.
+		-- Collapsed state of the built-in groups: rest, reagent, ammo, keyring.
 		collapsedBuiltin = {},
 		autoQuest = false,
 		nextId = 1,
@@ -174,7 +174,7 @@ function Rules.SetSectionColor(db, id, r, g, b)
 	return true
 end
 
--- key is "rest", "reagent", "bagreagent" or "keyring".
+-- key is "rest", "reagent", "bagreagent", "ammo" or "keyring".
 function Rules.ToggleBuiltinCollapsed(db, key)
 	db.collapsedBuiltin[key] = not db.collapsedBuiltin[key] or nil
 end
