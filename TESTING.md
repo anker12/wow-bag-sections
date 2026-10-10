@@ -140,3 +140,5 @@ mention BagSections.
 | T132 | Away from the bank (or in the bank window showing a past visit), right-click a section | No Move all entry. |
 | T133 | Move all to bank with more items than free bank slots | What fits moves; a chat message says how many didn't fit. |
 | T134 | Start Move all to bank on a big section, then walk away from the banker | Moving stops, and a chat message says how many items were moved. |
+| T135 | At the bank, with a reagent bag, right-click the bags' Reagents header | A menu with Collapse and Move all to bank. Move all puts the reagent bag's items and gathered reagents in the bank. Away from the bank, only Collapse. |
+| T136 | At the bank, right-click the bank's Reagents section, then Move all to bags | The reagents fill the reagent bag first, then your other bags. |

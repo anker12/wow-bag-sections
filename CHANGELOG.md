@@ -12,6 +12,8 @@ section into CurseForge's changelog box when uploading.
 - At the bank, right-clicking a section in the bags offers "Move all to bank", and
   right-clicking a section in the bank offers "Move all to bags". Items move one at a time,
   onto stacks of the same item first. If some don't fit, a chat message says how many.
+  The bags' Reagents has it too (right-click its header), and reagents moved to the bags
+  go to the reagent bag first.
 
 ## [1.3.0] - 2026-10-06
 

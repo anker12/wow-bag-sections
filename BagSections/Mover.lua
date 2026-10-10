@@ -20,14 +20,27 @@ local function IsLocked(bag, slot)
 	return info and info.isLocked or false
 end
 
-local function TargetBags(toBank)
+local REAGENT_BAG = Enum.BagIndex.ReagentBag
+
+-- Reagents coming out of the bank go to the reagent bag first, like Blizzard's withdraw.
+local function UsesReagentBag(itemID, toBank)
+	return not toBank and REAGENT_BAG ~= nil and ns.Inventory.IsReagent(itemID)
+		and (C_Container.GetContainerNumSlots(REAGENT_BAG) or 0) > 0
+end
+
+local function TargetBags(itemID, toBank)
 	local bags = {}
 	if toBank then
 		for _, tab in ipairs(ns.Inventory.BankTabs()) do
 			table.insert(bags, tab.ID)
 		end
-	else
-		bags = ns.Inventory.SectionBags()
+		return bags
+	end
+	if UsesReagentBag(itemID, toBank) then
+		table.insert(bags, REAGENT_BAG)
+	end
+	for _, bag in ipairs(ns.Inventory.SectionBags()) do
+		table.insert(bags, bag)
 	end
 	return bags
 end
@@ -36,7 +49,7 @@ end
 local function FindTarget(itemID, toBank)
 	local maxStack = C_Item.GetItemMaxStackSizeByID(itemID) or 1
 	if maxStack > 1 then
-		for _, bag in ipairs(TargetBags(toBank)) do
+		for _, bag in ipairs(TargetBags(itemID, toBank)) do
 			for slot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
 				local info = C_Container.GetContainerItemInfo(bag, slot)
 				if info and info.itemID == itemID and (info.stackCount or 0) < maxStack and not info.isLocked then
@@ -47,6 +60,12 @@ local function FindTarget(itemID, toBank)
 	end
 	if toBank then
 		return ns.Inventory.FindFreeBankSlot()
+	end
+	if UsesReagentBag(itemID, toBank) then
+		local free = C_Container.GetContainerFreeSlots(REAGENT_BAG)
+		if free and free[1] then
+			return REAGENT_BAG, free[1]
+		end
 	end
 	return ns.Inventory.FindFreeSlotFor(itemID)
 end
