@@ -144,6 +144,13 @@ function Menu.OpenSectionMenu(owner, group, window)
 		end
 		root:CreateButton(L.COLOUR, function() Menu.PickColour(section, window) end)
 		root:CreateDivider()
+		-- At the bank (not looking at a past visit): move the whole section across.
+		if ns.Bank.IsOpen() and group.count > 0 then
+			local move = root:CreateButton(window.isBank and L.MOVE_ALL_TO_BAGS or L.MOVE_ALL_TO_BANK, function()
+				ns.Mover.MoveGroup(group, not window.isBank)
+			end)
+			move:SetEnabled(not ns.Mover.IsBusy())
+		end
 		root:CreateButton(L.CLEAR_SECTION, function()
 			Rules.ClearSection(db, section.id)
 			Changed()
