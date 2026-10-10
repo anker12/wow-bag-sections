@@ -15,6 +15,10 @@ section into CurseForge's changelog box when uploading.
   The bags' Reagents has it too (right-click its header), and reagents moved to the bags
   go to the reagent bag first.
 
+### Changed
+- In semi-compact, "Rearrange sections..." is now the first entry in the menu you get
+  by right-clicking a section.
+
 ## [1.3.0] - 2026-10-06
 
 ### Added
