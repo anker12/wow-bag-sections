@@ -144,18 +144,36 @@ function Menu.OpenSectionMenu(owner, group, window)
 		end
 		root:CreateButton(L.COLOUR, function() Menu.PickColour(section, window) end)
 		root:CreateDivider()
-		-- At the bank (not looking at a past visit): move the whole section across.
-		if ns.Bank.IsOpen() and group.count > 0 then
-			local move = root:CreateButton(window.isBank and L.MOVE_ALL_TO_BAGS or L.MOVE_ALL_TO_BANK, function()
-				ns.Mover.MoveGroup(group, not window.isBank)
-			end)
-			move:SetEnabled(not ns.Mover.IsBusy())
-		end
+		Menu.AddMoveAllEntry(root, group, window)
 		root:CreateButton(L.CLEAR_SECTION, function()
 			Rules.ClearSection(db, section.id)
 			Changed()
 		end)
 		root:CreateButton(L.DELETE_SECTION, function() Menu.DeleteSection(section, group.count, window) end)
+	end)
+end
+
+-- At the bank (not looking at a past visit): move the whole group across.
+function Menu.AddMoveAllEntry(root, group, window)
+	if ns.Bank.IsOpen() and group.count > 0 then
+		local move = root:CreateButton(window.isBank and L.MOVE_ALL_TO_BAGS or L.MOVE_ALL_TO_BANK, function()
+			ns.Mover.MoveGroup(group, not window.isBank)
+		end)
+		move:SetEnabled(not ns.Mover.IsBusy())
+	end
+end
+
+-- Right-click on the bags' Reagents header (the reagent bag, and reagents gathered from
+-- the bags). It isn't a section, so there's only collapsing it and, at the bank, Move all.
+function Menu.OpenReagentMenu(owner, group, window)
+	window = window or ns.Frame
+	MenuUtil.CreateContextMenu(owner, function(_, root)
+		root:CreateTitle(L.REAGENTS)
+		root:CreateButton(group.collapsed and L.EXPAND or L.COLLAPSE, function()
+			Rules.ToggleBuiltinCollapsed(window.GetDB(), group.key)
+			Changed()
+		end)
+		Menu.AddMoveAllEntry(root, group, window)
 	end)
 end
 

@@ -1237,6 +1237,35 @@ ns.Rules.UnassignLinked(BagSectionsCharDB, bankDB, { itemID = 6948 })
 ns.Rules.UnassignLinked(BagSectionsCharDB, bankDB, { itemID = 300 })
 Fire("PLAYERBANKSLOTS_CHANGED")
 ns.RequestRefresh()
+-- The bags' Reagents (not a section) has Move all too; reagents come back to the reagent bag.
+savedItems = {}
+for key, item in pairs(ITEMS) do savedItems[key] = item end
+local function GroupHeader(kind)
+	for _, frame in ipairs(frames) do
+		local group = frame._shown and rawget(frame, "Line") and frame.group
+		if group and group.kind == kind then return frame end
+	end
+end
+ITEMS["5:2"], ITEMS["0:7"] = ITEMS["0:7"], nil -- the cloth into the reagent bag too
+ns.RequestRefresh()
+local reagentHeader = GroupHeader("reagent")
+check(reagentHeader and reagentHeader.group.count == 2, "the bags' Reagents: the reagent bag's herb and cloth")
+reagentHeader._scripts.OnClick(reagentHeader, "RightButton")
+check(_G._menuEntries[ns.L.MOVE_ALL_TO_BANK] and _G._menuEntries[ns.L.COLLAPSE], "right-clicking Reagents offers Collapse and Move all to bank")
+ns.Mover.MoveGroup(reagentHeader.group, true)
+check(not ITEMS["5:1"] and not ITEMS["5:2"], "reagents moved into the bank")
+ns.BankFrame.RequestRefresh()
+local bankReagents = AutoSection(bankDB, ns.Rules.AUTO_REAGENT)
+local bankReagentHeader = SectionHeader(bankReagents.id, ns.Inventory.IsBankBag)
+check(bankReagentHeader, "the cloth is in the bank's Reagents section")
+bankReagentHeader._scripts.OnClick(bankReagentHeader, "RightButton")
+check(_G._menuEntries[ns.L.MOVE_ALL_TO_BAGS], "the bank's Reagents offers Move all to bags")
+ns.Mover.MoveGroup(bankReagentHeader.group, false)
+check((ITEMS["5:1"] or ITEMS["5:2"] or {}).itemID == 500, "the cloth went back to the reagent bag")
+for key in pairs(ITEMS) do ITEMS[key] = nil end
+for key, item in pairs(savedItems) do ITEMS[key] = item end
+Fire("PLAYERBANKSLOTS_CHANGED")
+ns.RequestRefresh()
 
 -- Sorting, and a layout of its own.
 rawget(bankWindow, "SortButton")._scripts.OnClick(nil, "LeftButton")

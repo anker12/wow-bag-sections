@@ -428,6 +428,8 @@ local function NewWindow(cfg)
 				if mouseButton == "LeftButton" then
 					Rules.ToggleBuiltinCollapsed(cfg.GetDB(), group.key)
 					Frame.RequestRefresh()
+				elseif group.kind == "reagent" or group.kind == "bagreagent" then
+					ns.Menu.OpenReagentMenu(self, group, Frame)
 				end
 				return
 			end
