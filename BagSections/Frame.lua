@@ -48,8 +48,16 @@ local BUILTIN_COLORS = {
 	rest = { r = 0.65, g = 0.65, b = 0.65 },
 	reagent = { r = 0.40, g = 0.80, b = 0.45 },
 	bagreagent = { r = 0.62, g = 0.90, b = 0.66 }, -- paler than the real reagent bag
+	ammo = { r = 0.80, g = 0.60, b = 0.40 },
 	keyring = { r = 0.95, g = 0.80, b = 0.35 },
 }
+
+-- Groups kept apart from your sections and Rest, at the bottom: the reagent bag (with any
+-- gathered reagents), quivers and ammo pouches, and the keyring.
+local BOTTOM_KINDS = { reagent = true, bagreagent = true, ammo = true, keyring = true }
+local function IsBottomGroup(group)
+	return BOTTOM_KINDS[group.kind] == true
+end
 
 -- Blizzard's blue for "this item can go here".
 local DROP_COLOR = { r = 0.3, g = 0.7, b = 1 }
@@ -286,6 +294,8 @@ local function NewWindow(cfg)
 			return ("%s %s |cff999999(%d)|r"):format(marker, L.REAGENTS, group.count)
 		elseif group.kind == "reagent" then
 			return ("%s %s"):format(marker, L.REAGENTS)
+		elseif group.kind == "ammo" then
+			return ("%s %s"):format(marker, L.AMMO)
 		end
 		return ("%s %s"):format(marker, L.KEYRING)
 	end
@@ -298,6 +308,9 @@ local function NewWindow(cfg)
 			return ("%s |cff999999(%d)|r"):format(L.REST, #group.slots)
 		elseif group.kind == "bagreagent" or (group.kind == "reagent" and group.gathers) then
 			return ("%s |cff999999(%d)|r"):format(L.REAGENTS, group.count)
+		end
+		if group.kind == "ammo" then
+			return L.AMMO
 		end
 		return group.kind == "reagent" and L.REAGENTS or L.KEYRING
 	end
@@ -616,7 +629,7 @@ local function NewWindow(cfg)
 
 	-- Semi-compact layout: like the stacked one, but your sections sit side by side, a number per
 	-- row (AUTO_PER_ROW until the player arranges rows), each growing downwards. Rest,
-	-- Reagents and Keyring stay full width.
+	-- Reagents, Ammo and Keyring stay full width.
 
 	-- Where each drawn row sits, for dragging sections around: { y, height, dataRow, boxes =
 	-- { { x, width, key } } }. Filled by RenderSemiCompact.
@@ -671,9 +684,9 @@ local function NewWindow(cfg)
 				DrawRow(chunk, dataRow)
 			end
 		end
-		-- Reagents and Keyring: full width at the bottom.
+		-- Reagents, Ammo and Keyring: full width at the bottom.
 		for index, group in ipairs(groups) do
-			if group.kind == "reagent" or group.kind == "bagreagent" or group.kind == "keyring" then
+			if IsBottomGroup(group) then
 				y = y + DrawGroup(index, group, 0, y, gridWidth, columns, gridWidth, used) + rowGap
 			end
 		end
@@ -983,14 +996,14 @@ local function NewWindow(cfg)
 		return height, width
 	end
 
-	-- Compact layout: sections and Rest flow through one grid; the reagent bag and keyring sit
+	-- Compact layout: sections and Rest flow through one grid; the reagent bag, ammo and keyring sit
 	-- in a second grid below a divider, like the stacked layout keeps them separate.
 	local COMPACT_DIVIDER_GAP = 10
 
 	local function RenderCompact(groups, columns, used)
 		local bagGroups, extra = {}, {}
 		for _, group in ipairs(groups) do
-			if group.kind == "reagent" or group.kind == "bagreagent" or group.kind == "keyring" then
+			if IsBottomGroup(group) then
 				table.insert(extra, group)
 			else
 				table.insert(bagGroups, group)
@@ -1502,7 +1515,9 @@ local function NewWindow(cfg)
 
 		local bagSlots = {}
 		for _, slot in ipairs(slots) do
-			if slot.area ~= "keyring" then
+			-- Quivers and ammo pouches only take ammo, so like Blizzard's count they aren't free
+			-- room for other items.
+			if slot.area ~= "keyring" and slot.area ~= "ammo" then
 				table.insert(bagSlots, slot)
 			end
 		end
@@ -1614,7 +1629,9 @@ ns.Frame = NewWindow({
 		return { hideKeyring = not ns.db.showKeyring, bagReagents = ns.db.bagReagents }
 	end,
 	IsOwnBag = function(bag) return ns.Inventory.IsSectionBag(bag) end,
-	IsLockedBag = function(bag) return bag == Enum.BagIndex.ReagentBag or bag == Enum.BagIndex.Keyring end,
+	IsLockedBag = function(bag)
+		return bag == Enum.BagIndex.ReagentBag or bag == Enum.BagIndex.Keyring or ns.Inventory.IsAmmoBag(bag)
+	end,
 	FindFreeSlotFor = function(itemID) return ns.Inventory.FindFreeSlotFor(itemID) end,
 	fullMessage = L.BAGS_FULL,
 	noSectionsHint = true,
