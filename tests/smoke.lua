@@ -328,7 +328,10 @@ _G.Settings = {
 	OpenToCategory = function() end,
 }
 _G.CreateSettingsListSectionHeaderInitializer = function() return {} end
-_G.CreateSettingsButtonInitializer = function(_, _, onClick) return { onClick = onClick } end
+_G.CreateSettingsButtonInitializer = function(_, _, onClick, _, addSearchTags)
+	_G._settingsButtonSearchTags = addSearchTags
+	return { onClick = onClick }
+end
 -- hooksecurefunc(frame, "Method", fn) adds a post-hook to that frame's method;
 -- hooksecurefunc("Global", fn) wraps the global function.
 _G.hooksecurefunc = function(a, b, c)
@@ -388,6 +391,7 @@ Fire("ADDON_LOADED", "BagSections")
 Fire("PLAYER_LOGIN")
 check(type(BagSectionsDB) == "table" and type(BagSectionsCharDB) == "table", "saved variables initialized")
 check(not ns.Frame.IsShown(), "window starts hidden")
+check(_settingsButtonSearchTags == false, "the Profiles button adds no search tags (tags added by addon code taint Settings search)")
 check(BagSectionsDB.layout == "semicompact" and BagSectionsDB.bankLayout == "semicompact", "bags and bank start in Semi-compact")
 
 -- The Quest Items section is on by default, for the whole account.

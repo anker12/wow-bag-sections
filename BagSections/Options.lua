@@ -124,9 +124,14 @@ function Options.Init()
 
 	Header(L.PROFILES, L.PROFILES_DESC)
 	if layout then
+		-- Kept out of Settings search (addSearchTags false). Search tags added from addon code
+		-- are "tainted", and Blizzard's search reads every tag on every keystroke, so the whole
+		-- search ran tainted and showing some of Blizzard's own results was then blocked
+		-- ("BagSections has been blocked from an action"). The other settings get their tags
+		-- from Blizzard's own code and stay searchable.
 		layout:AddInitializer(CreateSettingsButtonInitializer(L.PROFILES, L.PROFILES_BUTTON, function(button)
 			ns.Menu.OpenProfileMenu(button)
-		end, L.PROFILES_DESC, true))
+		end, L.PROFILES_DESC, false))
 	end
 
 	Settings.RegisterAddOnCategory(category)
