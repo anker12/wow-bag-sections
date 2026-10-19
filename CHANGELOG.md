@@ -5,6 +5,11 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Fixed
+- Searching in Options (for example typing "nam") no longer pops up "BagSections has been
+  blocked from an action only available to the Blizzard UI". The Profiles button on the
+  BagSections settings page no longer shows up in search results.
+
 ## [1.4.0] - 2026-10-10
 
 ### Added
