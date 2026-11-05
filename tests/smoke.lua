@@ -65,7 +65,8 @@ local function NewFrame(frameType, name, parent, template)
 		SetFrameLevel = function(self, level) self._level = level end,
 		GetPoint = function() return "BOTTOMRIGHT", nil, "BOTTOMRIGHT", -60, 100 end,
 		CreateFontString = function() return NewFrame("FontString") end,
-		CreateTexture = function() return NewFrame("Texture") end,
+		-- Texture templates are checked like frame templates (none are in use).
+		CreateTexture = function(_, _, _, template) return NewFrame("Texture", nil, nil, template) end,
 		CreateMaskTexture = function() return NewFrame("MaskTexture") end,
 		GetHighlightTexture = function(self) self._hl = self._hl or NewFrame("Texture"); return self._hl end,
 		GetNormalTexture = function(self) self._normal = self._normal or NewFrame("Texture"); return self._normal end,

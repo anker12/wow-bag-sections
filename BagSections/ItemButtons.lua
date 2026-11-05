@@ -15,6 +15,18 @@ local function Key(bag, slot)
 	return bag * 1000 + slot
 end
 
+-- The empty slot art behind an item button. Set directly rather than through Blizzard's
+-- ItemSlotBackgroundCombinedBagsTemplate, which Forever removed; the plain backpack slot
+-- texture stands in if the atlas goes too.
+function ItemButtons.AddSlotBackground(button)
+	local background = button:CreateTexture(nil, "BACKGROUND", nil, -6)
+	if not background:SetAtlas("bags-item-slot64") then
+		background:SetTexture("Interface\\PaperDoll\\UI-Backpack-EmptySlot")
+	end
+	background:SetAllPoints(button)
+	button.ItemSlotBackground = background
+end
+
 -- Mirrors ContainerFrameMixin:UpdateItems from Blizzard's bag code.
 function ItemButtons.Update(button, tooltipOwner)
 	local bag, slot = button:GetBagID(), button:GetID()
@@ -91,8 +103,7 @@ function ItemButtons.NewSet(parentFrame, window)
 		-- The template pins a fixed frame level; keep buttons above the window background.
 		button:SetFrameLevel(parentFrame:GetFrameLevel() + 2)
 
-		button.ItemSlotBackground = button:CreateTexture(nil, "BACKGROUND", "ItemSlotBackgroundCombinedBagsTemplate", -6)
-		button.ItemSlotBackground:SetAllPoints(button)
+		ItemButtons.AddSlotBackground(button)
 
 		button:HookScript("OnClick", OnClickHook)
 		button:HookScript("OnReceiveDrag", OnReceiveDragHook)
