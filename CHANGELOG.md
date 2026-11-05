@@ -5,6 +5,8 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-11-05
+
 ### Fixed
 - The bags and bank no longer fail to open with a Lua error ("Couldn't find inherited
   node 'ItemSlotBackgroundCombinedBagsTemplate'") since WoW: Forever's official release.
