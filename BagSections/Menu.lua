@@ -406,6 +406,65 @@ function Menu.OpenMainMenu(owner)
 	end)
 end
 
+-- Your other characters, to look at their bags and bank (AltFrame.lua). `root` is a menu
+-- (or submenu) description to fill.
+function Menu.AddAltEntries(root)
+	local list = ns.Alts.GetAll()
+	if #list == 0 then
+		root:CreateTitle(L.ALTS_NONE)
+		return
+	end
+	local viewer = ns.AltFrame
+	local shown = viewer.IsShown() and viewer.GetCharacter()
+	for _, alt in ipairs(list) do
+		local key = alt.key
+		root:CreateRadio(ns.Alts.DisplayName(alt.entry, true), function()
+			return shown == key
+		end, function()
+			viewer.ShowCharacter(key)
+		end)
+	end
+end
+
+-- The character button in the bags' title bar, and the alt viewer's title.
+function Menu.OpenAltsMenu(owner)
+	MenuUtil.CreateContextMenu(owner, function(_, root)
+		root:CreateTitle(L.ALTS)
+		Menu.AddAltEntries(root)
+	end)
+end
+
+-- Options button in the alt viewer's title bar.
+function Menu.OpenAltViewerMenu(owner)
+	local viewer = ns.AltFrame
+	MenuUtil.CreateContextMenu(owner, function(_, root)
+		root:CreateTitle(L.ALTS)
+		Menu.AddAltEntries(root:CreateButton(L.ALTS_SWITCH))
+		root:CreateRadio(L.BAGS, function() return viewer.GetView() == "bags" end, function() viewer.SetView("bags") end)
+		root:CreateRadio(L.BANK, function() return viewer.GetView() == "bank" end, function() viewer.SetView("bank") end)
+		root:CreateCheckbox(L.SHOW_EMPTY, function()
+			return ns.db.showEmptySections
+		end, function()
+			ns.db.showEmptySections = not ns.db.showEmptySections
+			Changed()
+		end)
+		root:CreateDivider()
+		local key = viewer.GetCharacter()
+		local entry = key and ns.db.characters[key]
+		if entry then
+			root:CreateButton(L.ALTS_FORGET:format(ns.Alts.DisplayName(entry, true)), function()
+				StaticPopup_Show("BAGSECTIONS_CONFIRM", L.ALTS_FORGET_CONFIRM:format(ns.Alts.DisplayName(entry, true)), nil, {
+					onAccept = function()
+						ns.Alts.Forget(key)
+						viewer.CharacterForgotten(key)
+					end,
+				})
+			end)
+		end
+		root:CreateButton(L.SETTINGS, function() ns.Options.Open() end)
+	end)
+end
+
 -- Bank sections: separate from the bags'; these copy and set them up.
 
 function Menu.CopyBagSections(sections)

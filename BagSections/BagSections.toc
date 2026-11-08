@@ -14,12 +14,14 @@ Share.lua
 Layout.lua
 Inventory.lua
 Bank.lua
+Alts.lua
 Sorter.lua
 Mover.lua
 ItemButtons.lua
 Menu.lua
 Frame.lua
 BankFrame.lua
+AltFrame.lua
 Hooks.lua
 Options.lua
 Core.lua

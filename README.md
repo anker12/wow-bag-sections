@@ -203,6 +203,19 @@ that copy, with how long ago it was updated ("Live" while you're at the bank). H
 item for its tooltip, or Shift-click to link it in chat; items can only be moved while
 you're at the bank. It opens next to the bags until you move it.
 
+### Other characters
+
+Click the **character button** in the bags' title bar (next to the sort button), or the
+gear menu's **Other characters**, or type `/bs alts`, and pick a character to look at their
+bags. **Bags** and **Bank** at the bottom of that window switch between the two; click its
+title to pick someone else. Characters on other rulesets show their ruleset after the name.
+
+Items are sorted into that character's own sections, in your own layout settings for bags
+and bank. It's read only: nothing can be moved, sorted or changed. Every character is
+remembered as you play it (bags and gold as they change, the bank on each visit), so log
+in to each character once, and visit a bank once with each, to see them. The gear menu's
+**Forget** removes a character you've deleted.
+
 ### Rest position
 
 Settings → **Rest position** sets where *new* sections go, including the Quest Items

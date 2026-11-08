@@ -378,6 +378,9 @@ local function NewWindow(cfg)
 
 	-- Assigns the cursor item to the group it was dropped on.
 	local function HandleDrop(group)
+		if cfg.readOnly then
+			return
+		end
 		local state = ReadCursor()
 		if not state then
 			return
@@ -428,13 +431,15 @@ local function NewWindow(cfg)
 				if mouseButton == "LeftButton" then
 					Rules.ToggleBuiltinCollapsed(cfg.GetDB(), group.key)
 					Frame.RequestRefresh()
-				elseif group.kind == "reagent" or group.kind == "bagreagent" then
+				elseif (group.kind == "reagent" or group.kind == "bagreagent") and not cfg.readOnly then
 					ns.Menu.OpenReagentMenu(self, group, Frame)
 				end
 				return
 			end
 			if mouseButton == "RightButton" then
-				ns.Menu.OpenSectionMenu(self, group, Frame)
+				if not cfg.readOnly then
+					ns.Menu.OpenSectionMenu(self, group, Frame)
+				end
 			else
 				local section = Rules.GetSection(cfg.GetDB(), group.key)
 				if section then
@@ -453,7 +458,7 @@ local function NewWindow(cfg)
 				GameTooltip_SetTitle(GameTooltip, GroupTitle(self.group))
 			end
 			GameTooltip_AddNormalLine(GameTooltip, self.group.collapsed and L.HEADER_EXPAND or L.HEADER_COLLAPSE)
-			if self.group.kind == "section" then
+			if self.group.kind == "section" and not cfg.readOnly then
 				GameTooltip_AddNormalLine(GameTooltip, L.HEADER_MENU)
 			end
 			if Frame.IsRearranging() and CanDrag(self.group) then
@@ -1087,9 +1092,21 @@ local function NewWindow(cfg)
 	function Frame.CreateTitleButton()
 		main.TitleButton = CreateFrame("Button", nil, main.Chrome)
 		main.TitleButton:SetAllPoints(main.Title)
-		main.TitleButton:RegisterForClicks("RightButtonUp")
+		-- OnTitleClick (the alt viewer: pick a character) takes left clicks; otherwise the
+		-- title is dragged with the left button and right-clicked.
+		if cfg.OnTitleClick then
+			main.TitleButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+		else
+			main.TitleButton:RegisterForClicks("RightButtonUp")
+		end
 		main.TitleButton:RegisterForDrag("LeftButton")
-		main.TitleButton:SetScript("OnClick", function() cfg.OnTitleRightClick() end)
+		main.TitleButton:SetScript("OnClick", function(self)
+			if cfg.OnTitleClick then
+				cfg.OnTitleClick(self)
+			else
+				cfg.OnTitleRightClick()
+			end
+		end)
 		main.TitleButton:SetScript("OnDragStart", function() main:StartMoving() end)
 		main.TitleButton:SetScript("OnDragStop", function()
 			main:StopMovingOrSizing()
@@ -1116,7 +1133,7 @@ local function NewWindow(cfg)
 		main.Title:SetText(cfg.title)
 		-- The bags: right-click the title to look at the bank from anywhere. Dragging it
 		-- still moves the window, as the rest of the title row does.
-		if cfg.OnTitleRightClick then
+		if cfg.OnTitleRightClick or cfg.OnTitleClick then
 			Frame.CreateTitleButton()
 		end
 
@@ -1152,11 +1169,41 @@ local function NewWindow(cfg)
 			GameTooltip:Show()
 		end)
 		main.SortButton:SetScript("OnLeave", GameTooltip_Hide)
+		-- Windows without sorting (the alt viewer) drop the sort button; the other buttons
+		-- keep their places.
+		local leftmost = main.SortButton
+		if not cfg.Sort then
+			main.SortButton:Hide()
+			leftmost = main.MenuButton
+		end
+
+		-- A small button that opens a list of your other characters, to look at their bags
+		-- and bank (see AltFrame.lua).
+		if cfg.OpenAltsMenu then
+			main.AltsButton = CreateFrame("Button", nil, main.Chrome)
+			main.AltsButton:SetSize(20, 20)
+			main.AltsButton:SetPoint("RIGHT", leftmost, "LEFT", -4, 0)
+			main.AltsButton:SetNormalTexture("Interface\\FriendsFrame\\UI-Toast-FriendOnlineIcon")
+			main.AltsButton:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+			main.AltsButton:SetScript("OnClick", function(self) cfg.OpenAltsMenu(self) end)
+			main.AltsButton:SetScript("OnEnter", function(self)
+				GameTooltip:SetOwner(self, "ANCHOR_TOP")
+				GameTooltip_SetTitle(GameTooltip, L.ALTS)
+				GameTooltip_AddNormalLine(GameTooltip, L.ALTS_DESC)
+				GameTooltip:Show()
+			end)
+			main.AltsButton:SetScript("OnLeave", GameTooltip_Hide)
+			leftmost = main.AltsButton
+		end
 
 		main.SearchBox = CreateFrame("EditBox", cfg.name .. "SearchBox", main.Chrome, "BagSearchBoxTemplate")
 		main.SearchBox:SetHeight(20)
 		main.SearchBox:SetPoint("LEFT", main.Title, "RIGHT", 14, 0)
-		main.SearchBox:SetPoint("RIGHT", main.SortButton, "LEFT", -8, 0)
+		main.SearchBox:SetPoint("RIGHT", leftmost, "LEFT", -8, 0)
+		-- Saved items can't be searched (the search runs on Blizzard's live bag data).
+		if cfg.noSearch then
+			main.SearchBox:Hide()
+		end
 	end
 
 
@@ -1378,6 +1425,14 @@ local function NewWindow(cfg)
 				main:Hide()
 			end
 			previewOpened = false
+		end
+	end
+
+	-- The window's title (the alt viewer shows whose bags or bank it is).
+	function Frame.SetTitle(text)
+		cfg.title = text
+		if main and not previewing then
+			main.Title:SetText(text)
 		end
 	end
 
@@ -1650,6 +1705,7 @@ ns.Frame = NewWindow({
 	sortDesc = L.SORT_DESC,
 	sortHint = L.SORT_REVERSE,
 	OnTitleRightClick = function() ns.BankFrame.Toggle() end,
+	OpenAltsMenu = function(owner) ns.Menu.OpenAltsMenu(owner) end,
 	titleHint = L.VIEW_BANK_HINT,
 	OnShownChanged = function() ns.Hooks.OnWindowShownChanged() end,
 	-- When it replaces the default bags, Escape closes Blizzard's (hidden) bags, which closes

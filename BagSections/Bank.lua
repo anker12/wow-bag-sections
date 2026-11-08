@@ -133,7 +133,8 @@ end
 
 -- The last snapshot as slots, like Inventory.ScanBank's, with the saved item details in
 -- slot.cached. Items carry their itemID and GUID, so item rules (including gear matched by
--- GUID) still sort them into sections.
+-- GUID) still sort them into sections. Also reads an alt's saved bags (see Alts.lua), whose
+-- containers say which area they are ("bags", "reagent", "ammo", "keyring").
 function Bank.SnapshotSlots(snapshot)
 	local slots = {}
 	for index, tab in ipairs(snapshot and snapshot.tabs or {}) do
@@ -143,7 +144,7 @@ function Bank.SnapshotSlots(snapshot)
 			table.insert(slots, {
 				bag = bag,
 				slot = slot,
-				area = "bank",
+				area = tab.area or "bank",
 				cached = cached or false,
 				item = cached and { itemID = cached.id, guid = cached.guid, isQuest = cached.isQuest } or nil,
 			})
