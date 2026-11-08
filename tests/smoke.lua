@@ -1411,6 +1411,15 @@ check(me.bank and me.bank == BagSectionsCharDB.bank and #me.bank.tabs > 0, "and 
 check(me.sections and me.sections.sections[1] and me.sections.bank == nil, "and its sections, without the bank snapshot inside")
 SlashCmdList.BAGSECTIONS("alts")
 check(not ns.AltFrame.IsShown(), "no other characters yet: the viewer stays closed")
+-- While logging out the game answers with no bag slots and 0 gold: the saved copy keeps
+-- the bags and gold it had.
+local realSlots, realMoney = NUM_SLOTS, _G.GetMoney
+NUM_SLOTS = {}
+_G.GetMoney = function() return 0 end
+Fire("PLAYER_LOGOUT")
+NUM_SLOTS, _G.GetMoney = realSlots, realMoney
+me = BagSectionsDB.characters["Toby-Hardcore"]
+check(me.money == 12345 and me.bags and #me.bags.tabs > 0, "logging out doesn't wipe the saved bags and gold")
 -- Log in as someone else: Toby's saved copy is what they see.
 local saved = me
 BagSectionsDB.characters = { ["Toby-Hardcore"] = saved }

@@ -7,7 +7,7 @@
 --     bank = <the bank snapshot, see Bank.lua>,
 --     sections = <bag sections and rules>, bankSections = <bank sections and rules> }
 --   item = { id, guid, isQuest, count, quality, icon, link }, the same as the bank's.
--- Copied at login, as the bags change, and at logout. Only the parts of the section data
+-- Copied at login and as the bags and gold change; at logout only the sections and bank. Only the parts of the section data
 -- that sort items are kept (no bank snapshot inside, no profiles).
 
 local _, ns = ...
@@ -118,10 +118,15 @@ local function ReadBags()
 			}
 		end
 	end
+	if #tabs == 0 then
+		return nil -- bags not loaded (e.g. while logging out): keep the last copy
+	end
 	return { updated = time(), tabs = tabs }
 end
 
-function Alts.Save()
+-- atLogout: the bags and gold can no longer be read while logging out (the game answers
+-- with no bag slots and 0 gold), so only the section data and bank are refreshed then.
+function Alts.Save(atLogout)
 	saveQueued = false
 	local key = Alts.PlayerKey()
 	if not (key and ns.db and ns.charDB) then
@@ -132,8 +137,13 @@ function Alts.Save()
 	entry.name = UnitName("player")
 	entry.realm = GetRealmName()
 	entry.class = select(2, UnitClass("player"))
-	entry.money = GetMoney()
-	entry.bags = ReadBags()
+	if atLogout ~= true then
+		local bags = ReadBags()
+		if bags then
+			entry.bags = bags
+			entry.money = GetMoney()
+		end
+	end
 	entry.bank = ns.charDB.bank
 	entry.sections = Alts.TrimSections(ns.charDB)
 	entry.bankSections = Alts.TrimSections(ns.charDB.bankSections)
