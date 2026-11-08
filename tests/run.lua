@@ -743,6 +743,23 @@ test("bank: a snapshot becomes slots with the saved items", function()
 	eq(#Bank.SnapshotSlots(nil), 0, "never visited")
 end)
 
+test("bank: saved gear keeps its GUID, so GUID rules still place it", function()
+	local Bank = ns.Bank
+	local db = Rules.NewCharDB()
+	local gear = Rules.CreateSection(db, "Gear")
+	db.rules.byGUID["Item-1-0-HAMMER"] = gear.id
+	local snapshot = { updated = 1, tabs = {
+		{ bag = 6, size = 2, items = {
+			[1] = { id = 300, guid = "Item-1-0-HAMMER", count = 1 },
+			[2] = { id = 301, isQuest = true, count = 1 },
+		} },
+	} }
+	local slots = Bank.SnapshotSlots(snapshot)
+	eq(slots[1].item.guid, "Item-1-0-HAMMER")
+	eq(Rules.Classify(db, slots[1].item), gear.id, "gear goes to its section offline")
+	eq(slots[2].item.isQuest, true, "quest flag is kept for the Quest Items section")
+end)
+
 test("bank: snapshot age reads naturally", function()
 	local L = { AGE_NOW = "now", AGE_MINUTES = "%d min", AGE_HOURS = "%d h", AGE_DAYS = "%d d" }
 	local Bank = ns.Bank

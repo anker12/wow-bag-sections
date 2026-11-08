@@ -4,7 +4,9 @@
 -- takes a snapshot, saved per character. (Forever has no account bank in use; it's ignored.)
 -- Snapshot shape:
 --   { updated = time(), tabs = { { bag, name, icon, size, items = { [slot] = item } } } }
---   item = { id, count, quality, icon, link }
+--   item = { id, guid, isQuest, count, quality, icon, link }
+-- guid and isQuest are saved since 1.4.3: gear is matched to sections by its GUID, so without
+-- it saved gear fell into Rest until the bank was visited again.
 
 local _, ns = ...
 
@@ -27,8 +29,11 @@ local function Read()
 		for slot = 1, size do
 			local info = C_Container.GetContainerItemInfo(tab.ID, slot)
 			if info and info.itemID then
+				local item = ns.Inventory.GetItem(tab.ID, slot)
 				items[slot] = {
 					id = info.itemID,
+					guid = item and item.guid,
+					isQuest = item and item.isQuest or nil,
 					count = info.stackCount,
 					quality = info.quality,
 					icon = info.iconFileID,
@@ -127,7 +132,8 @@ function Bank.IsOpen()
 end
 
 -- The last snapshot as slots, like Inventory.ScanBank's, with the saved item details in
--- slot.cached. Items carry their itemID, so item rules still sort them into sections.
+-- slot.cached. Items carry their itemID and GUID, so item rules (including gear matched by
+-- GUID) still sort them into sections.
 function Bank.SnapshotSlots(snapshot)
 	local slots = {}
 	for index, tab in ipairs(snapshot and snapshot.tabs or {}) do
@@ -139,7 +145,7 @@ function Bank.SnapshotSlots(snapshot)
 				slot = slot,
 				area = "bank",
 				cached = cached or false,
-				item = cached and { itemID = cached.id } or nil,
+				item = cached and { itemID = cached.id, guid = cached.guid, isQuest = cached.isQuest } or nil,
 			})
 		end
 	end

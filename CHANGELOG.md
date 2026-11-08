@@ -5,6 +5,10 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Fixed
+- Looking at the bank away from a banker now puts gear in its sections instead of Rest.
+  Visit the bank once after updating so it remembers which piece of gear is which.
+
 ## [1.4.2] - 2026-11-05
 
 ### Fixed

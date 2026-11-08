@@ -1097,6 +1097,7 @@ check(not proxy._shown, "and takes it away again")
 _G._lastPopup = setupPopup
 check(rawget(rawget(bankWindow, "BlizzardBorder"), "_layout") == "PortraitFrameTemplate", "Blizzard's bank border, with the portrait corner")
 check(BagSectionsCharDB.bank.tabs[1].items[2].id == 700, "with its items in their slots")
+check(BagSectionsCharDB.bank.tabs[1].items[2].guid == "Item-6-2-700", "and their GUIDs, so gear keeps its section away from the bank")
 
 -- First visit: set up bank sections. Copy the bag sections, add a Reagents section.
 check(_G._lastPopup and _G._lastPopup.data.onAccept, "first visit asks about bank sections")
