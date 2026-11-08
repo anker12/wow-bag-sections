@@ -440,8 +440,6 @@ function Menu.OpenAltViewerMenu(owner)
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(L.ALTS)
 		Menu.AddAltEntries(root:CreateButton(L.ALTS_SWITCH))
-		root:CreateRadio(L.BAGS, function() return viewer.GetView() == "bags" end, function() viewer.SetView("bags") end)
-		root:CreateRadio(L.BANK, function() return viewer.GetView() == "bank" end, function() viewer.SetView("bank") end)
 		root:CreateCheckbox(L.SHOW_EMPTY, function()
 			return ns.db.showEmptySections
 		end, function()

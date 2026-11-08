@@ -1433,7 +1433,7 @@ altsButton._scripts.OnClick(altsButton)
 check(_G._menuEntries[ns.Alts.DisplayName(saved, true)], "it lists Toby")
 check(not _G._menuEntries[ns.Alts.DisplayName(BagSectionsDB.characters["Alt-Hardcore"], true)], "but not yourself")
 SlashCmdList.BAGSECTIONS("alts")
-check(ns.AltFrame.IsShown() and ns.AltFrame.GetCharacter() == "Toby-Hardcore" and ns.AltFrame.GetView() == "bags", "/bs alts opens Toby's bags")
+check(ns.AltFrame.IsShown() and ns.AltBankFrame.IsShown() and ns.AltFrame.GetCharacter() == "Toby-Hardcore", "/bs alts opens Toby's bags and bank together")
 local altWindow
 for _, frame in ipairs(frames) do if frame._name == "BagSectionsAltFrame" then altWindow = frame end end
 check(rawget(altWindow, "Title")._text:find("Toby|r's bags", 1, true), "titled with whose bags they are")
@@ -1456,14 +1456,34 @@ local rulesAfter = 0
 for _ in pairs(saved.sections.rules.byItemID) do rulesAfter = rulesAfter + 1 end
 check(rulesAfter == rulesBefore and cursor ~= nil, "dropping your own item on Toby's section does nothing")
 ClearCursor()
-ns.AltFrame.SetView("bank")
-check(rawget(altWindow, "Title")._text:find("Toby|r's bank", 1, true), "Bank switches to Toby's bank")
-check(rawget(altWindow, "FreeSlots")._text == "3 / 4" or rawget(altWindow, "FreeSlots")._text == "7 / 8", "with the bank's slots")
+-- The bank is a second column, docked to the left of the bags.
+local altBank
+for _, frame in ipairs(frames) do if frame._name == "BagSectionsAltBankFrame" then altBank = frame end end
+check(rawget(altBank, "Title")._text:find("Toby|r's bank", 1, true), "next to it, Toby's bank")
+local savedFree = 0
+for _, tab in ipairs(saved.bank.tabs) do
+	for slot = 1, tab.size do if not tab.items[slot] then savedFree = savedFree + 1 end end
+end
+check(rawget(altBank, "FreeSlots")._text:match("^(%d+) /") == tostring(savedFree), "with the bank's slots")
+check(altBank._point and altBank._point[1] == "TOPRIGHT" and altBank._point[2] == altWindow and altBank._point[3] == "TOPLEFT", "docked to the left of the bags column")
+-- Dragging the bank column moves the bags column (which saves where it is).
+BagSectionsDB.altFrame = nil
+altBank._scripts.OnDragStart(altBank)
+altBank._scripts.OnDragStop(altBank)
+check(BagSectionsDB.altFrame and BagSectionsDB.altBankFrameDocked == nil, "dragging either column moves both")
+-- Closing either closes both.
+ns.AltBankFrame.Hide()
+check(not ns.AltFrame.IsShown(), "closing the bank column closes the bags column")
+SlashCmdList.BAGSECTIONS("alts")
+check(ns.AltFrame.IsShown() and ns.AltBankFrame.IsShown(), "both open again")
+ns.AltFrame.Hide()
+check(not ns.AltBankFrame.IsShown(), "and closing the bags column closes the bank column")
+ns.AltFrame.ShowCharacter("Toby-Hardcore")
 ns.Menu.OpenAltViewerMenu(rawget(altWindow, "MenuButton"))
-check(_G._menuEntries["Bank"] and _G._menuEntries["Bags"], "the gear menu switches bags and bank")
+check(_G._menuEntries["Character"] and not _G._menuEntries["Bank"], "the gear menu has no bags/bank switch any more")
 ns.Alts.Forget("Toby-Hardcore")
 ns.AltFrame.CharacterForgotten("Toby-Hardcore")
-check(BagSectionsDB.characters["Toby-Hardcore"] == nil and not ns.AltFrame.IsShown(), "forgetting the only alt closes the viewer")
+check(BagSectionsDB.characters["Toby-Hardcore"] == nil and not ns.AltFrame.IsShown() and not ns.AltBankFrame.IsShown(), "forgetting the only alt closes the viewer")
 ns.Alts.Forget("Alt-Hardcore")
 check(BagSectionsDB.characters["Alt-Hardcore"], "you can't forget yourself")
 
