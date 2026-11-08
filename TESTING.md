@@ -143,8 +143,8 @@ mention BagSections.
 | T135 | At the bank, with a reagent bag, right-click the bags' Reagents header | A menu with Collapse and Move all to bank. Move all puts the reagent bag's items and gathered reagents in the bank. Away from the bank, only Collapse. |
 | T136 | At the bank, right-click the bank's Reagents section, then Move all to bags | The reagents fill the reagent bag first, then your other bags. |
 | T137 | Log in to an alt, then back to your main, and click the character button in the bags' title bar | A list of your other characters (with their class colour); your current character isn't in it. |
-| T138 | Pick the alt | A window titled "<Alt>'s bags" shows their bags in their own sections, gear included, with their gold at the bottom right. No sort button or search box. |
-| T139 | Click Bank at the bottom | "<Alt>'s bank" with how long ago they last visited a bank, or "Not seen at a bank yet". |
+| T138 | Pick the alt | Two columns open side by side: "<Alt>'s bank" on the left and "<Alt>'s bags" on the right, each in the alt's own sections, gear included. The bags show their gold at the bottom right, the bank how long ago they visited one (or "Not seen at a bank yet"). No sort button or search box. |
+| T139 | Drag either column by its title or background, then close one with its X | Both move together, the bank staying docked on the left. Closing either closes both. |
 | T140 | In the alt window, right-click a section, drag one of your items onto it | Nothing happens; the alt's sections don't change. Hovering an item shows its tooltip; Shift-click links it. |
 | T141 | Click the alt window's title, pick another character | It switches to that character. |
 | T142 | Gear menu → Forget <Alt>, Yes | The alt is gone from the list; the window shows another character or closes. Logging in to that alt brings it back. |

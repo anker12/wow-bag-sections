@@ -1089,6 +1089,25 @@ local function NewWindow(cfg)
 		end
 	end
 
+	-- Dragging the window. A window docked to another (cfg.MoveWith: the alt viewer's bank
+	-- column, docked to its bags) moves that one instead, and follows it.
+	function Frame.BeginMove()
+		if cfg.MoveWith then
+			cfg.MoveWith().BeginMove()
+		else
+			main:StartMoving()
+		end
+	end
+
+	function Frame.EndMove()
+		if cfg.MoveWith then
+			cfg.MoveWith().EndMove()
+		else
+			main:StopMovingOrSizing()
+			SavePosition()
+		end
+	end
+
 	function Frame.CreateTitleButton()
 		main.TitleButton = CreateFrame("Button", nil, main.Chrome)
 		main.TitleButton:SetAllPoints(main.Title)
@@ -1107,11 +1126,8 @@ local function NewWindow(cfg)
 				cfg.OnTitleRightClick()
 			end
 		end)
-		main.TitleButton:SetScript("OnDragStart", function() main:StartMoving() end)
-		main.TitleButton:SetScript("OnDragStop", function()
-			main:StopMovingOrSizing()
-			SavePosition()
-		end)
+		main.TitleButton:SetScript("OnDragStart", function() Frame.BeginMove() end)
+		main.TitleButton:SetScript("OnDragStop", function() Frame.EndMove() end)
 		main.TitleButton:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_TOP")
 			GameTooltip_SetTitle(GameTooltip, cfg.title)
@@ -1268,11 +1284,8 @@ local function NewWindow(cfg)
 		main:SetMovable(true)
 		main:EnableMouse(true)
 		main:RegisterForDrag("LeftButton")
-		main:SetScript("OnDragStart", main.StartMoving)
-		main:SetScript("OnDragStop", function(self)
-			self:StopMovingOrSizing()
-			SavePosition()
-		end)
+		main:SetScript("OnDragStart", function() Frame.BeginMove() end)
+		main:SetScript("OnDragStop", function() Frame.EndMove() end)
 		Shared.CreateWindowArt(main)
 		main:SetScript("OnShow", function()
 			PlaySound(SOUNDKIT.IG_BACKPACK_OPEN)
@@ -1384,6 +1397,11 @@ local function NewWindow(cfg)
 
 	function Frame.RestorePosition()
 		RestorePosition()
+	end
+
+	-- The window's frame, e.g. to dock another window to it.
+	function Frame.GetMainFrame()
+		return main
 	end
 
 	function Frame.IsShown()
