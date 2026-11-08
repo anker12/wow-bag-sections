@@ -248,6 +248,11 @@ _G.GetCursorInfo = function() if cursor then return "item" end end
 _G.InCombatLockdown = function() return _G._inCombat end
 _G.IsAltKeyDown = function() return false end
 _G.GetMoney = function() return 12345 end
+_G._playerName = "Toby"
+_G.UnitName = function() return _G._playerName end
+_G.UnitClass = function() return "Warrior", "WARRIOR" end
+_G.GetRealmName = function() return "Hardcore" end
+_G.RAID_CLASS_COLORS = { WARRIOR = { colorStr = "ffc79c6e" } }
 _G.PixelUtil = {
 	SetPoint = function(region, ...) region:SetPoint(...) end,
 	SetSize = function(region, w, h) region:SetSize(w, h) end,
@@ -1385,6 +1390,73 @@ check(hasQuest and BagSectionsCharDB.autoQuest, "Quest Items follows the account
 for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY", "CURRENCY_DISPLAY_UPDATE", "BANK_TABS_CHANGED", "BANK_TAB_SETTINGS_UPDATED", "INVENTORY_SEARCH_UPDATE", "GET_ITEM_INFO_RECEIVED", "MERCHANT_SHOW" }) do
 	Fire(event)
 end
+
+-- Other characters: every character's bags, bank and sections are saved account-wide.
+local me = BagSectionsDB.characters["Toby-Hardcore"]
+check(me and me.class == "WARRIOR" and me.money == 12345, "this character is saved for the others")
+local altSavedItems = {}
+for _, tab in ipairs(me.bags and me.bags.tabs or {}) do
+	for slot, item in pairs(tab.items) do altSavedItems[tab.bag .. ":" .. slot] = item end
+end
+for key, item in pairs(ITEMS) do
+	local bag = tonumber(key:match("^(-?%d+)"))
+	if bag >= 0 and bag <= 5 then
+		check(altSavedItems[key] and altSavedItems[key].id == item.itemID, "its bags are saved slot by slot (" .. key .. ")")
+	end
+end
+local savedSword
+for _, item in pairs(altSavedItems) do if item.id == 100 then savedSword = item end end
+check(savedSword and savedSword.guid, "gear keeps its GUID")
+check(me.bank and me.bank == BagSectionsCharDB.bank and #me.bank.tabs > 0, "and its bank")
+check(me.sections and me.sections.sections[1] and me.sections.bank == nil, "and its sections, without the bank snapshot inside")
+SlashCmdList.BAGSECTIONS("alts")
+check(not ns.AltFrame.IsShown(), "no other characters yet: the viewer stays closed")
+-- Log in as someone else: Toby's saved copy is what they see.
+local saved = me
+BagSectionsDB.characters = { ["Toby-Hardcore"] = saved }
+_G._playerName = "Alt"
+Fire("PLAYER_LOGOUT")
+check(BagSectionsDB.characters["Alt-Hardcore"], "the alt is saved too")
+ns.Frame.Show()
+local altsButton = rawget(mainFrame, "AltsButton")
+check(altsButton, "the bags have a button for other characters")
+altsButton._scripts.OnClick(altsButton)
+check(_G._menuEntries[ns.Alts.DisplayName(saved, true)], "it lists Toby")
+check(not _G._menuEntries[ns.Alts.DisplayName(BagSectionsDB.characters["Alt-Hardcore"], true)], "but not yourself")
+SlashCmdList.BAGSECTIONS("alts")
+check(ns.AltFrame.IsShown() and ns.AltFrame.GetCharacter() == "Toby-Hardcore" and ns.AltFrame.GetView() == "bags", "/bs alts opens Toby's bags")
+local altWindow
+for _, frame in ipairs(frames) do if frame._name == "BagSectionsAltFrame" then altWindow = frame end end
+check(rawget(altWindow, "Title")._text:find("Toby|r's bags", 1, true), "titled with whose bags they are")
+check(not rawget(altWindow, "SortButton")._shown and not rawget(altWindow, "SearchBox")._shown, "no sorting or searching saved items")
+local hdr
+for _, frame in ipairs(frames) do
+	if frame.group and frame.group.kind == "section" and frame.group.count > 0 and frame._shown and frame._parent and frame._parent._parent == altWindow then
+		hdr = frame
+	end
+end
+check(hdr and saved.sections.sections[1] and ns.Rules.GetSection(saved.sections, hdr.group.key), "Toby's items sit in Toby's sections")
+_G._menuEntries = {}
+hdr._scripts.OnClick(hdr, "RightButton")
+check(next(_G._menuEntries) == nil, "section menus don't open: it's read only")
+local rulesBefore = 0
+for _ in pairs(saved.sections.rules.byItemID) do rulesBefore = rulesBefore + 1 end
+C_Container.PickupContainerItem(0, 2)
+hdr._scripts.OnReceiveDrag(hdr)
+local rulesAfter = 0
+for _ in pairs(saved.sections.rules.byItemID) do rulesAfter = rulesAfter + 1 end
+check(rulesAfter == rulesBefore and cursor ~= nil, "dropping your own item on Toby's section does nothing")
+ClearCursor()
+ns.AltFrame.SetView("bank")
+check(rawget(altWindow, "Title")._text:find("Toby|r's bank", 1, true), "Bank switches to Toby's bank")
+check(rawget(altWindow, "FreeSlots")._text == "3 / 4" or rawget(altWindow, "FreeSlots")._text == "7 / 8", "with the bank's slots")
+ns.Menu.OpenAltViewerMenu(rawget(altWindow, "MenuButton"))
+check(_G._menuEntries["Bank"] and _G._menuEntries["Bags"], "the gear menu switches bags and bank")
+ns.Alts.Forget("Toby-Hardcore")
+ns.AltFrame.CharacterForgotten("Toby-Hardcore")
+check(BagSectionsDB.characters["Toby-Hardcore"] == nil and not ns.AltFrame.IsShown(), "forgetting the only alt closes the viewer")
+ns.Alts.Forget("Alt-Hardcore")
+check(BagSectionsDB.characters["Alt-Hardcore"], "you can't forget yourself")
 
 SlashCmdList.BAGSECTIONS("help")
 check(#printed > 0, "help printed")

@@ -20,60 +20,10 @@ local window -- set below
 local tabButtons = {}
 local bankBackground, buyTab, buyCost, slotsLabel, tabDivider
 
--- Snapshot slots get plain item buttons that only show the saved item: there's no live
--- item behind them to click or drag. (Forever has no ItemButtonTemplate; the plain
--- ItemButton widget already has an icon, count, quality border and highlight.)
-local function CachedButtons(content)
-	local pool = {}
-	local set = {}
-	local function Create()
-		local button = CreateFrame("ItemButton", nil, content)
-		button:SetSize(ns.ItemButtons.SIZE, ns.ItemButtons.SIZE)
-		button:SetFrameLevel(content:GetFrameLevel() + 2)
-		ns.ItemButtons.AddSlotBackground(button)
-		button:SetScript("OnEnter", function(self)
-			if self.link then
-				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-				GameTooltip:SetHyperlink(self.link)
-				GameTooltip:Show()
-			end
-		end)
-		button:SetScript("OnLeave", GameTooltip_Hide)
-		button:SetScript("OnClick", function(self)
-			if self.link then
-				HandleModifiedItemClick(self.link)
-			end
-		end)
-		return button
-	end
-	function set.ForSlot(slot)
-		local key = slot.bag * 1000 + slot.slot
-		local button = pool[key]
-		if not button then
-			button = Create()
-			pool[key] = button
-		end
-		local item = slot.cached or nil
-		button.link = item and item.link
-		button:SetItemButtonTexture(item and item.icon)
-		SetItemButtonQuality(button, item and item.quality, item and item.link)
-		SetItemButtonCount(button, item and item.count or 0)
-		return button
-	end
-	function set.HideExcept(keep)
-		for _, button in pairs(pool) do
-			if not keep[button] then
-				button:Hide()
-			end
-		end
-	end
-	return set
-end
-
 -- Live item buttons at the bank, snapshot buttons anywhere else.
 local function CreateButtons(content, win)
 	local live = ns.ItemButtons.NewSet(content, win)
-	local cached = CachedButtons(content)
+	local cached = ns.ItemButtons.NewCachedSet(content)
 	return {
 		ForSlot = function(slot)
 			if slot.cached ~= nil then

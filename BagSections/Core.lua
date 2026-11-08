@@ -45,6 +45,8 @@ ns.DEFAULTS = {
 	slotsFontSize = 10, -- free slots (x / y)
 	-- Saved section lists: name -> { sections = { { name, color, below, collapsed, auto } } }
 	profiles = {},
+	-- Every character's bags, bank and sections, for the alt viewer (see Alts.lua).
+	characters = {},
 }
 
 function ns.NewSectionsBelowRest()
@@ -145,6 +147,7 @@ local function OnAddonLoaded()
 
 	ns.Frame.Init()
 	ns.BankFrame.Init()
+	ns.AltFrame.Init()
 	ns.Bank.Init()
 	ns.Options.Init()
 	if ns.db.takeOverBags then
@@ -189,6 +192,7 @@ local function OnAddonLoaded()
 		events:RegisterEvent(event)
 	end
 	events:RegisterEvent("PLAYER_LOGIN")
+	events:RegisterEvent("PLAYER_LOGOUT")
 end
 
 events:SetScript("OnEvent", function(_, event, arg1)
@@ -199,10 +203,14 @@ events:SetScript("OnEvent", function(_, event, arg1)
 		end
 	elseif event == "PLAYER_LOGIN" then
 		ns.ItemButtons.Precreate(ns.Inventory.Scan())
+		ns.Alts.Save()
+	elseif event == "PLAYER_LOGOUT" then
+		ns.Alts.Save()
 	elseif event == "BANKFRAME_OPENED" then
 		ns.Bank.OnOpened()
 	elseif event == "BANKFRAME_CLOSED" then
 		ns.Bank.OnClosed()
+		ns.Alts.RequestSave()
 	elseif BANK_EVENTS[event] then
 		ns.Bank.RequestSnapshot()
 		ns.BankFrame.RequestRefresh("items")
@@ -210,6 +218,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
 		ns.RequestRefresh(FULL_REFRESH_EVENTS[event])
 		if event == "BAG_UPDATE_DELAYED" then
 			ns.Bank.RequestSnapshot()
+			ns.Alts.RequestSave()
 		end
 	elseif BUTTON_REFRESH_EVENTS[event] then
 		ns.RequestRefresh("buttons")
@@ -217,6 +226,9 @@ events:SetScript("OnEvent", function(_, event, arg1)
 		ns.UpdateCooldowns()
 	elseif event == "PLAYER_MONEY" or event == "CURRENCY_DISPLAY_UPDATE" then
 		ns.Frame.UpdateFooter()
+		if event == "PLAYER_MONEY" then
+			ns.Alts.RequestSave()
+		end
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		ns.Sorter.OnCombatEnded()
 	end
@@ -273,6 +285,15 @@ SlashCmdList.BAGSECTIONS = function(input)
 		ns.RequestRefresh()
 	elseif command == "bank" then
 		ns.BankFrame.Toggle()
+	elseif command == "alts" then
+		local first = ns.Alts.GetAll()[1]
+		if ns.AltFrame.IsShown() then
+			ns.AltFrame.Hide()
+		elseif first then
+			ns.AltFrame.ShowCharacter(ns.AltFrame.GetCharacter() or first.key)
+		else
+			ns.Print(L.ALTS_NONE)
+		end
 	elseif command == "config" or command == "options" then
 		ns.Options.Open()
 	else

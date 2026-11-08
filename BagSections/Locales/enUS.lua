@@ -177,11 +177,24 @@ L.AGE_MINUTES = "%d min ago"
 L.AGE_HOURS = "%d h ago"
 L.AGE_DAYS = "%d days ago"
 
+-- Other characters' bags and bank (the alt viewer).
+L.ALTS = "Other characters"
+L.ALTS_DESC = "Look at the bags and bank of your other characters. Each one shows up here after you log in to it once."
+L.ALTS_NONE = "None yet: log in to another character once"
+L.ALTS_SWITCH = "Character"
+L.ALTS_FORGET = "Forget %s"
+L.ALTS_FORGET_CONFIRM = "Forget %s's bags and bank?\n\nThey come back the next time you log in to that character."
+L.ALT_BAGS_TITLE = "%s's bags"
+L.ALT_BANK_TITLE = "%s's bank"
+L.ALT_BANK_EMPTY = "Not seen at a bank yet"
+L.ALT_TITLE_HINT = "Click: pick another character"
+
 L.HELP = {
 	"/bs - open or close the bags",
 	"/bs sort - sort the bags",
 	"/bs new <name> - create a section",
 	"/bs add <section> - add the item under the mouse to a section",
 	"/bs bank - view your bank from anywhere (also: right-click the Bags title)",
+	"/bs alts - look at your other characters' bags and bank",
 	"/bs config - open settings",
 }

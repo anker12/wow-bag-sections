@@ -2,7 +2,7 @@
 -- Run from the repo root: lua tests/run.lua
 
 local ns = {}
-for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Rows.lua", "BagSections/Share.lua", "BagSections/Layout.lua", "BagSections/Bank.lua" }) do
+for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Rows.lua", "BagSections/Share.lua", "BagSections/Layout.lua", "BagSections/Bank.lua", "BagSections/Alts.lua" }) do
 	assert(loadfile(file))("BagSections", ns)
 end
 local Rules, Layout, Rows = ns.Rules, ns.Layout, ns.Rows
@@ -896,6 +896,59 @@ test("linked sections: link ids are unique on both sides", function()
 	local c = Rules.CreateSection(bank, "C")
 	local back = Rules.CopySections(bank, bags, { c })
 	assert(back[1].link ~= copies[1].link and back[1].link ~= copies[2].link, "a link made from the bank side is new too")
+end)
+
+test("alts: listed by ruleset (the current one first) then name, without yourself", function()
+	local chars = {
+		["Me-Home"] = { name = "Me", realm = "Home" },
+		["Zed-Home"] = { name = "Zed", realm = "Home" },
+		["Amy-Home"] = { name = "Amy", realm = "Home" },
+		["Bob-Away"] = { name = "Bob", realm = "Away" },
+	}
+	local list = ns.Alts.List(chars, "Me-Home")
+	eq(#list, 3)
+	eq(list[1].key, "Amy-Home")
+	eq(list[2].key, "Zed-Home")
+	eq(list[3].key, "Bob-Away")
+	eq(#ns.Alts.List(nil, "Me-Home"), 0, "nothing saved yet")
+end)
+
+test("alts: only the section data that sorts items is copied", function()
+	local db = Rules.NewCharDB()
+	db.bank = { tabs = {} }
+	db.bankSections = Rules.NewCharDB()
+	db.bankSetupDone = true
+	local copy = ns.Alts.TrimSections(db)
+	eq(copy.sections, db.sections)
+	eq(copy.rules, db.rules)
+	eq(copy.bank, nil)
+	eq(copy.bankSections, nil)
+	eq(copy.bankSetupDone, nil)
+	eq(ns.Alts.TrimSections(nil), nil)
+end)
+
+test("alts: saved bags sort into the alt's sections, gear by GUID", function()
+	local sections = Rules.NewCharDB()
+	local gear = Rules.CreateSection(sections, "Gear")
+	Rules.Assign(sections, SWORD_A, gear.id, Rules.KIND_GUID)
+	local entry = {
+		sections = ns.Alts.TrimSections(sections),
+		bags = { tabs = {
+			{ bag = 0, area = "bags", size = 3, items = {
+				[1] = { id = 100, guid = SWORD_A.guid, count = 1 },
+				[3] = { id = 100, guid = SWORD_B.guid, count = 1 },
+			} },
+			{ bag = 5, area = "reagent", size = 1, items = { [1] = { id = 400, count = 10 } } },
+		} },
+	}
+	local slots = ns.Alts.Slots(entry, "bags", function(itemID) return itemID == 400 end)
+	eq(#slots, 4)
+	eq(slots[4].area, "reagent", "containers keep their area")
+	eq(slots[4].item.isReagent, true)
+	local groups = Layout.Build(ns.Alts.SectionDB(entry, "bags"), slots, {})
+	eq(groups[1].key, gear.id)
+	eq(SlotItems(groups[1]), SWORD_A.guid, "only the assigned sword")
+	eq(#ns.Alts.Slots(entry, "bank"), 0, "no bank seen yet")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

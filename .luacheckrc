@@ -27,7 +27,7 @@ read_globals = {
 	"UnitExists", "SetPortraitTexture", "BANK_BAG_PURCHASE", "BANK_BAG", "BAGSLOTTEXT_COLON",
 	"RED_FONT_COLOR_CODE", "COSTS_LABEL",
 	"SettingsPanel", "BankFrame", "ShowUIPanel", "C_Bank", "time", "HandleModifiedItemClick", "BagSectionsFrame",
-	"CreateFont", "C_CurrencyInfo", "BreakUpLargeNumbers", "AbbreviateNumbers", "EventRegistry",
+	"CreateFont", "C_CurrencyInfo", "UnitName", "UnitClass", "GetRealmName", "RAID_CLASS_COLORS", "BreakUpLargeNumbers", "AbbreviateNumbers", "EventRegistry",
 }
 
 files["tests/**"] = { std = "lua51" }
