@@ -5,11 +5,14 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-09
+
 ### Added
 - Look at your other characters' bags and bank from anywhere: click the new character
   button in the bags' title bar (or `/bs alts`) and pick a character. Their bags and bank
   open side by side, with items in that character's own sections. Log in to each
-  character once (and visit a bank once) so BagSections can remember them.
+  character once (and visit a bank once) so BagSections can remember them. Also in the
+  gear menu under "Other characters".
 
 ### Fixed
 - Looking at the bank away from a banker now puts gear in its sections instead of Rest.
