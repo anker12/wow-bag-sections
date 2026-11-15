@@ -265,22 +265,32 @@ function Layout.EvenColumns(count, available)
 end
 
 -- Semi-compact "Dynamically size columns": splits `available` slot columns between the
--- sections sharing a row. needs[i]: slots section i shows (at least 1 each; #needs must not
--- be more than `available`). Picks the fewest lines of items the row can manage (every
--- section on one line when they all fit), gives each section just enough columns for that,
--- then hands out the columns left over one at a time to whichever section has the fewest
--- for its size, so bigger sections get the larger share. Each section keeps at least two
--- columns where the row has room, so its name stays readable. Returns columns[i].
-function Layout.SemiColumns(needs, available)
+-- sections sharing a row, left to right. needs[i]: slots section i shows (#needs must not be
+-- more than `available`). minimums[i] (optional): columns section i's name needs to show in
+-- full. Picks the fewest lines of items the row can manage (every section on one line when
+-- they all fit) and gives each section just the columns it needs for that; the last section
+-- takes whatever is left. Sections keep their minimum where the row has room for all of
+-- them, or else two columns each where it has room for that. Returns columns[i].
+function Layout.SemiColumns(needs, available, minimums)
 	local count = #needs
-	local floor = 2 * count <= available and 2 or 1
-	local function ColumnsFor(lines)
-		local result, total = {}, 0
-		for i, need in ipairs(needs) do
-			result[i] = math.max(floor, math.ceil(math.max(1, need) / lines))
-			total = total + result[i]
+	local floors, total = {}, 0
+	for i = 1, count do
+		floors[i] = math.max(1, minimums and minimums[i] or 1)
+		total = total + floors[i]
+	end
+	if not minimums or total > available then
+		local floor = 2 * count <= available and 2 or 1
+		for i = 1, count do
+			floors[i] = floor
 		end
-		return result, total
+	end
+	local function ColumnsFor(lines)
+		local result, used = {}, 0
+		for i, need in ipairs(needs) do
+			result[i] = math.max(floors[i], math.ceil(math.max(1, need) / lines))
+			used = used + result[i]
+		end
+		return result, used
 	end
 	-- Fewest lines that fit: one line per item in the biggest section always fits.
 	local most = 1
@@ -294,20 +304,8 @@ function Layout.SemiColumns(needs, available)
 			break
 		end
 	end
-	if used > available then
-		-- More sections than columns: nothing better than one column each.
-		columns, used = ColumnsFor(most)
-	end
-	while used < available and count > 0 do
-		local best, bestShare
-		for i, need in ipairs(needs) do
-			local share = columns[i] / math.max(1, need)
-			if not best or share < bestShare or (share == bestShare and need > needs[best]) then
-				best, bestShare = i, share
-			end
-		end
-		columns[best] = columns[best] + 1
-		used = used + 1
+	if count > 0 and used < available then
+		columns[count] = columns[count] + available - used
 	end
 	return columns
 end

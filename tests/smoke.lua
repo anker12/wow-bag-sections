@@ -894,7 +894,7 @@ BagSectionsDB.semiDynamicColumns = true
 ns.RequestRefresh()
 do
 	local sa, sb, sc = HeaderFor("SemiA"), HeaderFor("SemiB"), HeaderFor("SemiC")
-	check(Near(sa._w, evenWidth), "dynamic: one item each, so the same three slot columns each as an even split")
+	check(sa._w < evenWidth and math.abs(sb._w - sa._w) <= 1 and sc._w > evenWidth, "dynamic: one item each, so the first two take what they need and the last the rest")
 	check(sa._point[5] == sb._point[5] and sb._point[5] == sc._point[5], "dynamic: still one row")
 	check(sa._point[4] == 0 and Near(sb._point[4], sa._w + 12) and Near(sc._point[4], sb._point[4] + sb._w + 12), "dynamic: boxes side by side with the usual gap")
 	check(Near(sc._point[4] + sc._w, 406), "dynamic: the row fills the window width")

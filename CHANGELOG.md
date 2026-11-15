@@ -11,9 +11,10 @@ section into CurseForge's changelog box when uploading.
   items have tooltips, including reagents in profession windows. Turn it off in Settings
   with "Item counts on Shift".
 - New Semi-compact option, "Dynamically size columns" (off by default; in the Layout menu
-  and in Settings). Sections on the same row share its width by how many items they show
-  instead of equally, so a small section that wrapped one item onto a second line now fits
-  on one, and sections with room to spare get narrower.
+  and in Settings). Sections on the same row take only the width they need, left to right,
+  and the last one takes what's left, so a small section that wrapped one item onto a
+  second line now fits on one. Each keeps room to show its name in full. When the row
+  can't fit everything on one line, it's split so the row takes as few lines as possible.
 
 ### Fixed
 - Semi-compact: two sections side by side now use every slot the row has room for. At 10
