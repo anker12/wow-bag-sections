@@ -656,9 +656,10 @@ local function NewWindow(cfg)
 		local rowGap, columnGap = SemiRowGap(), SemiColumnGap()
 		local y = 0
 		rowGeometry = {}
-		-- Each box's left edge, width and slot columns. Normally the row is split evenly; with
-		-- "Dynamically size columns" each section gets columns to suit how many slots it shows
-		-- (Layout.SemiColumns), and the last one takes the few pixels left at the end.
+		-- Each box's left edge, width and slot columns. The row's slot columns (as many as fit
+		-- beside the gaps) are shared out: evenly by default, or with "Dynamically size
+		-- columns" to suit how many slots each section shows (Layout.SemiColumns). Pixels left
+		-- over after the gaps and slots are spread evenly, so the row spans the window.
 		local function RowBoxes(entries)
 			local count = #entries
 			local boxes = {}
@@ -666,29 +667,30 @@ local function NewWindow(cfg)
 				boxes[1] = { x = 0, width = gridWidth, columns = columns }
 				return boxes
 			end
-			local available = math.floor((gridWidth - (count - 1) * columnGap + SPACING * count) / CELL)
-			if ns.db.semiDynamicColumns and available >= count then
+			local available = math.max(count, math.floor((gridWidth - (count - 1) * columnGap + SPACING * count) / CELL))
+			local split
+			if ns.db.semiDynamicColumns then
 				local needs = {}
 				for i, key in ipairs(entries) do
 					local group = byKey[key]
 					needs[i] = group.collapsed and 1 or math.max(1, #group.slots)
 				end
-				local split = ns.Layout.SemiColumns(needs, available)
-				local x = 0
-				for i, columnsHere in ipairs(split) do
-					local width = columnsHere * CELL - SPACING
-					if i == count then
-						width = gridWidth - x
-					end
-					boxes[i] = { x = x, width = width, columns = columnsHere }
-					x = x + width + columnGap
-				end
-				return boxes
+				split = ns.Layout.SemiColumns(needs, available)
+			else
+				split = ns.Layout.EvenColumns(count, available)
 			end
-			local boxWidth = (gridWidth - (count - 1) * columnGap) / count
-			local boxColumns = math.max(1, math.floor((boxWidth + SPACING) / CELL))
-			for i = 1, count do
-				boxes[i] = { x = math.floor((i - 1) * (boxWidth + columnGap) + 0.5), width = boxWidth, columns = boxColumns }
+			local slotsWidth = 0
+			for _, columnsHere in ipairs(split) do
+				slotsWidth = slotsWidth + columnsHere * CELL - SPACING
+			end
+			local extra = math.max(0, gridWidth - (count - 1) * columnGap - slotsWidth) / count
+			local x = 0
+			for i, columnsHere in ipairs(split) do
+				-- Whole pixels, so neighbouring boxes are exactly the gap apart.
+				local left = math.floor(x + 0.5)
+				x = x + columnsHere * CELL - SPACING + extra
+				boxes[i] = { x = left, width = math.floor(x + 0.5) - left, columns = columnsHere }
+				x = x + columnGap
 			end
 			return boxes
 		end

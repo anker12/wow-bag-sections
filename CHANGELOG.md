@@ -15,6 +15,11 @@ section into CurseForge's changelog box when uploading.
   instead of equally, so a small section that wrapped one item onto a second line now fits
   on one, and sections with room to spare get narrower.
 
+### Fixed
+- Semi-compact: two sections side by side now use every slot the row has room for. At 10
+  columns the first holds 5 items per line (lined up with Rest) instead of wrapping the
+  5th onto a new line, with the second holding 4.
+
 ## [1.5.0] - 2026-11-09
 
 ### Added
