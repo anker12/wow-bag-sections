@@ -214,7 +214,7 @@ local function NewWindow(cfg)
 	local previewing, previewOpened = false, false -- settings preview, see Frame.SetPreview
 	local headers, overlays = {}, {}
 	local labels, placeholders, lineTextures = {}, {}, {}
-	local lineFrame, measure, dividerLine
+	local lineFrame, measure, titleMeasure, dividerLine
 
 	-- Compact layout keeps its arrangement while the window is open, so items don't jump
 	-- around when things are looted or used up. It's rebuilt on open, on any change the
@@ -670,12 +670,17 @@ local function NewWindow(cfg)
 			local available = math.max(count, math.floor((gridWidth - (count - 1) * columnGap + SPACING * count) / CELL))
 			local split
 			if ns.db.semiDynamicColumns then
-				local needs = {}
+				-- Items shown in the bags (or bank) only, and the columns each name needs to
+				-- show in full (DrawGroup shortens names with less than 20 px to spare).
+				local needs, minimums = {}, {}
+				titleMeasure:SetFontObject(fonts.section)
 				for i, key in ipairs(entries) do
 					local group = byKey[key]
 					needs[i] = group.collapsed and 1 or math.max(1, #group.slots)
+					titleMeasure:SetText(GroupTitle(group))
+					minimums[i] = math.ceil(((titleMeasure:GetStringWidth() or 0) + 20 + SPACING) / CELL)
 				end
-				split = ns.Layout.SemiColumns(needs, available)
+				split = ns.Layout.SemiColumns(needs, available, minimums)
 			else
 				split = ns.Layout.EvenColumns(count, available)
 			end
@@ -1366,6 +1371,9 @@ local function NewWindow(cfg)
 		measure = content:CreateFontString(nil, "OVERLAY")
 		measure:SetFontObject(fonts.sectionSmall)
 		measure:Hide()
+		titleMeasure = content:CreateFontString(nil, "OVERLAY")
+		titleMeasure:SetFontObject(fonts.section)
+		titleMeasure:Hide()
 
 		-- Rearranging: blue line where a dragged section will land, its name following the
 		-- cursor, and a bar under the title while unlocked (click it to lock).

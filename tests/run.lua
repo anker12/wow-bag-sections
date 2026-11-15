@@ -1004,26 +1004,32 @@ test("even columns: every column the row has is used", function()
 end)
 
 test("dynamic columns: a row that fits gets every section on one line", function()
-	-- Keeps (5) and Gear (2) in 9 columns: Keeps no longer wraps; spare columns go to the
-	-- section with the fewest for its size.
-	eq(Join(Layout.SemiColumns({ 5, 2 }, 9)), "6,3")
+	-- Keeps (5) and Gear (2) in 9 columns: Keeps takes just the 5 it needs, Gear the rest.
+	eq(Join(Layout.SemiColumns({ 5, 2 }, 9)), "5,4")
+	eq(Join(Layout.SemiColumns({ 4, 1 }, 9)), "4,5")
 	eq(Join(Layout.SemiColumns({ 3, 3, 3 }, 9)), "3,3,3")
 end)
 
 test("dynamic columns: too many items wraps as few lines as possible", function()
 	-- 31 and 10 in 9 columns: 5 lines (7 + 2 columns) is the fewest that fits.
-	local split = Layout.SemiColumns({ 31, 10 }, 9)
-	eq(split[1] + split[2], 9, "uses the whole row")
-	eq(math.max(math.ceil(31 / split[1]), math.ceil(10 / split[2])), 5, "lines")
+	eq(Join(Layout.SemiColumns({ 31, 10 }, 9)), "7,2")
 	eq(Join(Layout.SemiColumns({ 20, 20 }, 8)), "4,4")
+	-- 30 and 1: 5 lines of 6, the small section takes what's left.
+	eq(Join(Layout.SemiColumns({ 30, 1 }, 9)), "6,3")
 end)
 
 test("dynamic columns: small and empty sections keep two columns when there's room", function()
-	eq(Join(Layout.SemiColumns({ 30, 1 }, 9)), "7,2")
-	eq(Join(Layout.SemiColumns({ 0, 0, 0 }, 9)), "3,3,3")
-	-- No room for two each: one column each, the rest to the biggest.
+	eq(Join(Layout.SemiColumns({ 0, 0, 0 }, 9)), "2,2,5")
+	-- No room for two each: one column each where needed.
 	eq(Join(Layout.SemiColumns({ 1, 1, 6 }, 5)), "1,1,3")
 	eq(Join(Layout.SemiColumns({ 4, 4, 4 }, 3)), "1,1,1")
+end)
+
+test("dynamic columns: names get the columns they need to show in full", function()
+	-- Bank: Consumes (1), Utility (2), Gear (4) in 14 columns, names needing 3, 4 and 2.
+	eq(Join(Layout.SemiColumns({ 1, 2, 4 }, 14, { 3, 4, 2 })), "3,4,7")
+	-- Names that don't all fit: back to two columns each.
+	eq(Join(Layout.SemiColumns({ 1, 1 }, 5, { 4, 4 })), "2,3")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))
