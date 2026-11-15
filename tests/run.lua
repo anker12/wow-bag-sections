@@ -994,5 +994,30 @@ test("item counts: you're listed even with none", function()
 	eq(ns.Tooltip.CountText(counts[1], COUNT_L), "None")
 end)
 
+local function Join(list) return table.concat(list, ",") end
+
+test("dynamic columns: a row that fits gets every section on one line", function()
+	-- Keeps (5) and Gear (2) in 9 columns: Keeps no longer wraps; spare columns go to the
+	-- section with the fewest for its size.
+	eq(Join(Layout.SemiColumns({ 5, 2 }, 9)), "6,3")
+	eq(Join(Layout.SemiColumns({ 3, 3, 3 }, 9)), "3,3,3")
+end)
+
+test("dynamic columns: too many items wraps as few lines as possible", function()
+	-- 31 and 10 in 9 columns: 5 lines (7 + 2 columns) is the fewest that fits.
+	local split = Layout.SemiColumns({ 31, 10 }, 9)
+	eq(split[1] + split[2], 9, "uses the whole row")
+	eq(math.max(math.ceil(31 / split[1]), math.ceil(10 / split[2])), 5, "lines")
+	eq(Join(Layout.SemiColumns({ 20, 20 }, 8)), "4,4")
+end)
+
+test("dynamic columns: small and empty sections keep two columns when there's room", function()
+	eq(Join(Layout.SemiColumns({ 30, 1 }, 9)), "7,2")
+	eq(Join(Layout.SemiColumns({ 0, 0, 0 }, 9)), "3,3,3")
+	-- No room for two each: one column each, the rest to the biggest.
+	eq(Join(Layout.SemiColumns({ 1, 1, 6 }, 5)), "1,1,3")
+	eq(Join(Layout.SemiColumns({ 4, 4, 4 }, 3)), "1,1,1")
+end)
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

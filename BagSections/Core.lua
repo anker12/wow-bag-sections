@@ -15,6 +15,8 @@ ns.DEFAULTS = {
 	-- Semi-compact: space between rows of sections, and between sections side by side.
 	semiRowSpacing = 4,
 	semiColumnSpacing = 12,
+	-- Semi-compact: sections sharing a row get widths to suit their item counts.
+	semiDynamicColumns = false,
 	scale = 1,
 	-- On by default so a newly created (still empty) section shows up straight away.
 	showEmptySections = true,

@@ -252,6 +252,54 @@ function Layout.TopEdges(boxes)
 	return edges
 end
 
+-- Semi-compact "Dynamically size columns": splits `available` slot columns between the
+-- sections sharing a row. needs[i]: slots section i shows (at least 1 each; #needs must not
+-- be more than `available`). Picks the fewest lines of items the row can manage (every
+-- section on one line when they all fit), gives each section just enough columns for that,
+-- then hands out the columns left over one at a time to whichever section has the fewest
+-- for its size, so bigger sections get the larger share. Each section keeps at least two
+-- columns where the row has room, so its name stays readable. Returns columns[i].
+function Layout.SemiColumns(needs, available)
+	local count = #needs
+	local floor = 2 * count <= available and 2 or 1
+	local function ColumnsFor(lines)
+		local result, total = {}, 0
+		for i, need in ipairs(needs) do
+			result[i] = math.max(floor, math.ceil(math.max(1, need) / lines))
+			total = total + result[i]
+		end
+		return result, total
+	end
+	-- Fewest lines that fit: one line per item in the biggest section always fits.
+	local most = 1
+	for _, need in ipairs(needs) do
+		most = math.max(most, need)
+	end
+	local columns, used
+	for lines = 1, most do
+		columns, used = ColumnsFor(lines)
+		if used <= available then
+			break
+		end
+	end
+	if used > available then
+		-- More sections than columns: nothing better than one column each.
+		columns, used = ColumnsFor(most)
+	end
+	while used < available and count > 0 do
+		local best, bestShare
+		for i, need in ipairs(needs) do
+			local share = columns[i] / math.max(1, need)
+			if not best or share < bestShare or (share == bestShare and need > needs[best]) then
+				best, bestShare = i, share
+			end
+		end
+		columns[best] = columns[best] + 1
+		used = used + 1
+	end
+	return columns
+end
+
 -- Counts free and total slots for the footer.
 function Layout.CountFree(slots)
 	local free, total = 0, 0

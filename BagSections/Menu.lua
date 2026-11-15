@@ -395,6 +395,12 @@ function Menu.OpenMainMenu(owner)
 		layout:CreateRadio(L.LAYOUT_COMPACT, function() return IsLayout("compact") end, function() Menu.SetLayout("compact") end)
 		if IsLayout("semicompact") then
 			layout:CreateDivider()
+			layout:CreateCheckbox(L.SEMI_DYNAMIC, function()
+				return ns.db.semiDynamicColumns
+			end, function()
+				ns.db.semiDynamicColumns = not ns.db.semiDynamicColumns
+				Changed()
+			end)
 			layout:CreateButton(L.RESET_ROWS, function()
 				ns.Rows.Reset(ns.charDB)
 				Changed()
@@ -571,6 +577,12 @@ function Menu.OpenBankMenu(owner)
 		layout:CreateRadio(L.LAYOUT_COMPACT, function() return IsLayout("compact") end, function() SetLayout("compact") end)
 		if IsLayout("semicompact") then
 			layout:CreateDivider()
+			layout:CreateCheckbox(L.SEMI_DYNAMIC, function()
+				return ns.db.semiDynamicColumns
+			end, function()
+				ns.db.semiDynamicColumns = not ns.db.semiDynamicColumns
+				Changed()
+			end)
 			layout:CreateButton(L.RESET_ROWS, function()
 				ns.Rows.Reset(db)
 				Changed()

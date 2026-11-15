@@ -138,7 +138,10 @@ Bags and bank both start in **Semi-compact**.
   fit at one slot wide each (8 at 10 columns). *Reset rows* in the Layout menu goes back to
   that 3-per-row starting point. Settings → **Semi-compact: space between rows** and
   **Semi-compact: space between sections side by side** set the gaps between sections (4
-  and 12 by default). Your arrangement also sets the section order used by the other
+  and 12 by default). Turn on **Dynamically size columns** (Layout menu, or Settings →
+  *Semi-compact: dynamically size columns*) and the sections on a row share its width by
+  how many items they show instead of equally: a small section that would wrap one item
+  onto a second line widens to fit, and its neighbours shrink. Your arrangement also sets the section order used by the other
   layouts, and profiles save it. Reagents, Ammo and Keyring stay full width at the bottom.
 * **Compact:** works like Blizzard's combined bag. All sections run through one grid with
   no gaps: each section starts in the slot right after the previous one ends and wraps onto
