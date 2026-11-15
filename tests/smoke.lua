@@ -886,6 +886,25 @@ check(Near(columnGap, 6) and rowDistance == baseRowDistance, "spacing never goes
 BagSectionsDB.semiRowSpacing, BagSectionsDB.semiColumnSpacing = 4, 12
 ns.RequestRefresh()
 
+-- Dynamically size columns: off by default; when on, a row's sections still fill exactly
+-- the window width without overlapping, and their items stay inside their own box.
+check(BagSectionsDB.semiDynamicColumns == false, "dynamic columns off by default")
+local evenWidth = HeaderFor("SemiA")._w
+BagSectionsDB.semiDynamicColumns = true
+ns.RequestRefresh()
+do
+	local sa, sb, sc = HeaderFor("SemiA"), HeaderFor("SemiB"), HeaderFor("SemiC")
+	check(sa._w == 3 * 41 - 4 and sa._w ~= evenWidth, "dynamic: one item each, so three slot columns each")
+	check(sa._point[5] == sb._point[5] and sb._point[5] == sc._point[5], "dynamic: still one row")
+	check(sa._point[4] == 0 and Near(sb._point[4], sa._w + 12) and Near(sc._point[4], sb._point[4] + sb._w + 12), "dynamic: boxes side by side with the usual gap")
+	check(Near(sc._point[4] + sc._w, 406), "dynamic: the row fills the window width")
+	local hs = ns.ItemButtons.Get(0, 1)
+	check(hs._point[4] >= sa._point[4] and hs._point[4] + 37 <= sa._point[4] + sa._w + 0.5, "dynamic: items sit inside their section")
+end
+BagSectionsDB.semiDynamicColumns = false
+ns.RequestRefresh()
+check(HeaderFor("SemiA")._w == evenWidth, "dynamic off: even widths again")
+
 
 -- Rearranging: locked by default, so dragging a name does nothing.
 local function Drag(hdr, x, y)

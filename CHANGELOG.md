@@ -10,6 +10,10 @@ section into CurseForge's changelog box when uploading.
   how many your other characters have (one line each, with a total). Works everywhere
   items have tooltips, including reagents in profession windows. Turn it off in Settings
   with "Item counts on Shift".
+- New Semi-compact option, "Dynamically size columns" (off by default; in the Layout menu
+  and in Settings). Sections on the same row share its width by how many items they show
+  instead of equally, so a small section that wrapped one item onto a second line now fits
+  on one, and sections with room to spare get narrower.
 
 ## [1.5.0] - 2026-11-09
 

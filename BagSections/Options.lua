@@ -65,6 +65,7 @@ function Options.Init()
 	AddSlider("bankScale", L.OPT_BANK_SCALE, L.OPT_BANK_SCALE_DESC, ns.DEFAULTS.bankScale, 0.6, 1.5, 0.05, percent, function() ns.ApplyScale() end)
 	AddSlider("semiRowSpacing", L.OPT_SEMI_ROW_SPACING, L.OPT_SEMI_ROW_SPACING_DESC, ns.DEFAULTS.semiRowSpacing, 4, 30, 1, nil, Refresh)
 	AddSlider("semiColumnSpacing", L.OPT_SEMI_COLUMN_SPACING, L.OPT_SEMI_COLUMN_SPACING_DESC, ns.DEFAULTS.semiColumnSpacing, 6, 40, 1, nil, Refresh)
+	AddCheckbox("semiDynamicColumns", L.OPT_SEMI_DYNAMIC, L.OPT_SEMI_DYNAMIC_DESC, ns.DEFAULTS.semiDynamicColumns, Refresh)
 
 	-- Sections: what goes where.
 	Header(L.GROUP_SECTIONS)

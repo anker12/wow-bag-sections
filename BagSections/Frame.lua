@@ -656,18 +656,50 @@ local function NewWindow(cfg)
 		local rowGap, columnGap = SemiRowGap(), SemiColumnGap()
 		local y = 0
 		rowGeometry = {}
-		local function DrawRow(entries, dataRow)
+		-- Each box's left edge, width and slot columns. Normally the row is split evenly; with
+		-- "Dynamically size columns" each section gets columns to suit how many slots it shows
+		-- (Layout.SemiColumns), and the last one takes the few pixels left at the end.
+		local function RowBoxes(entries)
 			local count = #entries
+			local boxes = {}
+			if count == 1 then
+				boxes[1] = { x = 0, width = gridWidth, columns = columns }
+				return boxes
+			end
+			local available = math.floor((gridWidth - (count - 1) * columnGap + SPACING * count) / CELL)
+			if ns.db.semiDynamicColumns and available >= count then
+				local needs = {}
+				for i, key in ipairs(entries) do
+					local group = byKey[key]
+					needs[i] = group.collapsed and 1 or math.max(1, #group.slots)
+				end
+				local split = ns.Layout.SemiColumns(needs, available)
+				local x = 0
+				for i, columnsHere in ipairs(split) do
+					local width = columnsHere * CELL - SPACING
+					if i == count then
+						width = gridWidth - x
+					end
+					boxes[i] = { x = x, width = width, columns = columnsHere }
+					x = x + width + columnGap
+				end
+				return boxes
+			end
 			local boxWidth = (gridWidth - (count - 1) * columnGap) / count
 			local boxColumns = math.max(1, math.floor((boxWidth + SPACING) / CELL))
+			for i = 1, count do
+				boxes[i] = { x = math.floor((i - 1) * (boxWidth + columnGap) + 0.5), width = boxWidth, columns = boxColumns }
+			end
+			return boxes
+		end
+
+		local function DrawRow(entries, dataRow)
 			local geometry = { y = y, dataRow = dataRow, boxes = {} }
 			local rowHeight = 0
-			for i, key in ipairs(entries) do
-				local x = math.floor((i - 1) * (boxWidth + columnGap) + 0.5)
-				local width = count == 1 and gridWidth or boxWidth
-				local columnsHere = count == 1 and columns or boxColumns
-				rowHeight = math.max(rowHeight, DrawGroup(indexOf[key], byKey[key], x, y, width, columnsHere, gridWidth, used))
-				table.insert(geometry.boxes, { x = x, width = width, key = key })
+			for i, box in ipairs(RowBoxes(entries)) do
+				local key = entries[i]
+				rowHeight = math.max(rowHeight, DrawGroup(indexOf[key], byKey[key], box.x, y, box.width, box.columns, gridWidth, used))
+				table.insert(geometry.boxes, { x = box.x, width = box.width, key = key })
 			end
 			geometry.height = rowHeight
 			table.insert(rowGeometry, geometry)
