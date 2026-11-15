@@ -5,6 +5,8 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-15
+
 ### Added
 - Hold Shift while hovering an item to see how many you have in your bags and bank, and
   how many your other characters have (one line each, with a total). Works everywhere
@@ -15,6 +17,7 @@ section into CurseForge's changelog box when uploading.
   and the last one takes what's left, so a small section that wrapped one item onto a
   second line now fits on one. Each keeps room to show its name in full. When the row
   can't fit everything on one line, it's split so the row takes as few lines as possible.
+  Works in the bank too.
 
 ### Fixed
 - Semi-compact: two sections side by side now use every slot the row has room for. At 10
