@@ -252,6 +252,18 @@ function Layout.TopEdges(boxes)
 	return edges
 end
 
+-- Semi-compact: splits `available` slot columns evenly between `count` sections side by
+-- side, the first ones taking one more when it doesn't divide exactly. So two sections at
+-- 10 columns get 5 and 4, and the first holds a full 5 slots per line like Rest above it.
+function Layout.EvenColumns(count, available)
+	local columns = {}
+	local base, more = math.floor(available / count), available % count
+	for i = 1, count do
+		columns[i] = math.max(1, base + (i <= more and 1 or 0))
+	end
+	return columns
+end
+
 -- Semi-compact "Dynamically size columns": splits `available` slot columns between the
 -- sections sharing a row. needs[i]: slots section i shows (at least 1 each; #needs must not
 -- be more than `available`). Picks the fewest lines of items the row can manage (every

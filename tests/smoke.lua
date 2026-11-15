@@ -894,7 +894,7 @@ BagSectionsDB.semiDynamicColumns = true
 ns.RequestRefresh()
 do
 	local sa, sb, sc = HeaderFor("SemiA"), HeaderFor("SemiB"), HeaderFor("SemiC")
-	check(sa._w == 3 * 41 - 4 and sa._w ~= evenWidth, "dynamic: one item each, so three slot columns each")
+	check(Near(sa._w, evenWidth), "dynamic: one item each, so the same three slot columns each as an even split")
 	check(sa._point[5] == sb._point[5] and sb._point[5] == sc._point[5], "dynamic: still one row")
 	check(sa._point[4] == 0 and Near(sb._point[4], sa._w + 12) and Near(sc._point[4], sb._point[4] + sb._w + 12), "dynamic: boxes side by side with the usual gap")
 	check(Near(sc._point[4] + sc._w, 406), "dynamic: the row fills the window width")
@@ -904,6 +904,19 @@ end
 BagSectionsDB.semiDynamicColumns = false
 ns.RequestRefresh()
 check(HeaderFor("SemiA")._w == evenWidth, "dynamic off: even widths again")
+
+-- Two sections on a row at 10 columns: 9 slot columns fit beside the gap, so the first
+-- holds 5 per line (lined up with Rest) and the second 4, not 4 and 4.
+db.rows = { { SectionByName("SemiA").id, SectionByName("SemiB").id }, { SectionByName("SemiC").id, SectionByName("SemiD").id }, { "rest" } }
+ns.RequestRefresh()
+do
+	local sa, sb = HeaderFor("SemiA"), HeaderFor("SemiB")
+	check(sa._point[5] == sb._point[5], "two per row: side by side")
+	check(sa._w >= 5 * 41 - 4 and sb._w >= 4 * 41 - 4, "two per row: 5 and 4 slot columns")
+	check(Near(sb._point[4] + sb._w, 406) and Near(sb._point[4] - sa._w, 12), "two per row: fills the width with the usual gap")
+end
+db.rows = nil
+ns.RequestRefresh()
 
 
 -- Rearranging: locked by default, so dragging a name does nothing.

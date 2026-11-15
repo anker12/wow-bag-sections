@@ -996,6 +996,13 @@ end)
 
 local function Join(list) return table.concat(list, ",") end
 
+test("even columns: every column the row has is used", function()
+	-- Two sections at 10 columns: 9 fit beside the gap, so 5 and 4 (not 4 and 4).
+	eq(Join(Layout.EvenColumns(2, 9)), "5,4")
+	eq(Join(Layout.EvenColumns(3, 9)), "3,3,3")
+	eq(Join(Layout.EvenColumns(4, 13)), "4,3,3,3")
+end)
+
 test("dynamic columns: a row that fits gets every section on one line", function()
 	-- Keeps (5) and Gear (2) in 9 columns: Keeps no longer wraps; spare columns go to the
 	-- section with the fewest for its size.
