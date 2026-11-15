@@ -15,6 +15,7 @@ Layout.lua
 Inventory.lua
 Bank.lua
 Alts.lua
+Tooltip.lua
 Sorter.lua
 Mover.lua
 ItemButtons.lua

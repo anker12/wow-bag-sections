@@ -2,7 +2,7 @@
 -- Run from the repo root: lua tests/run.lua
 
 local ns = {}
-for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Rows.lua", "BagSections/Share.lua", "BagSections/Layout.lua", "BagSections/Bank.lua", "BagSections/Alts.lua" }) do
+for _, file in ipairs({ "BagSections/Rules.lua", "BagSections/Rows.lua", "BagSections/Share.lua", "BagSections/Layout.lua", "BagSections/Bank.lua", "BagSections/Alts.lua", "BagSections/Tooltip.lua" }) do
 	assert(loadfile(file))("BagSections", ns)
 end
 local Rules, Layout, Rows = ns.Rules, ns.Layout, ns.Rows
@@ -949,6 +949,49 @@ test("alts: saved bags sort into the alt's sections, gear by GUID", function()
 	eq(groups[1].key, gear.id)
 	eq(SlotItems(groups[1]), SWORD_A.guid, "only the assigned sword")
 	eq(#ns.Alts.Slots(entry, "bank"), 0, "no bank seen yet")
+end)
+
+local function Snap(items)
+	local tab = { size = #items, items = {} }
+	for slot, item in ipairs(items) do
+		if item ~= false then tab.items[slot] = item end
+	end
+	return { tabs = { tab } }
+end
+local COUNT_L = { COUNT_BAGS = "Bags: %d", COUNT_BANK = "Bank: %d", COUNT_BANK_UNSEEN = "Bank: not visited", COUNT_NONE = "None" }
+
+test("item counts: stacks in a snapshot are added up", function()
+	local Tooltip = ns.Tooltip
+	eq(Tooltip.CountInSnapshot(Snap({ { id = 5, count = 20 }, false, { id = 6, count = 3 }, { id = 5, count = 7 } }), 5), 27)
+	eq(Tooltip.CountInSnapshot(Snap({ { id = 5 } }), 5), 1, "no count saved means 1")
+	eq(Tooltip.CountInSnapshot(nil, 5), 0)
+end)
+
+test("item counts: you first, then alts that have some, by ruleset and name", function()
+	local characters = {
+		["Me-A"] = { name = "Me", realm = "A", bags = Snap({ { id = 5, count = 2 } }), bank = Snap({ { id = 5, count = 1 } }) },
+		["Zed-A"] = { name = "Zed", realm = "A", bags = Snap({ { id = 5, count = 4 } }) },
+		["Amy-A"] = { name = "Amy", realm = "A", bank = Snap({ { id = 5, count = 9 } }) },
+		["Bob-B"] = { name = "Bob", realm = "B", bags = Snap({ { id = 5, count = 1 } }) },
+		["Nil-A"] = { name = "Nil", realm = "A", bags = Snap({ { id = 6, count = 1 } }) },
+	}
+	local live = Snap({ { id = 5, count = 10 } })
+	local counts = ns.Tooltip.Counts(characters, "Me-A", 5, live)
+	local keys = {}
+	for _, c in ipairs(counts) do table.insert(keys, c.key) end
+	eq(table.concat(keys, ","), "Me-A,Amy-A,Zed-A,Bob-B")
+	eq(counts[1].bags, 2)
+	eq(counts[1].bank, 10, "your bank comes from the latest snapshot")
+	eq(counts[2].bank, 9)
+	eq(ns.Tooltip.CountText(counts[1], COUNT_L), "Bags: 2  Bank: 10")
+	eq(ns.Tooltip.CountText(counts[3], COUNT_L), "Bags: 4  Bank: not visited")
+end)
+
+test("item counts: you're listed even with none", function()
+	local characters = { ["Me-A"] = { name = "Me", realm = "A", bags = Snap({}), bank = Snap({}) } }
+	local counts = ns.Tooltip.Counts(characters, "Me-A", 5, nil)
+	eq(#counts, 1)
+	eq(ns.Tooltip.CountText(counts[1], COUNT_L), "None")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

@@ -39,6 +39,8 @@ ns.DEFAULTS = {
 	backgroundStyle = "dark", -- "dark" | "blizzard"
 	blizzardBorder = true, -- Blizzard's bronze frame border around the window
 	sectionTooltips = true, -- tooltips when hovering section names
+	-- Holding Shift over an item shows how many each character has in bags and bank.
+	tooltipCounts = true,
 	-- Font sizes (Settings only, not the gear menu)
 	sectionFontSize = 12, -- section names; compact layout names are 2 smaller
 	moneyFontSize = 12, -- gold and tracked currencies
@@ -154,15 +156,7 @@ local function OnAddonLoaded()
 		ns.Hooks.Install()
 	end
 
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip)
-		if tooltip ~= GameTooltip then
-			return
-		end
-		local owner = tooltip:GetOwner()
-		if owner and owner.bsSectionName and owner:IsVisible() then
-			tooltip:AddLine(L.TOOLTIP_SECTION:format(owner.bsSectionName), 0.4, 0.8, 1)
-		end
-	end)
+	ns.Tooltip.Init()
 
 	for event in pairs(FULL_REFRESH_EVENTS) do
 		events:RegisterEvent(event)

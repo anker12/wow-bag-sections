@@ -96,6 +96,7 @@ function Options.Init()
 	AddCheckbox("showEmptySections", L.SHOW_EMPTY, L.OPT_SHOW_EMPTY_DESC, ns.DEFAULTS.showEmptySections, Refresh)
 	AddCheckbox("showKeyring", L.SHOW_KEYRING, L.OPT_SHOW_KEYRING_DESC, ns.DEFAULTS.showKeyring, Refresh)
 	AddCheckbox("sectionTooltips", L.OPT_SECTION_TOOLTIPS, L.OPT_SECTION_TOOLTIPS_DESC, ns.DEFAULTS.sectionTooltips)
+	AddCheckbox("tooltipCounts", L.OPT_TOOLTIP_COUNTS, L.OPT_TOOLTIP_COUNTS_DESC, ns.DEFAULTS.tooltipCounts)
 
 	-- Appearance: background, border, outlines.
 	Header(L.GROUP_APPEARANCE)
