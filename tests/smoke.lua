@@ -247,6 +247,8 @@ _G.OKAY = "Okay"
 _G.GetCursorInfo = function() if cursor then return "item" end end
 _G.InCombatLockdown = function() return _G._inCombat end
 _G.IsAltKeyDown = function() return false end
+_G._shiftDown = false
+_G.IsShiftKeyDown = function() return _G._shiftDown end
 _G.GetMoney = function() return 12345 end
 _G._playerName = "Toby"
 _G.UnitName = function() return _G._playerName end
@@ -1426,6 +1428,32 @@ BagSectionsDB.characters = { ["Toby-Hardcore"] = saved }
 _G._playerName = "Alt"
 Fire("PLAYER_LOGOUT")
 check(BagSectionsDB.characters["Alt-Hardcore"], "the alt is saved too")
+-- Shift over an item: every character's count of it, you first.
+local lines = {}
+_G.GameTooltip.AddLine = function(_, text) table.insert(lines, text) end
+_G.GameTooltip.AddDoubleLine = function(_, left, right) table.insert(lines, left .. "=" .. right) end
+_G.GameTooltip.GetOwner = function() return nil end
+_G._tooltipPostCall(GameTooltip, { id = 200 })
+check(#lines == 0, "no counts without Shift")
+_G._shiftDown = true
+_G._tooltipPostCall(GameTooltip, { id = 200 })
+check(lines[2] and lines[2]:find("^.-Alt.-=None$"), "you first, with none: " .. tostring(lines[2]))
+check(lines[3] and lines[3]:find("Toby.-=Bags: 5$"), "then Toby's potions: " .. tostring(lines[3]))
+check(lines[4] == "Total=5", "then the total")
+-- Pressing Shift with the tooltip already up rebuilds it.
+local refreshed = false
+_G.GameTooltip.RefreshData = function() refreshed = true end
+_G.GameTooltip._shown = true
+local shiftWatcher
+for _, frame in ipairs(frames) do if frame._events and frame._events.MODIFIER_STATE_CHANGED then shiftWatcher = frame end end
+shiftWatcher._scripts.OnEvent(shiftWatcher, "MODIFIER_STATE_CHANGED", "LSHIFT", 1)
+check(refreshed, "pressing Shift refreshes the tooltip")
+BagSectionsDB.tooltipCounts = false
+lines = {}
+_G._tooltipPostCall(GameTooltip, { id = 200 })
+check(#lines == 0, "the setting turns counts off")
+BagSectionsDB.tooltipCounts = true
+_G._shiftDown = false
 ns.Frame.Show()
 local altsButton = rawget(mainFrame, "AltsButton")
 check(altsButton, "the bags have a button for other characters")

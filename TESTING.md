@@ -149,3 +149,8 @@ mention BagSections.
 | T141 | Click the alt window's title, pick another character | It switches to that character. |
 | T142 | Gear menu → Forget <Alt>, Yes | The alt is gone from the list; the window shows another character or closes. Logging in to that alt brings it back. |
 | T143 | `/bs alts` with no other characters seen yet | A chat message says to log in to another character once. |
+| T144 | Hover an item in your bags without Shift, then hold Shift | No counts without Shift. With Shift, below the tooltip: your name, then "Bags: x  Bank: y" matching what you have. Letting go of Shift removes the lines. |
+| T145 | Open a profession window, hover a reagent of a recipe while holding Shift (also the item the recipe makes) | The same count lines show for the reagent, even if you have none ("None"). |
+| T146 | With an alt that has some of that item (log in to it once, visit its bank once), hold Shift over it on your main | Your line first, then the alt's in its class colour, then "Total". Alts with none aren't listed. |
+| T147 | Character that has never visited a bank: Shift-hover an item | The line says "Bank: not visited". |
+| T148 | Settings → Item counts on Shift off, Shift-hover an item | No counts. |

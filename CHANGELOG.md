@@ -5,6 +5,12 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Added
+- Hold Shift while hovering an item to see how many you have in your bags and bank, and
+  how many your other characters have (one line each, with a total). Works everywhere
+  items have tooltips, including reagents in profession windows. Turn it off in Settings
+  with "Item counts on Shift".
+
 ## [1.5.0] - 2026-11-09
 
 ### Added

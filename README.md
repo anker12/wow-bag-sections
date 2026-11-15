@@ -216,6 +216,16 @@ remembered as you play it (bags and gold as they change, the bank on each visit)
 in to each character once, and visit a bank once with each, to see them. The gear menu's
 **Forget** removes a character you've deleted.
 
+### Item counts
+
+Hold **Shift** while hovering any item, in your bags, the bank, a profession window
+(reagents and what a recipe makes), a merchant or a chat link, to see how many you have
+in your bags and bank. Your other characters who have some are listed below you, one line
+each, with a total. Counts come from what BagSections remembers of each character (see
+Other characters), so an alt's bank shows what was there on their last visit. Pressing or
+letting go of Shift while the tooltip is up updates it. Settings → **Item counts on Shift**
+turns it off.
+
 ### Rest position
 
 Settings → **Rest position** sets where *new* sections go, including the Quest Items
