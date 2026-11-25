@@ -994,6 +994,29 @@ test("item counts: you're listed even with none", function()
 	eq(ns.Tooltip.CountText(counts[1], COUNT_L), "None")
 end)
 
+test("alts: copies saved at logout under another ruleset are merged back", function()
+	local characters = {
+		["Zarion-Home"] = { name = "Zarion", realm = "Home", class = "MAGE", bags = Snap({}), bank = "old", updated = 10 },
+		["Zarion-Odd"] = { name = "Zarion", realm = "Odd", class = "MAGE", bank = "new", sections = "s", updated = 20 },
+		["Other-Odd"] = { name = "Other", realm = "Odd", class = "MAGE", bank = "b", updated = 5 },
+	}
+	eq(ns.Alts.MergeLogoutCopies(characters), 1)
+	eq(characters["Zarion-Odd"], nil, "the copy is gone")
+	eq(characters["Zarion-Home"].bank, "new", "its newer bank is kept")
+	eq(characters["Zarion-Home"].sections, "s")
+	eq(characters["Zarion-Home"].updated, 20)
+	eq(characters["Other-Odd"].bank, "b", "no one to merge into: left alone")
+	-- An older copy is dropped without overwriting anything.
+	characters["Zarion-Odd"] = { name = "Zarion", realm = "Odd", class = "MAGE", bank = "older", updated = 1 }
+	eq(ns.Alts.MergeLogoutCopies(characters), 1)
+	eq(characters["Zarion-Home"].bank, "new")
+	-- The same name and class on two rulesets: unclear which, so nothing is merged.
+	characters["Zarion-Far"] = { name = "Zarion", realm = "Far", class = "MAGE", bags = Snap({}) }
+	characters["Zarion-Odd"] = { name = "Zarion", realm = "Odd", class = "MAGE", bank = "x" }
+	eq(ns.Alts.MergeLogoutCopies(characters), 0)
+	eq(ns.Alts.MergeLogoutCopies(nil), 0)
+end)
+
 local function Join(list) return table.concat(list, ",") end
 
 test("even columns: every column the row has is used", function()

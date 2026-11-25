@@ -1447,17 +1447,25 @@ SlashCmdList.BAGSECTIONS("alts")
 check(not ns.AltFrame.IsShown(), "no other characters yet: the viewer stays closed")
 -- While logging out the game answers with no bag slots and 0 gold: the saved copy keeps
 -- the bags and gold it had.
-local realSlots, realMoney = NUM_SLOTS, _G.GetMoney
+-- It can also give another ruleset name then: the character is still saved under its own.
+local realSlots, realMoney, realRuleset = NUM_SLOTS, _G.GetMoney, _G.GetRealmName
 NUM_SLOTS = {}
 _G.GetMoney = function() return 0 end
+_G.GetRealmName = function() return "CAMWOW EU5 Realm 4 PvP" end
 Fire("PLAYER_LOGOUT")
-NUM_SLOTS, _G.GetMoney = realSlots, realMoney
+NUM_SLOTS, _G.GetMoney, _G.GetRealmName = realSlots, realMoney, realRuleset
 me = BagSectionsDB.characters["Toby-Hardcore"]
 check(me.money == 12345 and me.bags and #me.bags.tabs > 0, "logging out doesn't wipe the saved bags and gold")
+savedCount = 0
+for _ in pairs(BagSectionsDB.characters) do savedCount = savedCount + 1 end
+check(savedCount == 1 and me.realm == "Hardcore", "logging out doesn't save the character a second time under another ruleset")
 -- Log in as someone else: Toby's saved copy is what they see.
 local saved = me
 BagSectionsDB.characters = { ["Toby-Hardcore"] = saved }
 _G._playerName = "Alt"
+NUM_SLOTS = {} -- the alt's bags are empty
+Fire("PLAYER_LOGIN")
+NUM_SLOTS = realSlots
 Fire("PLAYER_LOGOUT")
 check(BagSectionsDB.characters["Alt-Hardcore"], "the alt is saved too")
 -- Shift over an item: every character's count of it, you first.

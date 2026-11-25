@@ -5,6 +5,12 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Fixed
+- Characters no longer show twice in item counts and the alt list, once with an odd
+  ruleset name in brackets. The game can give a different ruleset name while logging out,
+  and that saved a second copy holding only the bank. Existing copies are merged back into
+  the right character the next time you log in.
+
 ## [1.6.0] - 2026-11-15
 
 ### Added
