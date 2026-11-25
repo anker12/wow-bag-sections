@@ -88,10 +88,65 @@ function Alts.SectionDB(entry, view)
 	return entry[field]
 end
 
+-- Older versions saved each character a second time at logout, under the other ruleset name
+-- the game gives while logging out, so they showed twice (e.g. in item tooltips). Those
+-- copies were only ever saved at logout, so they have no bags. Each one is merged into the
+-- one character with the same name and class that does have bags: its bank and section data
+-- are kept if they're newer, and the copy is removed. Returns how many were merged.
+function Alts.MergeLogoutCopies(characters)
+	if type(characters) ~= "table" then
+		return 0
+	end
+	local withBags = {}
+	for key, entry in pairs(characters) do
+		if type(entry) == "table" and entry.bags and entry.name then
+			local id = entry.name .. "|" .. (entry.class or "")
+			withBags[id] = withBags[id] or {}
+			table.insert(withBags[id], key)
+		end
+	end
+	local merged = 0
+	for key, entry in pairs(characters) do
+		if type(entry) == "table" and not entry.bags and entry.name then
+			local targets = withBags[entry.name .. "|" .. (entry.class or "")]
+			-- With two such characters (one name on two rulesets) it's unclear which one it is.
+			if targets and #targets == 1 then
+				local target = characters[targets[1]]
+				if (entry.updated or 0) > (target.updated or 0) then
+					target.bank = entry.bank or target.bank
+					target.sections = entry.sections or target.sections
+					target.bankSections = entry.bankSections or target.bankSections
+					target.updated = entry.updated
+				end
+				characters[key] = nil
+				merged = merged + 1
+			end
+		end
+	end
+	return merged
+end
+
 -- Game-dependent part below.
 
+-- Worked out once, at login: while logging out the game can give a different ruleset name,
+-- which would save the character a second time under another key.
+local playerKey, playerRuleset
+local copiesMerged = false
+
+function Alts.OnLogin()
+	playerKey, playerRuleset = nil, nil
+	Alts.Save()
+end
+
 function Alts.PlayerKey()
-	return Alts.Key(UnitName("player"), GetRealmName())
+	if not playerKey then
+		local realm = GetRealmName()
+		playerKey = Alts.Key(UnitName("player"), realm)
+		if playerKey then
+			playerRuleset = realm
+		end
+	end
+	return playerKey
 end
 
 -- The bags as saved slots, in the same shape as the bank snapshot.
@@ -133,9 +188,13 @@ function Alts.Save(atLogout)
 		return
 	end
 	ns.db.characters = ns.db.characters or {}
+	if not copiesMerged and atLogout ~= true then
+		copiesMerged = true
+		Alts.MergeLogoutCopies(ns.db.characters)
+	end
 	local entry = ns.db.characters[key] or {}
 	entry.name = UnitName("player")
-	entry.realm = GetRealmName()
+	entry.realm = playerRuleset
 	entry.class = select(2, UnitClass("player"))
 	if atLogout ~= true then
 		local bags = ReadBags()
@@ -168,7 +227,8 @@ end
 -- "Name", or "Name (Ruleset)" for characters on another ruleset, in their class colour.
 function Alts.DisplayName(entry, withRealm)
 	local name = entry.name or "?"
-	if withRealm and entry.realm and entry.realm ~= GetRealmName() then
+	Alts.PlayerKey()
+	if withRealm and entry.realm and entry.realm ~= playerRuleset then
 		name = name .. " (" .. entry.realm .. ")"
 	end
 	local color = entry.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[entry.class]

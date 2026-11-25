@@ -199,7 +199,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
 		end
 	elseif event == "PLAYER_LOGIN" then
 		ns.ItemButtons.Precreate(ns.Inventory.Scan())
-		ns.Alts.Save()
+		ns.Alts.OnLogin()
 	elseif event == "PLAYER_LOGOUT" then
 		ns.Alts.Save(true)
 	elseif event == "BANKFRAME_OPENED" then
