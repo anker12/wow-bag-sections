@@ -1549,6 +1549,22 @@ check(not ns.AltBankFrame.IsShown(), "and closing the bags column closes the ban
 ns.AltFrame.ShowCharacter("Toby-Hardcore")
 ns.Menu.OpenAltViewerMenu(rawget(altWindow, "MenuButton"))
 check(_G._menuEntries["Character"] and not _G._menuEntries["Bank"], "the gear menu has no bags/bank switch any more")
+check(_G._menuEntries["Forget all other characters"], "the gear menu can forget all other characters")
+-- /bs alts reset: asks, then forgets everyone but you, stale copies included.
+BagSectionsDB.characters["Alt-CAMWOW EU5 Realm 4 PvP"] = { name = "Alt", realm = "CAMWOW EU5 Realm 4 PvP", }
+_G._lastPopup = nil
+SlashCmdList.BAGSECTIONS("alts reset")
+check(_G._lastPopup and _G._lastPopup.which == "BAGSECTIONS_CONFIRM" and BagSectionsDB.characters["Toby-Hardcore"], "/bs alts reset asks first")
+_G._lastPopup.data.onAccept()
+local left = {}
+for key in pairs(BagSectionsDB.characters) do table.insert(left, key) end
+check(#left == 1 and left[1] == "Alt-Hardcore" and BagSectionsDB.characters["Alt-Hardcore"].realm == "Hardcore", "then only you are left: " .. table.concat(left, ","))
+check(not ns.AltFrame.IsShown(), "and the viewer closes")
+_G._lastPopup = nil
+SlashCmdList.BAGSECTIONS("alts reset")
+check(_G._lastPopup == nil, "nothing to forget: no question")
+BagSectionsDB.characters["Toby-Hardcore"] = saved
+ns.AltFrame.ShowCharacter("Toby-Hardcore")
 ns.Alts.Forget("Toby-Hardcore")
 ns.AltFrame.CharacterForgotten("Toby-Hardcore")
 check(BagSectionsDB.characters["Toby-Hardcore"] == nil and not ns.AltFrame.IsShown() and not ns.AltBankFrame.IsShown(), "forgetting the only alt closes the viewer")

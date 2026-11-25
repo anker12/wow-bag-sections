@@ -440,6 +440,22 @@ function Menu.OpenAltsMenu(owner)
 	end)
 end
 
+-- Asks, then forgets every saved character except this one (Settings, the alt viewer's
+-- menu and /bs alts reset).
+function Menu.ConfirmForgetAllAlts()
+	local others = #ns.Alts.GetAll()
+	if others == 0 then
+		ns.Print(L.ALTS_NONE)
+		return
+	end
+	StaticPopup_Show("BAGSECTIONS_CONFIRM", L.ALTS_CLEAR_CONFIRM:format(others), nil, {
+		onAccept = function()
+			ns.Print(L.ALTS_CLEARED:format(ns.Alts.ForgetAllOthers()))
+			ns.AltFrame.Hide()
+		end,
+	})
+end
+
 -- Options button in the alt viewer's title bar.
 function Menu.OpenAltViewerMenu(owner)
 	local viewer = ns.AltFrame
@@ -465,6 +481,7 @@ function Menu.OpenAltViewerMenu(owner)
 				})
 			end)
 		end
+		root:CreateButton(L.ALTS_CLEAR, Menu.ConfirmForgetAllAlts)
 		root:CreateButton(L.SETTINGS, function() ns.Options.Open() end)
 	end)
 end

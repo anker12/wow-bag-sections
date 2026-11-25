@@ -1017,6 +1017,15 @@ test("alts: copies saved at logout under another ruleset are merged back", funct
 	eq(ns.Alts.MergeLogoutCopies(nil), 0)
 end)
 
+test("alts: forgetting all others keeps only you", function()
+	local characters = { ["Me-A"] = { name = "Me" }, ["Me-Old"] = { name = "Me" }, ["Alt-A"] = { name = "Alt" } }
+	eq(ns.Alts.ForgetOthers(characters, "Me-A"), 2)
+	eq(characters["Me-Old"], nil)
+	eq(characters["Alt-A"], nil)
+	eq(characters["Me-A"].name, "Me", "you're kept")
+	eq(ns.Alts.ForgetOthers(nil, "Me-A"), 0)
+end)
+
 local function Join(list) return table.concat(list, ",") end
 
 test("even columns: every column the row has is used", function()

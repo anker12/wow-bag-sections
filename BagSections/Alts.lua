@@ -126,6 +126,18 @@ function Alts.MergeLogoutCopies(characters)
 	return merged
 end
 
+-- Removes every saved character except `keepKey`. Returns how many were removed.
+function Alts.ForgetOthers(characters, keepKey)
+	local removed = 0
+	for key in pairs(characters or {}) do
+		if key ~= keepKey then
+			characters[key] = nil
+			removed = removed + 1
+		end
+	end
+	return removed
+end
+
 -- Game-dependent part below.
 
 -- Worked out once, at login: while logging out the game can give a different ruleset name,
@@ -222,6 +234,14 @@ function Alts.Forget(key)
 	if ns.db.characters and key ~= Alts.PlayerKey() then
 		ns.db.characters[key] = nil
 	end
+end
+
+-- Forgets every other character, e.g. stale copies left when a ruleset was renamed, and
+-- saves this one again. Each comes back the next time it's logged in to.
+function Alts.ForgetAllOthers()
+	local removed = Alts.ForgetOthers(ns.db.characters, Alts.PlayerKey())
+	Alts.Save()
+	return removed
 end
 
 -- "Name", or "Name (Ruleset)" for characters on another ruleset, in their class colour.
