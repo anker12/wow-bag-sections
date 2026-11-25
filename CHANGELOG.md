@@ -5,6 +5,12 @@ section into CurseForge's changelog box when uploading.
 
 ## [Unreleased]
 
+### Added
+- "Forget all other characters" clears the saved bags and bank of every character except
+  the one you're on, for old or broken copies (e.g. after a ruleset was renamed). It's in
+  Settings under Other characters, in the alt viewer's gear menu, and as `/bs alts reset`.
+  It asks first, and each character comes back the next time you log in to it.
+
 ### Fixed
 - Characters no longer show twice in item counts and the alt list, once with an odd
   ruleset name in brackets. The game can give a different ruleset name while logging out,

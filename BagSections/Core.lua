@@ -281,6 +281,8 @@ SlashCmdList.BAGSECTIONS = function(input)
 		ns.RequestRefresh()
 	elseif command == "bank" then
 		ns.BankFrame.Toggle()
+	elseif command == "alts" and rest:lower() == "reset" then
+		ns.Menu.ConfirmForgetAllAlts()
 	elseif command == "alts" then
 		local first = ns.Alts.GetAll()[1]
 		if ns.AltFrame.IsShown() then

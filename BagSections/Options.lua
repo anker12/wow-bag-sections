@@ -136,6 +136,13 @@ function Options.Init()
 		end, L.PROFILES_DESC, false))
 	end
 
+	Header(L.ALTS, L.ALTS_DESC)
+	if layout then
+		layout:AddInitializer(CreateSettingsButtonInitializer(L.ALTS_CLEAR, L.ALTS_CLEAR_BUTTON, function()
+			ns.Menu.ConfirmForgetAllAlts()
+		end, L.ALTS_CLEAR_DESC, false))
+	end
+
 	Settings.RegisterAddOnCategory(category)
 
 	-- Show the bags as a live preview while this settings page is open (see

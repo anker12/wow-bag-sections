@@ -194,6 +194,11 @@ L.ALTS_NONE = "None yet: log in to another character once"
 L.ALTS_SWITCH = "Character"
 L.ALTS_FORGET = "Forget %s"
 L.ALTS_FORGET_CONFIRM = "Forget %s's bags and bank?\n\nThey come back the next time you log in to that character."
+L.ALTS_CLEAR = "Forget all other characters"
+L.ALTS_CLEAR_BUTTON = "Forget all..."
+L.ALTS_CLEAR_DESC = "Removes the saved bags and bank of every character except the one you're on, including old copies left after a ruleset was renamed. Each one comes back the next time you log in to it."
+L.ALTS_CLEAR_CONFIRM = "Forget the saved bags and bank of %d other characters?\n\nEach one comes back the next time you log in to it."
+L.ALTS_CLEARED = "Forgot %d other characters. Each comes back the next time you log in to it."
 L.ALT_BAGS_TITLE = "%s's bags"
 L.ALT_BANK_TITLE = "%s's bank"
 L.ALT_BANK_EMPTY = "Not seen at a bank yet"
@@ -206,5 +211,6 @@ L.HELP = {
 	"/bs add <section> - add the item under the mouse to a section",
 	"/bs bank - view your bank from anywhere (also: right-click the Bags title)",
 	"/bs alts - look at your other characters' bags and bank",
+	"/bs alts reset - forget every other character's saved bags and bank",
 	"/bs config - open settings",
 }
